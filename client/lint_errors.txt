@@ -1,0 +1,39 @@
+C:\Users\PRASD\Desktop\single-vendor-ecommerce\client\src\App.jsx:49 'user' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u.
+C:\Users\PRASD\Desktop\single-vendor-ecommerce\client\src\context\AuthContext.jsx:3 Fast refresh only works when a file only exports components. Move your React context(s) to a separate file.
+C:\Users\PRASD\Desktop\single-vendor-ecommerce\client\src\context\AuthContext.jsx:13 Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  11 |     const storedToken = localStorage.getItem("token");
+  12 |     if (storedUser && storedToken) {
+> 13 |       setUser(JSON.parse(storedUser));
+     |       ^^^^^^^ Avoid calling setState() directly within an effect
+  14 |     }
+  15 |   }, []);
+  16 |
+C:\Users\PRASD\Desktop\single-vendor-ecommerce\client\src\context\CartContext.jsx:3 Fast refresh only works when a file only exports components. Move your React context(s) to a separate file.
+C:\Users\PRASD\Desktop\single-vendor-ecommerce\client\src\context\CartContext.jsx:10 'e' is defined but never used.
+C:\Users\PRASD\Desktop\single-vendor-ecommerce\client\src\pages\Admin\ManageProducts.jsx:6 'user' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u.
+C:\Users\PRASD\Desktop\single-vendor-ecommerce\client\src\pages\Admin\ManageProducts.jsx:81 Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  79 |
+  80 |   useEffect(() => {
+> 81 |     fetchProducts();
+     |     ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  82 |   }, []);
+  83 |
+  84 |   return (
+C:\Users\PRASD\Desktop\single-vendor-ecommerce\client\src\pages\Admin\Orders.jsx:36 React Hook useEffect has a missing dependency: 'fetchOrders'. Either include it or remove the dependency array.
+C:\Users\PRASD\Desktop\single-vendor-ecommerce\client\src\pages\Home.jsx:6 'products' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u.
+C:\Users\PRASD\Desktop\single-vendor-ecommerce\client\src\pages\Register.jsx:26 'response' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u.
+C:\Users\PRASD\Desktop\single-vendor-ecommerce\client\src\pages\UserOrders.jsx:25 React Hook useEffect has a missing dependency: 'fetchOrders'. Either include it or remove the dependency array.

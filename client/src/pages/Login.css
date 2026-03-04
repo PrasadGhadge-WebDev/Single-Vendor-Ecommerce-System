@@ -1,0 +1,168 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+/* avoid global html/body rules; apply styles only to the login wrapper */
+.login-wrapper, .login-wrapper * {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+}
+
+.login-wrapper {
+  height: 100vh;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  overflow: hidden;
+}
+
+.login-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  position: relative;
+}
+
+.background-bubbles span {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  animation: float 10s linear infinite;
+}
+
+.bubble-0 { width: 60px; height: 60px; bottom: -50px; left: 10%; animation-duration: 12s; }
+.bubble-1 { width: 40px; height: 40px; bottom: -30px; left: 20%; animation-duration: 8s; }
+.bubble-2 { width: 80px; height: 80px; bottom: -70px; left: 35%; animation-duration: 14s; }
+.bubble-3 { width: 30px; height: 30px; bottom: -25px; left: 50%; animation-duration: 10s; }
+.bubble-4 { width: 50px; height: 50px; bottom: -50px; left: 65%; animation-duration: 11s; }
+.bubble-5 { width: 70px; height: 70px; bottom: -60px; left: 75%; animation-duration: 13s; }
+.bubble-6 { width: 45px; height: 45px; bottom: -40px; left: 85%; animation-duration: 9s; }
+.bubble-7 { width: 35px; height: 35px; bottom: -30px; left: 15%; animation-duration: 7s; }
+.bubble-8 { width: 60px; height: 60px; bottom: -50px; left: 40%; animation-duration: 15s; }
+.bubble-9 { width: 25px; height: 25px; bottom: -20px; left: 55%; animation-duration: 12s; }
+
+@keyframes float {
+  0% { transform: translateY(0) rotate(0deg); }
+  100% { transform: translateY(-120vh) rotate(360deg); }
+}
+
+.login-card {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 400px;
+  padding: 40px 30px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.25);
+  text-align: center;
+  color: #fff;
+  animation: fadeIn 1s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.login-card h2 {
+  font-weight: 700;
+  font-size: 2rem;
+  margin-bottom: 5px;
+}
+
+.sub-text {
+  font-size: 0.9rem;
+  margin-bottom: 25px;
+  color: #e0e0e0;
+}
+
+.alert {
+  background: rgba(255, 0, 0, 0.2);
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.input-group {
+  position: relative;
+  margin-bottom: 25px;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 14px 15px;
+  border-radius: 12px;
+  border: none;
+  outline: none;
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+  font-size: 1rem;
+  transition: all 0.3s;
+}
+
+.input-group input:focus {
+  background: rgba(255,255,255,0.3);
+}
+
+.input-group label {
+  position: absolute;
+  top: 50%;
+  left: 15px;
+  transform: translateY(-50%);
+  color: #e0e0e0;
+  pointer-events: none;
+  transition: 0.3s;
+}
+
+.input-group input:focus + label,
+.input-group input:not(:placeholder-shown) + label {
+  top: -8px;
+  left: 12px;
+  font-size: 0.75rem;
+  color: #fff;
+  background: rgba(0,0,0,0.2);
+  padding: 0 5px;
+  border-radius: 4px;
+}
+
+.password-group {
+  display: flex;
+  align-items: center;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.btn-gradient {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-gradient:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+}
+
+.login-footer {
+  margin-top: 20px;
+  font-size: 0.8rem;
+  color: #d1d5db;
+}
