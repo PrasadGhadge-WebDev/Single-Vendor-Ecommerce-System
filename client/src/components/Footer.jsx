@@ -1,66 +1,56 @@
-import React from "react";
+﻿import React from "react";
 import { Link } from "react-router-dom";
 import { FaFacebookF, FaTwitter, FaInstagram, FaLinkedinIn } from "react-icons/fa";
+import "./Footer.css";
 
 const Footer = () => {
   return (
-    <footer className="bg-dark text-white pt-5 pb-3 mt-5">
-      <div className="container">
-        <div className="row">
-
-          {/* About Section */}
-          <div className="col-md-4 mb-4">
-            <h5 className="mb-3">About Us</h5>
-            <p>
-              Welcome to our single-vendor store! We offer the best quality products at unbeatable prices. 
-              Shop with confidence and enjoy excellent customer service.
+    <footer className="site-footer mt-5">
+      <div className="container py-5">
+        <div className="row g-4">
+          <div className="col-lg-4 col-md-6">
+            <h5 className="footer-title">MyShop</h5>
+            <p className="footer-text mb-0">
+              Trusted single-vendor ecommerce platform with quality products, secure checkout,
+              and reliable support.
             </p>
           </div>
 
-          {/* Quick Links */}
-          <div className="col-md-2 mb-4">
-            <h5 className="mb-3">Quick Links</h5>
-            <ul className="list-unstyled">
-              <li>
-                <Link to="/" className="text-white text-decoration-none">Home</Link>
-              </li>
-              <li>
-                <Link to="/shop" className="text-white text-decoration-none">Shop</Link>
-              </li>
-              <li>
-                <Link to="/cart" className="text-white text-decoration-none">Cart</Link>
-              </li>
-              <li>
-                <Link to="/checkout" className="text-white text-decoration-none">Checkout</Link>
-              </li>
+          <div className="col-lg-2 col-md-6">
+            <h6 className="footer-subtitle">Quick Links</h6>
+            <ul className="footer-links list-unstyled mb-0">
+              <li><Link to="/">Home</Link></li>
+              <li><Link to="/shop">Shop</Link></li>
+              <li><Link to="/about">About</Link></li>
+              <li><Link to="/contact">Contact</Link></li>
+              <li><Link to="/offers">Offers</Link></li>
+              <li><Link to="/replacement-policy">Replacement Policy</Link></li>
             </ul>
           </div>
 
-          {/* Support / Contact */}
-          <div className="col-md-3 mb-4">
-            <h5 className="mb-3">Contact</h5>
-            <p>Email: support@singlestore.com</p>
-            <p>Phone: +91 9876543210</p>
-            <p>Address: Pune, Maharashtra, India</p>
+          <div className="col-lg-3 col-md-6">
+            <h6 className="footer-subtitle">Customer Support</h6>
+            <ul className="footer-contact list-unstyled mb-0">
+              <li>Email: support@myshop.com</li>
+              <li>Phone: +91 98765 43210</li>
+              <li>Pune, Maharashtra, India</li>
+            </ul>
           </div>
 
-          {/* Social Links */}
-          <div className="col-md-3 mb-4">
-            <h5 className="mb-3">Follow Us</h5>
-            <div className="d-flex gap-3">
-              <a href="#" className="text-white fs-5"><FaFacebookF /></a>
-              <a href="#" className="text-white fs-5"><FaTwitter /></a>
-              <a href="#" className="text-white fs-5"><FaInstagram /></a>
-              <a href="#" className="text-white fs-5"><FaLinkedinIn /></a>
+          <div className="col-lg-3 col-md-6">
+            <h6 className="footer-subtitle">Follow Us</h6>
+            <div className="footer-social d-flex gap-2">
+              <a href="#" aria-label="Facebook"><FaFacebookF /></a>
+              <a href="#" aria-label="Twitter"><FaTwitter /></a>
+              <a href="#" aria-label="Instagram"><FaInstagram /></a>
+              <a href="#" aria-label="LinkedIn"><FaLinkedinIn /></a>
             </div>
           </div>
-
         </div>
 
-        <hr className="border-top border-secondary" />
-
-        <div className="text-center pt-3">
-          &copy; {new Date().getFullYear()} Single Vendor Store. All rights reserved.
+        <div className="footer-bottom d-flex flex-column flex-md-row justify-content-between align-items-center mt-4 pt-3">
+          <small>Copyright {new Date().getFullYear()} MyShop. All rights reserved.</small>
+          <small>Built for better shopping experience.</small>
         </div>
       </div>
     </footer>

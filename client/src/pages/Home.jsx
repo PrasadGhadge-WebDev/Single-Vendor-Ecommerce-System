@@ -1,137 +1,189 @@
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import API from "../api";
+import React, { useContext, useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import API, { getImageUrl } from "../api";
+import { CartContext } from "../context/CartContext";
+import "./Home.css";
+
+const FALLBACK_IMAGE =
+  "https://via.placeholder.com/420x320/f1f5f9/64748b?text=No+Image";
 
 const Home = () => {
-  const [, setProducts] = useState([]);
+  const navigate = useNavigate();
+  const { addToCart } = useContext(CartContext);
+
+  const [featuredProducts, setFeaturedProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchHomeData = async () => {
       try {
-        const { data } = await API.get("/products?limit=8");
-        setProducts(data);
-      } catch (err) {
-        console.error("Error fetching products:", err);
+        setLoading(true);
+
+        const [{ data: productsData }, { data: categoriesData }] = await Promise.all([
+          API.get("/products?limit=8&sortBy=createdAt&order=desc"),
+          API.get("/categories"),
+        ]);
+
+        setFeaturedProducts(Array.isArray(productsData) ? productsData : []);
+        setCategories(Array.isArray(categoriesData) ? categoriesData : []);
+      } catch (error) {
+        console.error("Home data fetch error:", error);
+        setFeaturedProducts([]);
+        setCategories([]);
+      } finally {
+        setLoading(false);
       }
     };
 
-    const fetchCategories = async () => {
-      try {
-        const { data } = await API.get("/categories");
-        const cats = data.categories || data;
-        setCategories(cats);
-      } catch (err) {
-        console.error("Error fetching categories:", err);
-      }
-    };
-
-    fetchProducts();
-    fetchCategories();
-
-    // refetch when products change elsewhere in app
-    const handler = () => {
-      fetchProducts();
-    };
-    window.addEventListener('products-updated', handler);
-    return () => window.removeEventListener('products-updated', handler);
+    fetchHomeData();
   }, []);
 
+  const handleBuyNow = (product) => {
+    navigate("/checkout", {
+      state: {
+        buyNowItem: {
+          product,
+          quantity: 1,
+        },
+      },
+    });
+  };
+
   return (
-    <div>
-      {/* Hero / Banner */}
-      <div className="container-fluid p-0 position-relative">
-        <img
-          src="https://cdn.vectorstock.com/i/500p/57/56/shopping-cart-banner-online-store-vector-42935756.jpg"
-          className="d-block w-100"
-          alt="Shopping Banner"
-          style={{ maxHeight: "450px", objectFit: "cover" }}
-        />
-        <div className="text-center text-white position-absolute top-50 start-50 translate-middle">
-          <h1 className="display-4 fw-bold">Welcome to Our Store</h1>
-          <p className="lead">Best products at unbeatable prices</p>
-          <Link to="/shop" className="btn btn-lg btn-warning">
-            🛍 Shop Now
+    <div className="home-modern">
+      <section className="hero-modern position-relative overflow-hidden">
+        <div className="hero-glow hero-glow-1"></div>
+        <div className="hero-glow hero-glow-2"></div>
+
+        <div className="container py-5 hero-content">
+          <div className="row align-items-center g-4">
+            <div className="col-lg-7">
+              <span className="hero-badge">Premium Shopping Experience</span>
+              <h1 className="hero-title mt-3">Style, Tech, Essentials. All in one place.</h1>
+              <p className="hero-subtitle mt-3">
+                Discover hand-picked products with fast delivery, secure checkout, and trusted quality.
+              </p>
+
+              <div className="d-flex flex-wrap gap-2 mt-4">
+                <Link to="/shop" className="btn btn-warning px-4 fw-semibold">
+                  Shop Now
+                </Link>
+                <Link to="/services" className="btn btn-outline-light px-4 fw-semibold">
+                  Our Services
+                </Link>
+              </div>
+            </div>
+
+            <div className="col-lg-5">
+              <div className="hero-stat-grid">
+                <div className="hero-stat-card">
+                  <h4>{featuredProducts.length || 0}+</h4>
+                  <p>Featured Items</p>
+                </div>
+                <div className="hero-stat-card">
+                  <h4>{categories.length || 0}+</h4>
+                  <p>Categories</p>
+                </div>
+                <div className="hero-stat-card">
+                  <h4>24/7</h4>
+                  <p>Support</p>
+                </div>
+                <div className="hero-stat-card">
+                  <h4>100%</h4>
+                  <p>Secure Payment</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="container py-5">
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h3 className="fw-bold mb-0">Shop by Category</h3>
+          <Link to="/shop" className="text-decoration-none fw-semibold">
+            Browse all
           </Link>
         </div>
-      </div>
 
-      {/* Featured Categories */}
-      <div className="container mt-5">
-        <h2 className="mb-4 text-center">Featured Categories</h2>
-        <div className="row g-4">
-          {categories.length > 0 ? (
-            categories.map((cat) => {
-              const name = cat.name || cat; // handle fallback
-              const key = cat._id || name;
-              return (
-                <div key={key} className="col-md-4">
-                  <Link to={`/shop/category/${encodeURIComponent(name)}`} className="text-decoration-none text-dark">
-                    <div className="card shadow-sm text-center p-3">
-                      {/* placeholder icon */}
-                      <div
-                        className="mb-2 d-block mx-auto bg-secondary text-white rounded-circle"
-                        style={{ width: "80px", height: "80px", lineHeight: "80px" }}
-                      >
-                        {name.charAt(0).toUpperCase()}
-                      </div>
-                      <h5>{name}</h5>
+        {loading ? (
+          <p className="text-muted">Loading categories...</p>
+        ) : categories.length === 0 ? (
+          <p className="text-muted">No categories available.</p>
+        ) : (
+          <div className="row g-3">
+            {categories.map((cat, index) => (
+              <div key={cat._id || cat.name} className="col-6 col-md-4 col-lg-3 fade-in-up" style={{ animationDelay: `${index * 80}ms` }}>
+                <Link
+                  to={`/shop/category/${encodeURIComponent(cat.name)}`}
+                  className="text-decoration-none"
+                >
+                  <div className="category-modern-card h-100">
+                    <div className="category-dot"></div>
+                    <h6 className="mb-1 fw-bold">{cat.name}</h6>
+                    <small className="text-muted">Explore products</small>
+                  </div>
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="container pb-5">
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h3 className="fw-bold mb-0">Featured Products</h3>
+          <Link to="/shop" className="btn btn-sm home-view-all">
+            View All
+          </Link>
+        </div>
+
+        {loading ? (
+          <p className="text-muted">Loading featured products...</p>
+        ) : featuredProducts.length === 0 ? (
+          <p className="text-muted">No featured products found. Add products from admin panel.</p>
+        ) : (
+          <div className="row">
+            {featuredProducts.map((product, index) => (
+              <div className="col-sm-6 col-md-4 col-lg-3 mb-4 fade-in-up" style={{ animationDelay: `${index * 90}ms` }} key={product._id}>
+                <div className="product-modern-card h-100">
+                  <Link to={`/product/${product._id}`} className="text-decoration-none">
+                    <div className="product-image-wrap">
+                      <img
+                        src={product.image ? getImageUrl(product.image) : FALLBACK_IMAGE}
+                        className="card-img-top"
+                        height="220"
+                        alt={product.name}
+                        onError={(e) => {
+                          e.currentTarget.src = FALLBACK_IMAGE;
+                        }}
+                      />
                     </div>
                   </Link>
+
+                  <div className="card-body d-flex flex-column p-3">
+                    <Link to={`/product/${product._id}`} className="text-decoration-none">
+                      <h6 className="fw-bold mb-1">{product.name}</h6>
+                    </Link>
+                    <small className="text-muted mb-2">{product.category}</small>
+                    <p className="text-success fw-bold mb-3">INR {product.price}</p>
+
+                    <div className="d-grid gap-2 mt-auto">
+                      <button className="btn btn-primary btn-sm" onClick={() => addToCart(product)}>
+                        Add to Cart
+                      </button>
+                      <button className="btn btn-warning btn-sm" onClick={() => handleBuyNow(product)}>
+                        Buy Now
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              );
-            })
-          ) : (
-            <p className="text-center">Loading categories...</p>
-          )}
-        </div>
-      </div>
-
-      {/* Our Services */}
-      <div className="container mt-5">
-        <h2 className="mb-4 text-center">Our Services</h2>
-        <div className="row g-4">
-          <div className="col-md-4">
-            <div className="p-3 shadow-sm rounded text-center">
-              <img
-                src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS2jmaPJBxN-tMJyfi8T-zhuebCqG_RLGZkgQ&s"
-                alt="24/7 Support"
-                className="mb-2 d-block mx-auto"
-                style={{ width: "80px", height: "80px", objectFit: "cover" }}
-              />
-              <h5>24/7 Support</h5>
-              <p>Our customer support team is here for you anytime.</p>
-            </div>
+              </div>
+            ))}
           </div>
-
-          <div className="col-md-4">
-            <div className="p-3 shadow-sm rounded text-center">
-              <img
-                src="https://png.pngtree.com/png-clipart/20230509/original/pngtree-fast-delivery-label-design-png-image_9153915.png"
-                alt="Fast Delivery"
-                className="mb-2 d-block mx-auto"
-                style={{ width: "80px", height: "80px", objectFit: "cover" }}
-              />
-              <h5>Fast Delivery</h5>
-              <p>Get your orders delivered quickly and safely.</p>
-            </div>
-          </div>
-
-          <div className="col-md-4">
-            <div className="p-3 shadow-sm rounded text-center">
-              <img
-                src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQqfmmJ9Ucii35cZtXCA-n5yID1zEB-KrLEwA&s"
-                alt="Best Quality"
-                className="mb-2 d-block mx-auto"
-                style={{ width: "80px", height: "80px", objectFit: "cover" }}
-              />
-              <h5>Best Quality</h5>
-              <p>We only provide products of top-notch quality.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
+        )}
+      </section>
     </div>
   );
 };

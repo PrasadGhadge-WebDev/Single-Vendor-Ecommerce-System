@@ -1,51 +1,73 @@
-import React, { createContext, useState, useEffect } from "react";
+import { createContext, useState, useEffect } from "react";
+import API from "../api";
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const CartContext = createContext();
 
-export const CartProvider = ({ children }) => {
-  const [cart, setCart] = useState(() => {
-    try {
-      const saved = localStorage.getItem("cart");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+const CartProvider = ({ children }) => {
+  const [cart, setCart] = useState([]);
 
-  useEffect(() => {
-    localStorage.setItem("cart", JSON.stringify(cart));
-  }, [cart]);
-
-  const addToCart = (product) => {
-    const exist = cart.find((item) => item._id === product._id);
-
-    if (exist) {
-      setCart(
-        cart.map((item) =>
-          item._id === product._id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
-      );
-    } else {
-      setCart([...cart, { ...product, quantity: 1 }]);
-    }
+  const fetchCart = async () => {
+    const { data } = await API.get("/cart");
+    setCart(data?.items || []);
   };
 
-  const removeFromCart = (id) => {
-    setCart(cart.filter((item) => item._id !== id));
+  const addToCart = async (product) => {
+    const productId = typeof product === "object" ? product?._id : product;
+    await API.post("/cart/add", {
+      productId,
+      quantity: 1,
+    });
+
+    fetchCart();
   };
 
-  const clearCart = () => {
+  const updateQuantity = async (productId, quantity) => {
+    const safeQty = Math.max(1, Number(quantity) || 1);
+
+    await API.put("/cart/update", {
+      productId,
+      quantity: safeQty,
+    });
+
+    fetchCart();
+  };
+
+  const removeItem = async (productId) => {
+    await API.delete(`/cart/remove/${productId}`);
+    fetchCart();
+  };
+
+  const clearCart = async () => {
+    const items = [...cart];
+    await Promise.all(items.map((item) => API.delete(`/cart/remove/${item.productId._id}`)));
     setCart([]);
   };
 
+  const buyTotalOrder = async () => {
+    const { data } = await API.post("/orders/from-cart", {});
+    setCart([]);
+    return data;
+  };
+
+  useEffect(() => {
+    fetchCart();
+  }, []);
+
   return (
     <CartContext.Provider
-      value={{ cart, addToCart, removeFromCart, clearCart }}
+      value={{
+        cart,
+        addToCart,
+        updateQuantity,
+        removeItem,
+        clearCart,
+        fetchCart,
+        buyTotalOrder,
+      }}
     >
       {children}
     </CartContext.Provider>
   );
 };
+
+export default CartProvider;

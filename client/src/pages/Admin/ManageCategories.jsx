@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
-import API, { uploadURL } from "../../api";
+import API, { getImageUrl } from "../../api";
 import { AuthContext } from "../../context/AuthContext";
 
 const ManageCategories = () => {
@@ -15,7 +15,6 @@ const ManageCategories = () => {
   const [editCategoryImage, setEditCategoryImage] = useState(null);
   const [editLoading, setEditLoading] = useState(false);
 
-  // 🔥 Fetch Categories
   const fetchCategories = async () => {
     try {
       const { data } = await API.get("/categories");
@@ -30,7 +29,6 @@ const ManageCategories = () => {
     fetchCategories();
   }, []);
 
-  // 🔥 Add Category (Fixed Image Upload)
   const addCategory = async () => {
     if (!newCategory.trim()) return alert("Enter category name");
 
@@ -57,7 +55,6 @@ const ManageCategories = () => {
     }
   };
 
-  // 🔥 Delete Category
   const deleteCategory = async (id) => {
     if (!user?.isAdmin) return alert("Admin only");
 
@@ -72,21 +69,18 @@ const ManageCategories = () => {
     }
   };
 
-  // 🔥 Start Edit
   const startEdit = (cat) => {
     setEditCategoryId(cat._id);
     setEditCategoryName(cat.name);
     setEditCategoryImage(null);
   };
 
-  // 🔥 Cancel Edit
   const cancelEdit = () => {
     setEditCategoryId(null);
     setEditCategoryName("");
     setEditCategoryImage(null);
   };
 
-  // 🔥 Update Category (Fixed Image Upload)
   const updateCategory = async () => {
     if (!editCategoryName.trim()) return alert("Enter category name");
 
@@ -116,7 +110,6 @@ const ManageCategories = () => {
     <div className="container mt-4" style={{ maxWidth: "700px" }}>
       <h3>Manage Categories</h3>
 
-      {/* Add Category */}
       <div className="d-flex mb-3">
         <input
           type="text"
@@ -137,7 +130,6 @@ const ManageCategories = () => {
         </button>
       </div>
 
-      {/* Category List */}
       {categories.length === 0 ? (
         <p className="text-muted">No categories found</p>
       ) : (
@@ -150,7 +142,7 @@ const ManageCategories = () => {
               <div className="d-flex align-items-center">
                 {cat.image && (
                   <img
-                    src={`${uploadURL}/${cat.image}`}
+                    src={getImageUrl(cat.image)}
                     alt={cat.name}
                     style={{ width: "40px", marginRight: "10px" }}
                   />

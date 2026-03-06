@@ -3,10 +3,9 @@ import axios from "axios";
 const baseURL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const API = axios.create({
-  baseURL
+  baseURL,
 });
 
-// optional: attach token automatically from localStorage
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
@@ -15,6 +14,20 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
-export const uploadURL = `${baseURL}/uploads`;
+const apiOrigin = baseURL.replace(/\/api\/?$/, "");
+export const uploadURL = `${apiOrigin}/uploads`;
+
+export const getImageUrl = (value) => {
+  if (!value) return "";
+  if (/^https?:\/\//i.test(value)) return value;
+
+  let normalized = String(value).trim();
+  normalized = normalized.replace(/\\/g, "/");
+  normalized = normalized.replace(/^\.\//, "");
+  normalized = normalized.replace(/^\/+/, "");
+  normalized = normalized.replace(/^uploads\//i, "");
+
+  return `${uploadURL}/${encodeURI(normalized)}`;
+};
 
 export default API;

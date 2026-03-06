@@ -1,82 +1,162 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: "Segoe UI", "Poppins", sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  --page-bg: #f4f7fb;
+  --page-text: #0f172a;
+
+  --navbar-bg: linear-gradient(90deg, #f8fafc 0%, #eef2f7 45%, #e2e8f0 100%);
+  --navbar-border: rgba(148, 163, 184, 0.45);
+  --navbar-text: #0f172a;
+  --navbar-text-hover: #020617;
+  --navbar-btn-border: #64748b;
+  --navbar-btn-text: #0f172a;
+  --navbar-btn-hover-bg: #0f172a;
+  --navbar-btn-hover-text: #f8fafc;
+
+  --accent-color: #2563eb;
+
+  --search-bg: #ffffff;
+  --search-border: #cbd5e1;
+  --search-text: #0f172a;
+  --search-placeholder: #64748b;
+  --search-focus-ring: rgba(37, 99, 235, 0.2);
+  --search-btn-bg: #e2e8f0;
+  --search-btn-border: #cbd5e1;
+  --search-btn-text: #0f172a;
+  --search-btn-hover-bg: #cbd5e1;
+  --search-btn-hover-text: #020617;
+
+  --surface-1: #ffffff;
+  --surface-2: #f8fafc;
+  --surface-3: #eef2f7;
+  --border-color: #e2e8f0;
+  --muted-text: #64748b;
+  --shadow-color: rgba(15, 23, 42, 0.08);
+  --admin-wrapper-bg: linear-gradient(135deg, #eef2f7, #f8fafc);
+  --admin-content-bg: #f8fafc;
+  --admin-header-bg: rgba(255, 255, 255, 0.9);
+  --admin-header-border: #e5e7eb;
 }
 
-/* ensure html/body/root can grow with content and still fill viewport */
-html, body {
-  /* allow content to expand beyond viewport and scroll normally */
+:root[data-theme="dark"] {
+  --page-bg: #0b1220;
+  --page-text: #e2e8f0;
+
+  --navbar-bg: linear-gradient(90deg, #020617 0%, #111827 60%, #1f2937 100%);
+  --navbar-border: rgba(71, 85, 105, 0.45);
+  --navbar-text: #cbd5e1;
+  --navbar-text-hover: #ffffff;
+  --navbar-btn-border: #64748b;
+  --navbar-btn-text: #e2e8f0;
+  --navbar-btn-hover-bg: #e2e8f0;
+  --navbar-btn-hover-text: #0b1220;
+
+  --accent-color: #22d3ee;
+
+  --search-bg: rgba(15, 23, 42, 0.55);
+  --search-border: rgba(148, 163, 184, 0.3);
+  --search-text: #e2e8f0;
+  --search-placeholder: #94a3b8;
+  --search-focus-ring: rgba(34, 211, 238, 0.2);
+  --search-btn-bg: rgba(30, 41, 59, 0.9);
+  --search-btn-border: rgba(148, 163, 184, 0.3);
+  --search-btn-text: #e2e8f0;
+  --search-btn-hover-bg: rgba(51, 65, 85, 0.95);
+  --search-btn-hover-text: #ffffff;
+
+  --surface-1: #111827;
+  --surface-2: #0f172a;
+  --surface-3: #1f2937;
+  --border-color: #334155;
+  --muted-text: #94a3b8;
+  --shadow-color: rgba(2, 6, 23, 0.45);
+  --admin-wrapper-bg: linear-gradient(135deg, #0b1220, #111827);
+  --admin-content-bg: #0f172a;
+  --admin-header-bg: rgba(15, 23, 42, 0.92);
+  --admin-header-border: #334155;
+}
+
+html,
+body {
   min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background-color: var(--page-bg);
+  color: var(--page-text);
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 #root {
   display: flex;
   flex-direction: column;
-  /* make root at least viewport height so LayoutWrapper can position footer at bottom */
   min-height: 100vh;
 }
 
 a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+  text-decoration: none;
 }
 
-body {
-  margin: 0;
-  /* remove flex centering applied by default template; layout is handled inside React components */
-  /* display: flex;
-  place-items: center; */
-  min-width: 320px;
-  min-height: 100vh;
+/* Global component theming so whole page changes, not only text */
+.card,
+.modal-content,
+.dropdown-menu,
+.list-group-item,
+.table,
+.table th,
+.table td {
+  background-color: var(--surface-1) !important;
+  color: var(--page-text) !important;
+  border-color: var(--border-color) !important;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+  background-color: var(--surface-2) !important;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+.form-control,
+.form-select {
+  background-color: var(--surface-1) !important;
+  color: var(--page-text) !important;
+  border-color: var(--border-color) !important;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+.form-control::placeholder {
+  color: var(--muted-text) !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: var(--surface-1) !important;
+  color: var(--page-text) !important;
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 0 0.2rem var(--search-focus-ring) !important;
+}
+
+.text-muted,
+small.text-muted {
+  color: var(--muted-text) !important;
+}
+
+.bg-light {
+  background-color: var(--surface-2) !important;
+}
+
+.border,
+.border-top,
+.border-bottom {
+  border-color: var(--border-color) !important;
+}
+
+.shadow-sm,
+.shadow {
+  box-shadow: 0 8px 20px var(--shadow-color) !important;
 }

@@ -1,19 +1,84 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import API from "../api";
 import { CartContext } from "../context/CartContext";
 import { AuthContext } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
 
 const Checkout = () => {
   const { cart, clearCart } = useContext(CartContext);
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(false);
+  const [offerCode, setOfferCode] = useState("");
+  const [offers, setOffers] = useState([]);
+  const [appliedOffer, setAppliedOffer] = useState(null);
 
-  const totalAmount = cart.reduce(
-    (sum, item) => sum + item.price * item.quantity,
+  const buyNowItem = location.state?.buyNowItem;
+
+  const checkoutItems = useMemo(() => {
+    if (buyNowItem?.product?._id) {
+      return [
+        {
+          productId: buyNowItem.product,
+          quantity: Number(buyNowItem.quantity) || 1,
+        },
+      ];
+    }
+    return cart;
+  }, [buyNowItem, cart]);
+
+  const totalAmount = checkoutItems.reduce(
+    (sum, item) => sum + (item.productId?.price || 0) * item.quantity,
     0
   );
+
+  React.useEffect(() => {
+    const fetchOffers = async () => {
+      try {
+        const { data } = await API.get("/offers/public");
+        setOffers(Array.isArray(data) ? data : []);
+      } catch (error) {
+        setOffers([]);
+      }
+    };
+    fetchOffers();
+  }, []);
+
+  const discountAmount = useMemo(() => {
+    if (!appliedOffer) return 0;
+    if (totalAmount < (appliedOffer.minOrderAmount || 0)) return 0;
+    if (appliedOffer.discountType === "PERCENT") {
+      let amount = (totalAmount * appliedOffer.discountValue) / 100;
+      if (appliedOffer.maxDiscountAmount > 0) {
+        amount = Math.min(amount, appliedOffer.maxDiscountAmount);
+      }
+      return Math.min(amount, totalAmount);
+    }
+    return Math.min(appliedOffer.discountValue || 0, totalAmount);
+  }, [appliedOffer, totalAmount]);
+
+  const finalPayable = totalAmount - discountAmount;
+
+  const applyOffer = () => {
+    const code = offerCode.trim().toUpperCase();
+    if (!code) {
+      setAppliedOffer(null);
+      return;
+    }
+    const found = offers.find((offer) => offer.code === code);
+    if (!found) {
+      alert("Invalid offer code");
+      setAppliedOffer(null);
+      return;
+    }
+    if (totalAmount < (found.minOrderAmount || 0)) {
+      alert(`Minimum order amount for this offer is INR ${found.minOrderAmount}`);
+      setAppliedOffer(null);
+      return;
+    }
+    setAppliedOffer(found);
+  };
 
   const handleOrder = async () => {
     if (!user) {
@@ -22,26 +87,27 @@ const Checkout = () => {
       return;
     }
 
-    if (cart.length === 0) {
-      alert("Cart is empty");
+    if (checkoutItems.length === 0) {
+      alert("No items to checkout");
       return;
     }
 
     setLoading(true);
     try {
-      await API.post(
-        "/orders",
-        {
-          products: cart.map((item) => ({
-            product: item._id,
-            quantity: item.quantity
-          })),
-          totalAmount
-        }
-      );
+      await API.post("/orders", {
+        products: checkoutItems.map((item) => ({
+          product: item.productId?._id,
+          quantity: item.quantity,
+        })),
+        offerCode: appliedOffer?.code || "",
+      });
 
       alert("Order Placed Successfully");
-      clearCart();
+
+      if (!buyNowItem) {
+        await clearCart();
+      }
+
       navigate("/");
     } catch (error) {
       console.error(error);
@@ -53,30 +119,55 @@ const Checkout = () => {
 
   return (
     <div className="container mt-5" style={{ maxWidth: "500px" }}>
-      <h2>Checkout</h2>
+      <h2>{buyNowItem ? "Buy Now Checkout" : "Checkout"}</h2>
 
       <div className="card p-4">
         <h5>Order Summary</h5>
-        {cart.map((item) => (
-          <div key={item._id} className="d-flex justify-content-between mb-2">
+        {checkoutItems.map((item) => (
+          <div key={item.productId?._id} className="d-flex justify-content-between mb-2">
             <span>
-              {item.name} x {item.quantity}
+              {item.productId?.name} x {item.quantity}
             </span>
-            <span>₹ {item.price * item.quantity}</span>
+            <span>INR {(item.productId?.price || 0) * item.quantity}</span>
           </div>
         ))}
 
         <hr />
+        <div className="mb-3">
+          <label className="form-label">Offer Code</label>
+          <div className="d-flex gap-2">
+            <input
+              type="text"
+              className="form-control"
+              value={offerCode}
+              onChange={(e) => setOfferCode(e.target.value.toUpperCase())}
+              placeholder="Enter coupon code"
+            />
+            <button type="button" className="btn btn-outline-primary" onClick={applyOffer}>
+              Apply
+            </button>
+          </div>
+          {appliedOffer && (
+            <small className="text-success d-block mt-2">
+              Offer applied: {appliedOffer.code} (Discount INR {discountAmount.toFixed(2)})
+            </small>
+          )}
+        </div>
+
+        <div className="d-flex justify-content-between">
+          <span>Subtotal:</span>
+          <span>INR {totalAmount.toFixed(2)}</span>
+        </div>
+        <div className="d-flex justify-content-between">
+          <span>Discount:</span>
+          <span>- INR {discountAmount.toFixed(2)}</span>
+        </div>
         <h5 className="d-flex justify-content-between">
-          <span>Total:</span>
-          <span>₹ {totalAmount}</span>
+          <span>Final Total:</span>
+          <span>INR {finalPayable.toFixed(2)}</span>
         </h5>
 
-        <button 
-          className="btn btn-success w-100 mt-3" 
-          onClick={handleOrder}
-          disabled={loading}
-        >
+        <button className="btn btn-success w-100 mt-3" onClick={handleOrder} disabled={loading}>
           {loading ? "Processing..." : "Place Order"}
         </button>
       </div>

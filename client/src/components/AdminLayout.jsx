@@ -11,6 +11,9 @@ import {
   FaHome,
   FaSignOutAlt,
   FaUserCircle,
+  FaMoon,
+  FaSun,
+  FaTags,
 } from "react-icons/fa";
 import { AuthContext } from "../context/AuthContext";
 import "./AdminLayout.css";
@@ -19,6 +22,13 @@ const AdminLayout = () => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+  const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
+
+  React.useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    document.body.setAttribute("data-bs-theme", theme);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
 
   const handleLogout = () => {
     logout();
@@ -103,6 +113,18 @@ const AdminLayout = () => {
             </NavLink>
           </li>
 
+          {/* Offers */}
+          <li>
+            <NavLink
+              to="/admin/offers"
+              className={({ isActive }) => (isActive ? "active-link" : "")}
+              title="Offers"
+            >
+              <FaTags />
+              {!collapsed && <span>Offers</span>}
+            </NavLink>
+          </li>
+
           {/* Orders */}
           <li>
             <NavLink
@@ -117,10 +139,10 @@ const AdminLayout = () => {
 
           {/* Logout */}
           <li>
-            <button className="sidebar-btn" onClick={handleLogout} title="Logout">
-              <FaSignOutAlt />
-              {!collapsed && <span>Logout</span>}
-            </button>
+            <button className="sidebar-btn logout-btn" onClick={handleLogout}>
+  <FaSignOutAlt />
+  <span>Logout</span>
+</button>
           </li>
         </ul>
       </div>
@@ -131,9 +153,22 @@ const AdminLayout = () => {
           <button className="toggle-btn" onClick={() => setCollapsed(!collapsed)}>
             <FaBars />
           </button>
-          <div className="profile-area">
-            <FaUserCircle size={22} />
-            <span>{user?.name}</span>
+
+          <div className="admin-header-right">
+            <button
+              type="button"
+              className="admin-theme-btn"
+              onClick={() => setTheme((prev) => (prev === "light" ? "dark" : "light"))}
+              aria-label="Toggle admin theme"
+              title="Toggle theme"
+            >
+              {theme === "light" ? <FaMoon /> : <FaSun />}
+            </button>
+
+            <div className="profile-area">
+              <FaUserCircle size={22} />
+              <span>{user?.name}</span>
+            </div>
           </div>
         </div>
 

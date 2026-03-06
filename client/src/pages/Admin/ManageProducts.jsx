@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import API, { uploadURL } from "../../api";
+import API, { getImageUrl } from "../../api";
 import { AuthContext } from "../../context/AuthContext";
 
 const ManageProducts = () => {
   const [products, setProducts] = useState([]);
-  const [editingProduct, setEditingProduct] = useState(null); // For modal/form
+  const [editingProduct, setEditingProduct] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     price: "",
@@ -27,7 +27,7 @@ const ManageProducts = () => {
       await API.delete(`/products/${id}`);
       alert("Product deleted successfully");
       fetchProducts();
-      window.dispatchEvent(new Event('products-updated'));
+      window.dispatchEvent(new Event("products-updated"));
     } catch (error) {
       alert("Error deleting product: " + (error.response?.data?.message || error.message));
     }
@@ -39,7 +39,7 @@ const ManageProducts = () => {
       name: product.name,
       price: product.price,
       stock: product.stock,
-      image: null, // new image can be uploaded
+      image: null,
     });
   };
 
@@ -70,17 +70,15 @@ const ManageProducts = () => {
       alert("Product updated successfully");
       setEditingProduct(null);
       fetchProducts();
-      window.dispatchEvent(new Event('products-updated'));
+      window.dispatchEvent(new Event("products-updated"));
     } catch (error) {
       alert("Error updating product: " + (error.response?.data?.message || error.message));
     }
   };
 
-  /* eslint-disable */
   useEffect(() => {
     fetchProducts();
   }, []);
-  /* eslint-enable */
 
   return (
     <div>
@@ -103,23 +101,15 @@ const ManageProducts = () => {
           <tbody>
             {products.map((p) => (
               <tr key={p._id}>
-                <td>
-                  <img src={`${uploadURL}/${p.image}`} width="60" alt={p.name} />
-                </td>
+                <td>{p.image ? <img src={getImageUrl(p.image)} width="60" alt={p.name} /> : "-"}</td>
                 <td>{p.name}</td>
-                <td>₹ {p.price}</td>
+                <td>INR {p.price}</td>
                 <td>{p.stock}</td>
                 <td>
-                  <button
-                    className="btn btn-primary btn-sm me-2"
-                    onClick={() => startEdit(p)}
-                  >
+                  <button className="btn btn-primary btn-sm me-2" onClick={() => startEdit(p)}>
                     Edit
                   </button>
-                  <button
-                    className="btn btn-danger btn-sm"
-                    onClick={() => deleteProduct(p._id)}
-                  >
+                  <button className="btn btn-danger btn-sm" onClick={() => deleteProduct(p._id)}>
                     Delete
                   </button>
                 </td>
@@ -129,7 +119,6 @@ const ManageProducts = () => {
         </table>
       )}
 
-      {/* Edit Modal/Form */}
       {editingProduct && (
         <div className="modal show d-block" tabIndex="-1">
           <div className="modal-dialog">
@@ -137,11 +126,7 @@ const ManageProducts = () => {
               <form onSubmit={updateProduct}>
                 <div className="modal-header">
                   <h5 className="modal-title">Edit Product</h5>
-                  <button
-                    type="button"
-                    className="btn-close"
-                    onClick={() => setEditingProduct(null)}
-                  ></button>
+                  <button type="button" className="btn-close" onClick={() => setEditingProduct(null)}></button>
                 </div>
                 <div className="modal-body">
                   <div className="mb-3">
@@ -179,20 +164,11 @@ const ManageProducts = () => {
                   </div>
                   <div className="mb-3">
                     <label>Image (optional)</label>
-                    <input
-                      type="file"
-                      name="image"
-                      className="form-control"
-                      onChange={handleInputChange}
-                    />
+                    <input type="file" name="image" className="form-control" onChange={handleInputChange} />
                   </div>
                 </div>
                 <div className="modal-footer">
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => setEditingProduct(null)}
-                  >
+                  <button type="button" className="btn btn-secondary" onClick={() => setEditingProduct(null)}>
                     Cancel
                   </button>
                   <button type="submit" className="btn btn-success">

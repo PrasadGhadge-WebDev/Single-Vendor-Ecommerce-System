@@ -1,149 +1,266 @@
-/* AdminLayout.css */
+/* =========================
+   MODERN ADMIN DASHBOARD UI
+========================= */
 
-/* Wrapper */
 .admin-wrapper {
   display: flex;
   height: 100vh;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f4f6f8;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background: var(--admin-wrapper-bg);
+  overflow: hidden;
 }
 
-/* Sidebar */
+/* =========================
+   SIDEBAR
+========================= */
+
 .sidebar {
-  width: 220px;
-  background-color: #1f2937;
+  width: 240px;
+  background: rgba(17, 24, 39, 0.97);
+  backdrop-filter: blur(12px);
   color: #fff;
-  transition: width 0.3s;
+  transition: width 0.3s ease;
   display: flex;
   flex-direction: column;
+  box-shadow: 4px 0 25px rgba(0, 0, 0, 0.15);
+  position: relative;
+  z-index: 1000;
 }
 
 .sidebar.collapsed {
-  width: 60px;
+  width: 70px;
 }
 
+/* Sidebar Header */
 .sidebar-header {
-  font-size: 1.2rem;
-  font-weight: bold;
+  font-size: 1.25rem;
+  font-weight: 700;
   text-align: center;
-  padding: 20px 0;
-  background-color: #111827;
-  border-bottom: 1px solid #374151;
+  padding: 22px 0;
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
+  letter-spacing: 1px;
+  color: #fff;
 }
 
+/* Sidebar Menu */
 .sidebar ul {
   list-style: none;
-  padding: 0;
+  padding: 15px 0;
   margin: 0;
   flex-grow: 1;
 }
 
 .sidebar li {
-  width: 100%;
+  margin: 6px 12px;
 }
 
+/* Links & Buttons */
 .sidebar a,
 .sidebar button.sidebar-btn {
   display: flex;
   align-items: center;
+  gap: 14px;
   width: 100%;
-  padding: 12px 20px;
+  padding: 12px 16px;
+  border-radius: 12px;
   border: none;
-  background: none;
-  color: #d1d5db;
+  background: transparent;
+  color: #cbd5e1;
   font-size: 0.95rem;
+  font-weight: 500;
   cursor: pointer;
   text-decoration: none;
-  transition: background 0.2s, color 0.2s;
+  transition: all 0.25s ease;
 }
 
+/* Hover Effect */
 .sidebar a:hover,
 .sidebar button.sidebar-btn:hover {
-  background-color: #111827;
+  background: rgba(59, 130, 246, 0.15);
   color: #fff;
+  transform: translateX(4px);
 }
 
+/* Active Link */
 .sidebar a.active-link {
-  background-color: #2563eb;
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
   color: #fff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
 }
 
+/* Logout Button Special */
+.sidebar-btn.logout-btn {
+  color: #f87171;
+}
+
+.sidebar-btn.logout-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* Icons */
 .sidebar svg {
-  margin-right: 12px;
-  min-width: 20px;
-  min-height: 20px;
+  min-width: 22px;
+  min-height: 22px;
 }
 
+/* Collapse Hide Text */
 .sidebar.collapsed a span,
 .sidebar.collapsed button.sidebar-btn span {
   display: none;
 }
 
-/* Main Section */
+/* =========================
+   MAIN SECTION
+========================= */
+
 .main-section {
-  flex-grow: 1;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  transition: margin-left 0.3s;
+  transition: all 0.3s ease;
+  background: var(--admin-content-bg);
 }
 
-.sidebar-collapsed.main-section {
-  margin-left: 60px;
-}
+/* =========================
+   HEADER
+========================= */
 
-/* Header */
 .admin-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #fff;
-  padding: 10px 20px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  background: var(--admin-header-bg);
+  backdrop-filter: blur(10px);
+  padding: 14px 25px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid var(--admin-header-border);
+}
+
+.admin-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .toggle-btn {
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   border: none;
-  background: none;
+  background: transparent;
   cursor: pointer;
-  color: #111827;
+  color: #1f2937;
+  transition: 0.3s ease;
 }
 
+.toggle-btn:hover {
+  transform: rotate(90deg);
+  color: #2563eb;
+}
+
+/* Profile */
 .profile-area {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 500;
-  color: #111827;
+  gap: 10px;
+  font-weight: 600;
+  color: #1f2937;
 }
 
 .profile-area span {
   font-size: 0.95rem;
 }
 
-/* Content Area */
-.content-area {
-  flex-grow: 1;
-  padding: 20px;
-  background-color: #f4f6f8;
-  overflow-y: auto;
-}
-
-/* Buttons inside sidebar for Home/Logout */
-.sidebar-btn {
-  display: flex;
+.admin-theme-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #0f172a;
+  display: inline-flex;
   align-items: center;
-  width: 100%;
-  padding: 12px 20px;
-  border: none;
-  background: none;
-  color: #d1d5db;
+  justify-content: center;
   cursor: pointer;
-  font-size: 0.95rem;
-  transition: background 0.2s, color 0.2s;
+  transition: all 0.2s ease;
 }
 
-.sidebar-btn:hover {
-  background-color: #111827;
+.admin-theme-btn:hover {
+  background: #e2e8f0;
+  transform: translateY(-1px);
+}
+
+:root[data-theme="dark"] .toggle-btn,
+:root[data-theme="dark"] .profile-area {
+  color: #e2e8f0;
+}
+
+:root[data-theme="dark"] .admin-theme-btn {
+  border-color: #475569;
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+:root[data-theme="dark"] .admin-theme-btn:hover {
+  background: #334155;
+}
+
+/* =========================
+   CONTENT AREA
+========================= */
+
+.content-area {
+  flex: 1;
+  padding: 30px;
+  overflow-y: auto;
+  background: var(--admin-content-bg);
+  color: var(--page-text);
+}
+
+/* Scrollbar */
+.content-area::-webkit-scrollbar {
+  width: 8px;
+}
+
+.content-area::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+/* =========================
+   MODERN BUTTON
+========================= */
+
+.modern-btn {
+  padding: 8px 18px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
   color: #fff;
+  font-weight: 500;
+  transition: 0.3s ease;
+}
+
+.modern-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(37, 99, 235, 0.3);
+}
+
+/* =========================
+   RESPONSIVE (Mobile)
+========================= */
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: absolute;
+    height: 100%;
+    left: -240px;
+  }
+
+  .sidebar.active {
+    left: 0;
+  }
+
+  .sidebar.collapsed {
+    width: 240px;
+  }
 }

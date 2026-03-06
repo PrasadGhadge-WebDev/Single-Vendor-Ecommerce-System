@@ -1,4 +1,5 @@
 const Category = require("../models/Category");
+const Product = require("../models/Product");
 
 exports.addCategory = async (req, res) => {
   try {
@@ -15,7 +16,7 @@ exports.addCategory = async (req, res) => {
 
     const category = await Category.create({
       name,
-      image: req.file ? req.file.filename : null
+      image: req.file ? req.file.filename : null,
     });
 
     res.status(201).json(category);
@@ -26,7 +27,7 @@ exports.addCategory = async (req, res) => {
 
 exports.getCategories = async (req, res) => {
   try {
-    const categories = await Category.find();
+    const categories = await Category.find().sort({ name: 1 });
     res.status(200).json(categories);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -38,14 +39,19 @@ exports.updateCategory = async (req, res) => {
     const { id } = req.params;
     const { name } = req.body;
 
-    const updateData = {};
-    if (name) updateData.name = name;
-    if (req.file) updateData.image = req.file.filename;
-
-    const category = await Category.findByIdAndUpdate(id, updateData, { new: true });
-
+    const category = await Category.findById(id);
     if (!category) {
       return res.status(404).json({ message: "Category not found" });
+    }
+
+    const oldName = category.name;
+    if (name) category.name = name;
+    if (req.file) category.image = req.file.filename;
+
+    await category.save();
+
+    if (name && oldName !== name) {
+      await Product.updateMany({ category: oldName }, { $set: { category: name } });
     }
 
     res.status(200).json(category);
@@ -57,11 +63,18 @@ exports.updateCategory = async (req, res) => {
 exports.deleteCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const category = await Category.findByIdAndDelete(id);
+    const category = await Category.findById(id);
 
     if (!category) {
       return res.status(404).json({ message: "Category not found" });
     }
+
+    const inUse = await Product.exists({ category: category.name });
+    if (inUse) {
+      return res.status(400).json({ message: "Category is in use by products and cannot be deleted" });
+    }
+
+    await Category.findByIdAndDelete(id);
 
     res.status(200).json({ message: "Category deleted successfully" });
   } catch (error) {

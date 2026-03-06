@@ -68,8 +68,10 @@ const Orders = () => {
                                         className="form-select form-select-sm"
                                     >
                                         <option value="pending">Pending</option>
+                                        <option value="confirmed">Confirmed</option>
                                         <option value="shipped">Shipped</option>
                                         <option value="delivered">Delivered</option>
+                                        <option value="cancelled">Cancelled</option>
                                     </select>
                                 </td>
                                 <td>{new Date(o.createdAt).toLocaleDateString()}</td>

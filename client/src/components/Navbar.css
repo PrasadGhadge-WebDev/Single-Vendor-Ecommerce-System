@@ -1,0 +1,72 @@
+.ecommerce-navbar {
+  background: var(--navbar-bg);
+  border-bottom: 1px solid var(--navbar-border);
+}
+
+.ecommerce-navbar .navbar-brand,
+.ecommerce-navbar .nav-link,
+.ecommerce-navbar .dropdown-toggle,
+.ecommerce-navbar .btn-link,
+.ecommerce-navbar .navbar-toggler {
+  color: var(--navbar-text);
+}
+
+.ecommerce-navbar .nav-link:hover,
+.ecommerce-navbar .dropdown-toggle:hover,
+.ecommerce-navbar .btn-link:hover {
+  color: var(--navbar-text-hover);
+}
+
+.ecommerce-navbar .nav-active {
+  color: var(--navbar-text-hover);
+  border-bottom: 2px solid var(--accent-color);
+}
+
+.ecommerce-navbar .register-btn {
+  border-color: var(--navbar-btn-border);
+  color: var(--navbar-btn-text);
+}
+
+.ecommerce-navbar .register-btn:hover {
+  background-color: var(--navbar-btn-hover-bg);
+  color: var(--navbar-btn-hover-text);
+}
+
+.navbar-search {
+  min-width: 260px;
+}
+
+.navbar-search .form-control {
+  background: var(--search-bg);
+  border: 1px solid var(--search-border);
+  color: var(--search-text);
+}
+
+.navbar-search .form-control::placeholder {
+  color: var(--search-placeholder);
+}
+
+.navbar-search .form-control:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 0.2rem var(--search-focus-ring);
+}
+
+.search-btn,
+.theme-btn {
+  background: var(--search-btn-bg);
+  border: 1px solid var(--search-btn-border);
+  color: var(--search-btn-text);
+}
+
+.search-btn:hover,
+.theme-btn:hover {
+  background: var(--search-btn-hover-bg);
+  color: var(--search-btn-hover-text);
+}
+
+@media (max-width: 991px) {
+  .navbar-search {
+    min-width: 100%;
+    margin: 10px 0;
+  }
+}

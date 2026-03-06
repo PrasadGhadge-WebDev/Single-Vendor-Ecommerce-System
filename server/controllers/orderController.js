@@ -1,14 +1,183 @@
 const Order = require("../models/Order");
 const User = require("../models/User");
 const Product = require("../models/Product");
+const Cart = require("../models/Cart");
+const Offer = require("../models/Offer");
+
+const STATUS_MAP = {
+  pending: "pending",
+  confirmed: "confirmed",
+  shipped: "shipped",
+  delivered: "delivered",
+  cancelled: "cancelled",
+};
+
+const normalizeStatus = (value) => {
+  if (!value) return null;
+  const key = String(value).toLowerCase();
+  return STATUS_MAP[key] || null;
+};
+
+const ensureOrderItemsHavePrice = async (order) => {
+  if (!order?.products?.length) return;
+
+  for (const item of order.products) {
+    if (item.price !== undefined && item.price !== null) continue;
+
+    let fallbackPrice = 0;
+    if (item.product && item.product.price !== undefined) {
+      fallbackPrice = item.product.price;
+    } else if (item.product?._id) {
+      const dbProduct = await Product.findById(item.product._id).select("price");
+      fallbackPrice = dbProduct?.price || 0;
+    } else if (item.product) {
+      const dbProduct = await Product.findById(item.product).select("price");
+      fallbackPrice = dbProduct?.price || 0;
+    }
+
+    item.price = fallbackPrice;
+  }
+};
+
+const isOfferCurrentlyValid = (offer) => {
+  const now = new Date();
+  if (!offer || !offer.isActive) return false;
+  if (offer.startsAt && now < offer.startsAt) return false;
+  if (offer.expiresAt && now > offer.expiresAt) return false;
+  return true;
+};
+
+const calculateDiscount = (offer, amount) => {
+  if (!offer || amount <= 0) return 0;
+  if (amount < (offer.minOrderAmount || 0)) return 0;
+  let discount = 0;
+  if (offer.discountType === "PERCENT") {
+    discount = (amount * offer.discountValue) / 100;
+    if (offer.maxDiscountAmount > 0) {
+      discount = Math.min(discount, offer.maxDiscountAmount);
+    }
+  } else if (offer.discountType === "FIXED") {
+    discount = offer.discountValue;
+  }
+  return Math.min(Math.max(discount, 0), amount);
+};
 
 exports.createOrder = async (req, res) => {
   try {
+    const { products = [], paymentMethod = "COD", offerCode = "" } = req.body;
+
+    if (!Array.isArray(products) || products.length === 0) {
+      return res.status(400).json({ message: "products are required" });
+    }
+
+    const normalizedItems = [];
+    let totalAmount = 0;
+
+    for (const item of products) {
+      const dbProduct = await Product.findById(item.product);
+      if (!dbProduct) {
+        return res.status(404).json({ message: `Product not found: ${item.product}` });
+      }
+
+      const qty = Number(item.quantity || 1);
+      if (qty <= 0) {
+        return res.status(400).json({ message: "Quantity must be greater than 0" });
+      }
+
+      normalizedItems.push({
+        product: dbProduct._id,
+        quantity: qty,
+        price: dbProduct.price,
+      });
+
+      totalAmount += dbProduct.price * qty;
+    }
+
+    let offer = null;
+    if (offerCode) {
+      offer = await Offer.findOne({ code: String(offerCode).toUpperCase() });
+      if (!isOfferCurrentlyValid(offer)) {
+        return res.status(400).json({ message: "Invalid or expired offer code" });
+      }
+    }
+
+    const subtotalAmount = totalAmount;
+    const discountAmount = calculateDiscount(offer, subtotalAmount);
+    totalAmount = subtotalAmount - discountAmount;
+
     const order = await Order.create({
       user: req.user._id,
-      products: req.body.products,
-      totalAmount: req.body.totalAmount
+      products: normalizedItems,
+      totalAmount,
+      subtotalAmount,
+      discountAmount,
+      offerCode: offer ? offer.code : "",
+      paymentMethod: paymentMethod === "ONLINE" ? "ONLINE" : "COD",
     });
+
+    res.status(201).json(order);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.createOrderFromCart = async (req, res) => {
+  try {
+    const { paymentMethod = "COD", offerCode = "" } = req.body;
+
+    const cart = await Cart.findOne({ userId: req.user._id }).populate("items.productId");
+    if (!cart || cart.items.length === 0) {
+      return res.status(400).json({ message: "Cart is empty" });
+    }
+
+    const normalizedItems = [];
+    let totalAmount = 0;
+
+    for (const cartItem of cart.items) {
+      const dbProduct = cartItem.productId;
+      if (!dbProduct) {
+        return res.status(404).json({ message: "One or more products are unavailable" });
+      }
+
+      const qty = Number(cartItem.quantity || 1);
+      if (qty <= 0) {
+        return res.status(400).json({ message: "Invalid quantity found in cart" });
+      }
+
+      normalizedItems.push({
+        product: dbProduct._id,
+        quantity: qty,
+        price: dbProduct.price,
+      });
+
+      totalAmount += dbProduct.price * qty;
+    }
+
+    let offer = null;
+    if (offerCode) {
+      offer = await Offer.findOne({ code: String(offerCode).toUpperCase() });
+      if (!isOfferCurrentlyValid(offer)) {
+        return res.status(400).json({ message: "Invalid or expired offer code" });
+      }
+    }
+
+    const subtotalAmount = totalAmount;
+    const discountAmount = calculateDiscount(offer, subtotalAmount);
+    totalAmount = subtotalAmount - discountAmount;
+
+    const order = await Order.create({
+      user: req.user._id,
+      products: normalizedItems,
+      totalAmount,
+      subtotalAmount,
+      discountAmount,
+      offerCode: offer ? offer.code : "",
+      paymentMethod: paymentMethod === "ONLINE" ? "ONLINE" : "COD",
+    });
+
+    cart.items = [];
+    await cart.save();
+
     res.status(201).json(order);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -17,10 +186,8 @@ exports.createOrder = async (req, res) => {
 
 exports.getOrders = async (req, res) => {
   try {
-    const orders = await Order.find()
-      .populate("user")
-      .populate("products.product");
-    res.json(orders);
+    const orders = await Order.find().populate("user", "name email").populate("products.product");
+    res.status(200).json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -28,9 +195,8 @@ exports.getOrders = async (req, res) => {
 
 exports.getUserOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user._id })
-      .populate("products.product");
-    res.json(orders);
+    const orders = await Order.find({ user: req.user._id }).populate("products.product");
+    res.status(200).json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -38,12 +204,84 @@ exports.getUserOrders = async (req, res) => {
 
 exports.updateOrderStatus = async (req, res) => {
   try {
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      { status: req.body.status },
-      { new: true }
-    );
-    res.json(order);
+    const status = normalizeStatus(req.body.status);
+    if (!status) {
+      return res.status(400).json({ message: "Invalid order status" });
+    }
+
+    const order = await Order.findById(req.params.id).populate("products.product");
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    await ensureOrderItemsHavePrice(order);
+
+    order.status = status;
+
+    if (status === "confirmed" && !order.stockUpdated) {
+      for (const item of order.products) {
+        const product = await Product.findById(item.product._id);
+        if (!product) {
+          return res.status(404).json({ message: `Product not found: ${item.product._id}` });
+        }
+
+        if (product.stock < item.quantity) {
+          return res.status(400).json({ message: `Insufficient stock for ${product.name}` });
+        }
+      }
+
+      for (const item of order.products) {
+        await Product.findByIdAndUpdate(item.product._id, { $inc: { stock: -item.quantity } });
+      }
+
+      order.stockUpdated = true;
+    }
+
+    if (status === "cancelled" && order.stockUpdated) {
+      for (const item of order.products) {
+        await Product.findByIdAndUpdate(item.product._id, { $inc: { stock: item.quantity } });
+      }
+      order.stockUpdated = false;
+      order.cancelledAt = new Date();
+      if (!order.cancellationReason) {
+        order.cancellationReason = "Cancelled by admin";
+      }
+    }
+
+    await order.save();
+    res.status(200).json(order);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.cancelOrderByUser = async (req, res) => {
+  try {
+    const { reason = "" } = req.body;
+    const order = await Order.findById(req.params.id).populate("products.product");
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    await ensureOrderItemsHavePrice(order);
+
+    if (String(order.user) !== String(req.user._id)) {
+      return res.status(403).json({ message: "Not authorized to cancel this order" });
+    }
+
+    if (!["pending", "confirmed"].includes(order.status)) {
+      return res.status(400).json({ message: "This order cannot be cancelled now" });
+    }
+
+    if (order.status === "confirmed" && order.stockUpdated) {
+      for (const item of order.products) {
+        await Product.findByIdAndUpdate(item.product._id, { $inc: { stock: item.quantity } });
+      }
+      order.stockUpdated = false;
+    }
+
+    order.status = "cancelled";
+    order.cancellationReason = reason || "Cancelled by customer";
+    order.cancelledAt = new Date();
+    await order.save();
+
+    res.status(200).json(order);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -51,18 +289,30 @@ exports.updateOrderStatus = async (req, res) => {
 
 exports.getDashboardStats = async (req, res) => {
   try {
-    const totalOrders = await Order.countDocuments();
-    const totalRevenue = await Order.aggregate([
-      { $group: { _id: null, total: { $sum: "$totalAmount" } } }
+    const [totalOrders, usersCount, totalProducts, revenueAggregate] = await Promise.all([
+      Order.countDocuments(),
+      User.countDocuments(),
+      Product.countDocuments(),
+      Order.aggregate([
+        { $match: { status: { $ne: "cancelled" } } },
+        { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+      ]),
     ]);
-    const totalUsers = await User.countDocuments();
-    const totalProducts = await Product.countDocuments();
 
-    res.json({
+    const orderStatusSummary = await Order.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]);
+
+    const lowStockProducts = await Product.find({ stock: { $lte: 5 } })
+      .select("name stock")
+      .sort({ stock: 1 })
+      .limit(20);
+
+    res.status(200).json({
+      totalUsers: usersCount,
       totalOrders,
-      totalRevenue: totalRevenue[0]?.total || 0,
-      totalUsers,
-      totalProducts
+      totalProducts,
+      totalRevenue: revenueAggregate[0]?.total || 0,
+      orderStatusSummary,
+      lowStockProducts,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

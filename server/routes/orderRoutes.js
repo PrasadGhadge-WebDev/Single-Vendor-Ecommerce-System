@@ -1,10 +1,12 @@
 const express = require("express");
 const {
   createOrder,
+  createOrderFromCart,
   getOrders,
   updateOrderStatus,
   getDashboardStats,
-  getUserOrders
+  getUserOrders,
+  cancelOrderByUser,
 } = require("../controllers/orderController");
 
 const { requireSignIn, isAdmin } = require("../middlewares/authMiddleware");
@@ -12,13 +14,11 @@ const { requireSignIn, isAdmin } = require("../middlewares/authMiddleware");
 const router = express.Router();
 
 router.post("/", requireSignIn, createOrder);
-// admin only: list all orders
+router.post("/from-cart", requireSignIn, createOrderFromCart);
 router.get("/", requireSignIn, isAdmin, getOrders);
-// admin dashboard stats - must come BEFORE /:id route
 router.get("/stats/dashboard", requireSignIn, isAdmin, getDashboardStats);
-// user-specific order listing
 router.get("/my-orders", requireSignIn, getUserOrders);
-// update order status
+router.put("/:id/cancel", requireSignIn, cancelOrderByUser);
 router.put("/:id", requireSignIn, isAdmin, updateOrderStatus);
 
 module.exports = router;
