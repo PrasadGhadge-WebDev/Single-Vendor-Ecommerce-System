@@ -37,7 +37,8 @@ const Checkout = () => {
     const fetchOffers = async () => {
       try {
         const { data } = await API.get("/offers/public");
-        setOffers(Array.isArray(data) ? data : []);
+        const allOffers = Array.isArray(data) ? data : [];
+        setOffers(allOffers.filter((offer) => offer?.isCurrentlyValid !== false));
       } catch (error) {
         setOffers([]);
       }

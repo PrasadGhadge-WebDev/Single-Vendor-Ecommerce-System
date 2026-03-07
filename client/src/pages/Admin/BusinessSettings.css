@@ -1,0 +1,85 @@
+.bs-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bs-hero {
+  border: 1px solid var(--border-color);
+  background: linear-gradient(135deg, var(--surface-1), var(--surface-2));
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.bs-hero-metrics {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bs-chip {
+  border: 1px solid var(--border-color);
+  background: var(--surface-1);
+  border-radius: 10px;
+  padding: 8px 10px;
+  min-width: 130px;
+}
+
+.bs-chip small {
+  display: block;
+  color: var(--muted-text);
+}
+
+.bs-accordion .accordion-button {
+  font-weight: 700;
+}
+
+.bs-accordion-item {
+  border-color: var(--border-color) !important;
+  overflow: hidden;
+}
+
+.bs-form-card {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.bs-subheading {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-text);
+  margin-bottom: 8px;
+}
+
+.bs-action-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.bs-metric strong {
+  font-size: 1rem;
+}
+
+.bs-bill-card {
+  background: var(--surface-1);
+}
+
+@media (max-width: 768px) {
+  .bs-hero {
+    flex-direction: column;
+  }
+
+  .bs-action-row {
+    justify-content: stretch;
+  }
+
+  .bs-action-row .btn {
+    width: 100%;
+  }
+}

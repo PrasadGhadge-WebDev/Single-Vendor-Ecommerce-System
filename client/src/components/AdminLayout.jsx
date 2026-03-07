@@ -5,7 +5,6 @@ import {
   FaBoxOpen,
   FaList,
   FaUsers,
-  FaPlus,
   FaShoppingCart,
   FaBars,
   FaHome,
@@ -14,6 +13,11 @@ import {
   FaMoon,
   FaSun,
   FaTags,
+  FaTruck,
+  FaCog,
+  FaHistory,
+  FaIdBadge,
+  FaChevronDown,
 } from "react-icons/fa";
 import { AuthContext } from "../context/AuthContext";
 import "./AdminLayout.css";
@@ -39,7 +43,27 @@ const AdminLayout = () => {
     <div className="admin-wrapper">
       {/* Sidebar */}
       <div className={`sidebar ${collapsed ? "collapsed" : ""}`}>
-        <div className="sidebar-header">{collapsed ? "AP" : "Admin Panel"}</div>
+        <div className="sidebar-header">
+          {collapsed ? (
+            "AP"
+          ) : (
+            <div className="sidebar-header-profile">
+              {user?.profileImage ? (
+                <img
+                  src={user.profileImage}
+                  alt={user?.name || "Admin"}
+                  className="sidebar-header-avatar"
+                />
+              ) : (
+                <FaUserCircle className="sidebar-header-avatar-icon" />
+              )}
+              <div className="sidebar-header-meta">
+                <span className="sidebar-header-name">{user?.name || "Admin"}</span>
+                <small>{user?.isSuperAdmin ? "Super Admin" : "Admin"}</small>
+              </div>
+            </div>
+          )}
+        </div>
         <ul>
           {/* Home */}
           <li>
@@ -101,18 +125,6 @@ const AdminLayout = () => {
             </NavLink>
           </li>
 
-          {/* Add Product */}
-          <li>
-            <NavLink
-              to="/admin/add-product"
-              className={({ isActive }) => (isActive ? "active-link" : "")}
-              title="Add Product"
-            >
-              <FaPlus />
-              {!collapsed && <span>Add Product</span>}
-            </NavLink>
-          </li>
-
           {/* Offers */}
           <li>
             <NavLink
@@ -122,6 +134,41 @@ const AdminLayout = () => {
             >
               <FaTags />
               {!collapsed && <span>Offers</span>}
+            </NavLink>
+          </li>
+
+          {/* Suppliers */}
+          <li>
+            <NavLink
+              to="/admin/suppliers"
+              className={({ isActive }) => (isActive ? "active-link" : "")}
+              title="Suppliers"
+            >
+              <FaTruck />
+              {!collapsed && <span>Suppliers</span>}
+            </NavLink>
+          </li>
+
+          {/* Business Settings */}
+          <li>
+            <NavLink
+              to="/admin/business-settings"
+              className={({ isActive }) => (isActive ? "active-link" : "")}
+              title="Business Settings"
+            >
+              <FaCog />
+              {!collapsed && <span>Business Settings</span>}
+            </NavLink>
+          </li>
+
+          <li>
+            <NavLink
+              to="/admin/stock-history"
+              className={({ isActive }) => (isActive ? "active-link" : "")}
+              title="Stock History"
+            >
+              <FaHistory />
+              {!collapsed && <span>Stock History</span>}
             </NavLink>
           </li>
 
@@ -165,9 +212,34 @@ const AdminLayout = () => {
               {theme === "light" ? <FaMoon /> : <FaSun />}
             </button>
 
-            <div className="profile-area">
-              <FaUserCircle size={22} />
-              <span>{user?.name}</span>
+            <div className="dropdown">
+              <button
+                className="profile-area profile-dropdown-toggle border-0"
+                type="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+                title="Admin menu"
+              >
+                <FaIdBadge size={18} />
+                <span>{user?.name}</span>
+                <FaChevronDown size={12} />
+              </button>
+
+              <ul className="dropdown-menu dropdown-menu-end shadow border-0 rounded-3">
+                <li>
+                  <button className="dropdown-item py-2" onClick={() => navigate("/admin/profile")}>
+                    Profile
+                  </button>
+                </li>
+                <li>
+                  <hr className="dropdown-divider" />
+                </li>
+                <li>
+                  <button className="dropdown-item py-2 text-danger" onClick={handleLogout}>
+                    Logout
+                  </button>
+                </li>
+              </ul>
             </div>
           </div>
         </div>

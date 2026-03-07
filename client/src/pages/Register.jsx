@@ -9,7 +9,6 @@ const Register = () => {
     name: "",
     email: "",
     password: "",
-    isAdmin: false,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -86,19 +85,6 @@ const Register = () => {
             >
               {showPassword ? <FaEyeSlash /> : <FaEye />}
             </span>
-          </div>
-
-          <div className="checkbox-group" style={{ marginTop: "15px", textAlign: "left" }}>
-            <input
-              type="checkbox"
-              id="isAdmin"
-              checked={form.isAdmin}
-              onChange={(e) =>
-                setForm({ ...form, isAdmin: e.target.checked })
-              }
-              style={{ marginRight: "8px" }}
-            />
-            <label htmlFor="isAdmin" style={{ marginLeft: "0", display: "inline" }}>Register as Admin</label>
           </div>
 
           <button type="submit" className="btn-gradient" disabled={loading}>

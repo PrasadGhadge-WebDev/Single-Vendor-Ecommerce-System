@@ -29,10 +29,6 @@ const submitHandler = async (e) => {
 
     const { data } = await API.post("/auth/login", { email, password }, { headers: { "Content-Type": "application/json" } });
 
-    // Save user info and token
-    localStorage.setItem("userInfo", JSON.stringify(data));
-    localStorage.setItem("token", data.token);
-
     login(data);
 
     if (data.isAdmin) {

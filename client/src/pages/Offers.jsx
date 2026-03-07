@@ -34,6 +34,11 @@ const Offers = () => {
               <div className="card p-3 h-100">
                 <h5 className="mb-1">{offer.title}</h5>
                 <p className="text-muted mb-2">{offer.description}</p>
+                {!offer.isCurrentlyValid && (
+                  <p className="mb-2 text-warning">
+                    <small>This offer is not live right now.</small>
+                  </p>
+                )}
                 <p className="mb-1"><strong>Code:</strong> {offer.code}</p>
                 <p className="mb-1">
                   <strong>Discount:</strong>{" "}

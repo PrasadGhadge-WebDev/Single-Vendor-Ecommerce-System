@@ -16,6 +16,9 @@ const paymentRoutes = require("./routes/paymentRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const offerRoutes = require("./routes/offerRoutes");
 const policyRoutes = require("./routes/policyRoutes");
+const supplierRoutes = require("./routes/supplierRoutes");
+const businessSettingRoutes = require("./routes/businessSettingRoutes");
+const stockHistoryRoutes = require("./routes/stockHistoryRoutes");
 
 connectDB();
 
@@ -45,6 +48,9 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/offers", offerRoutes);
 app.use("/api/policies", policyRoutes);
+app.use("/api/suppliers", supplierRoutes);
+app.use("/api/business-settings", businessSettingRoutes);
+app.use("/api/stock-history", stockHistoryRoutes);
 
 app.get("/", (req, res) => {
   res.status(200).send("Single Vendor Backend Running Successfully");

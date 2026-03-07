@@ -1,0 +1,31 @@
+.product-details-page .product-stat-card {
+  background-color: var(--surface-2);
+}
+
+.product-details-page .product-stat-label {
+  color: var(--muted-text);
+}
+
+.product-details-page .product-stock-in {
+  color: #16a34a;
+}
+
+.product-details-page .product-stock-out {
+  color: #dc2626;
+}
+
+.product-details-page .product-rating-stars {
+  display: inline-block;
+  margin-top: 4px;
+  color: #f59e0b;
+  letter-spacing: 1px;
+  font-size: 0.95rem;
+}
+
+:root[data-theme="dark"] .product-details-page .product-stock-in {
+  color: #4ade80;
+}
+
+:root[data-theme="dark"] .product-details-page .product-stock-out {
+  color: #f87171;
+}

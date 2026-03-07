@@ -11,8 +11,11 @@ const isOfferCurrentlyValid = (offer) => {
 exports.getPublicOffers = async (req, res) => {
   try {
     const offers = await Offer.find({ isActive: true }).sort({ createdAt: -1 });
-    const validOffers = offers.filter(isOfferCurrentlyValid);
-    res.status(200).json(validOffers);
+    const publicOffers = offers.map((offer) => ({
+      ...offer.toObject(),
+      isCurrentlyValid: isOfferCurrentlyValid(offer),
+    }));
+    res.status(200).json(publicOffers);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

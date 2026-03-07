@@ -3,6 +3,7 @@ const User = require("../models/User");
 const Product = require("../models/Product");
 const Cart = require("../models/Cart");
 const Offer = require("../models/Offer");
+const { logStockHistory } = require("../utils/stockHistoryLogger");
 
 const STATUS_MAP = {
   pending: "pending",
@@ -11,6 +12,8 @@ const STATUS_MAP = {
   delivered: "delivered",
   cancelled: "cancelled",
 };
+
+const STOCK_DEDUCT_STATUSES = new Set(["confirmed", "shipped", "delivered"]);
 
 const normalizeStatus = (value) => {
   if (!value) return null;
@@ -186,7 +189,25 @@ exports.createOrderFromCart = async (req, res) => {
 
 exports.getOrders = async (req, res) => {
   try {
-    const orders = await Order.find().populate("user", "name email").populate("products.product");
+    const { status, userId, dateFrom, dateTo } = req.query;
+    const filter = {};
+
+    if (status) {
+      const normalized = normalizeStatus(status);
+      if (!normalized) return res.status(400).json({ message: "Invalid order status filter" });
+      filter.status = normalized;
+    }
+    if (userId) filter.user = userId;
+    if (dateFrom || dateTo) {
+      filter.createdAt = {};
+      if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
+      if (dateTo) filter.createdAt.$lte = new Date(dateTo);
+    }
+
+    const orders = await Order.find(filter)
+      .sort({ createdAt: -1 })
+      .populate("user", "name email")
+      .populate("products.product");
     res.status(200).json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -216,7 +237,7 @@ exports.updateOrderStatus = async (req, res) => {
 
     order.status = status;
 
-    if (status === "confirmed" && !order.stockUpdated) {
+    if (STOCK_DEDUCT_STATUSES.has(status) && !order.stockUpdated) {
       for (const item of order.products) {
         const product = await Product.findById(item.product._id);
         if (!product) {
@@ -229,7 +250,24 @@ exports.updateOrderStatus = async (req, res) => {
       }
 
       for (const item of order.products) {
-        await Product.findByIdAndUpdate(item.product._id, { $inc: { stock: -item.quantity } });
+        const updatedProduct = await Product.findByIdAndUpdate(
+          item.product._id,
+          { $inc: { stock: -item.quantity } },
+          { new: true }
+        );
+        if (updatedProduct) {
+          await logStockHistory({
+            productId: updatedProduct._id,
+            eventType: "SALE",
+            quantityChange: -Number(item.quantity || 0),
+            previousStock: Number(updatedProduct.stock || 0) + Number(item.quantity || 0),
+            newStock: Number(updatedProduct.stock || 0),
+            referenceType: "ORDER",
+            referenceId: order._id.toString(),
+            note: `Stock deducted due to order status: ${status}`,
+            actorId: req.user?._id || null,
+          });
+        }
       }
 
       order.stockUpdated = true;
@@ -237,7 +275,24 @@ exports.updateOrderStatus = async (req, res) => {
 
     if (status === "cancelled" && order.stockUpdated) {
       for (const item of order.products) {
-        await Product.findByIdAndUpdate(item.product._id, { $inc: { stock: item.quantity } });
+        const updatedProduct = await Product.findByIdAndUpdate(
+          item.product._id,
+          { $inc: { stock: item.quantity } },
+          { new: true }
+        );
+        if (updatedProduct) {
+          await logStockHistory({
+            productId: updatedProduct._id,
+            eventType: "CANCELLATION_RESTOCK",
+            quantityChange: Number(item.quantity || 0),
+            previousStock: Number(updatedProduct.stock || 0) - Number(item.quantity || 0),
+            newStock: Number(updatedProduct.stock || 0),
+            referenceType: "ORDER",
+            referenceId: order._id.toString(),
+            note: "Stock restored due to order cancellation",
+            actorId: req.user?._id || null,
+          });
+        }
       }
       order.stockUpdated = false;
       order.cancelledAt = new Date();
@@ -271,7 +326,24 @@ exports.cancelOrderByUser = async (req, res) => {
 
     if (order.status === "confirmed" && order.stockUpdated) {
       for (const item of order.products) {
-        await Product.findByIdAndUpdate(item.product._id, { $inc: { stock: item.quantity } });
+        const updatedProduct = await Product.findByIdAndUpdate(
+          item.product._id,
+          { $inc: { stock: item.quantity } },
+          { new: true }
+        );
+        if (updatedProduct) {
+          await logStockHistory({
+            productId: updatedProduct._id,
+            eventType: "CANCELLATION_RESTOCK",
+            quantityChange: Number(item.quantity || 0),
+            previousStock: Number(updatedProduct.stock || 0) - Number(item.quantity || 0),
+            newStock: Number(updatedProduct.stock || 0),
+            referenceType: "ORDER",
+            referenceId: order._id.toString(),
+            note: "Stock restored due to customer cancellation",
+            actorId: req.user?._id || null,
+          });
+        }
       }
       order.stockUpdated = false;
     }
@@ -289,17 +361,28 @@ exports.cancelOrderByUser = async (req, res) => {
 
 exports.getDashboardStats = async (req, res) => {
   try {
+    const { dateFrom, dateTo } = req.query;
+    const timeFilter = {};
+    if (dateFrom || dateTo) {
+      timeFilter.createdAt = {};
+      if (dateFrom) timeFilter.createdAt.$gte = new Date(dateFrom);
+      if (dateTo) timeFilter.createdAt.$lte = new Date(dateTo);
+    }
+
     const [totalOrders, usersCount, totalProducts, revenueAggregate] = await Promise.all([
-      Order.countDocuments(),
+      Order.countDocuments(timeFilter),
       User.countDocuments(),
       Product.countDocuments(),
       Order.aggregate([
-        { $match: { status: { $ne: "cancelled" } } },
+        { $match: { ...timeFilter, status: { $ne: "cancelled" } } },
         { $group: { _id: null, total: { $sum: "$totalAmount" } } },
       ]),
     ]);
 
-    const orderStatusSummary = await Order.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]);
+    const orderStatusSummary = await Order.aggregate([
+      { $match: timeFilter },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]);
 
     const lowStockProducts = await Product.find({ stock: { $lte: 5 } })
       .select("name stock")

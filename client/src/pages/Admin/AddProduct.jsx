@@ -9,7 +9,9 @@ const AddProduct = () => {
     description: "",
     price: "",
     category: "",
-    stock: ""
+    newCategory: "",
+    stock: "",
+    supplier: "",
   });
 
   const [categories, setCategories] = useState([
@@ -19,6 +21,7 @@ const AddProduct = () => {
     "Beauty",
     "Sports"
   ]); // Default categories
+  const [suppliers, setSuppliers] = useState([]);
 
   const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -42,6 +45,18 @@ const AddProduct = () => {
     loadCategories();
   }, []);
 
+  useEffect(() => {
+    const loadSuppliers = async () => {
+      try {
+        const { data } = await API.get("/suppliers");
+        setSuppliers(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Unable to fetch suppliers", err);
+      }
+    };
+    loadSuppliers();
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -51,7 +66,15 @@ const AddProduct = () => {
     }
 
     const formData = new FormData();
-    Object.keys(form).forEach((key) => formData.append(key, form[key]));
+    const finalCategory = form.newCategory.trim() || form.category;
+    Object.keys(form).forEach((key) => {
+      if (key === "newCategory") return;
+      if (key === "category") {
+        formData.append("category", finalCategory);
+        return;
+      }
+      formData.append(key, form[key]);
+    });
     if (image) formData.append("image", image);
 
     setLoading(true);
@@ -61,7 +84,7 @@ const AddProduct = () => {
       });
 
       alert("Product Added Successfully");
-      setForm({ name: "", description: "", price: "", category: "", stock: "" });
+      setForm({ name: "", description: "", price: "", category: "", newCategory: "", stock: "", supplier: "" });
       setImage(null);
       window.dispatchEvent(new Event('products-updated'));
     } catch (error) {
@@ -105,10 +128,9 @@ const AddProduct = () => {
           className="form-select mb-2"
           value={form.category}
           onChange={(e) => setForm({ ...form, category: e.target.value })}
-          required
         >
-          <option value="" disabled>
-            Select category...
+          <option value="">
+            Select category (optional)
           </option>
           {categories.map((cat, index) => (
             <option key={index} value={cat}>
@@ -118,6 +140,14 @@ const AddProduct = () => {
         </select>
 
         <input
+          type="text"
+          className="form-control mb-2"
+          placeholder="New category (optional)"
+          value={form.newCategory}
+          onChange={(e) => setForm({ ...form, newCategory: e.target.value })}
+        />
+
+        <input
           type="number"
           className="form-control mb-2"
           placeholder="Stock"
@@ -125,6 +155,19 @@ const AddProduct = () => {
           onChange={(e) => setForm({ ...form, stock: e.target.value })}
           required
         />
+
+        <select
+          className="form-select mb-2"
+          value={form.supplier}
+          onChange={(e) => setForm({ ...form, supplier: e.target.value })}
+        >
+          <option value="">Select supplier (optional)</option>
+          {suppliers.map((supplier) => (
+            <option key={supplier._id} value={supplier._id}>
+              {supplier.name} {supplier.company ? `(${supplier.company})` : ""}
+            </option>
+          ))}
+        </select>
 
         <input
           type="file"

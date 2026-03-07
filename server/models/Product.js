@@ -42,6 +42,10 @@ const productSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    supplier: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Supplier"
+    },
   },
   { timestamps: true }
 );

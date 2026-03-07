@@ -9,6 +9,18 @@ exports.requireSignIn = async (req, res, next) => {
       token = req.headers.authorization.split(" ")[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       req.user = await User.findById(decoded.id).select("-password");
+      if (!req.user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      // Bootstrap one super admin from the first admin account if none exists yet.
+      if (req.user.isAdmin && !req.user.isSuperAdmin) {
+        const existingSuperAdmin = await User.findOne({ isSuperAdmin: true }).select("_id");
+        if (!existingSuperAdmin) {
+          req.user.isSuperAdmin = true;
+          await User.findByIdAndUpdate(req.user._id, { isSuperAdmin: true, isAdmin: true });
+        }
+      }
       return next();
     } catch (err) {
       console.warn("Auth token error:", err.message);
@@ -24,6 +36,14 @@ exports.isAdmin = (req, res, next) => {
     next();
   } else {
     res.status(403).json({ message: "Admin only" });
+  }
+};
+
+exports.isSuperAdmin = (req, res, next) => {
+  if (req.user && req.user.isSuperAdmin) {
+    next();
+  } else {
+    res.status(403).json({ message: "Super admin only" });
   }
 };
 

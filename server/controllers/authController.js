@@ -4,7 +4,7 @@ const jwt = require("jsonwebtoken");
 
 exports.registerUser = async (req, res) => {
   try {
-    const { name, email, password, isAdmin } = req.body;
+    const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: "Name, email and password are required" });
@@ -21,7 +21,8 @@ exports.registerUser = async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      isAdmin: Boolean(isAdmin),
+      isAdmin: false,
+      isSuperAdmin: false,
     });
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
@@ -32,6 +33,7 @@ exports.registerUser = async (req, res) => {
       name: user.name,
       email: user.email,
       isAdmin: user.isAdmin,
+      isSuperAdmin: user.isSuperAdmin,
       token,
     });
   } catch (error) {
@@ -57,6 +59,7 @@ exports.loginUser = async (req, res) => {
       name: user.name,
       email: user.email,
       isAdmin: user.isAdmin,
+      isSuperAdmin: user.isSuperAdmin,
       token,
     });
   } catch (error) {

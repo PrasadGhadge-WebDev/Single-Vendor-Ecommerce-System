@@ -6,7 +6,7 @@ import "./Footer.css";
 const Footer = () => {
   return (
     <footer className="site-footer mt-5">
-      <div className="container py-5">
+      <div className="container py-3">
         <div className="row g-4">
           <div className="col-lg-4 col-md-6">
             <h5 className="footer-title">MyShop</h5>
@@ -48,7 +48,7 @@ const Footer = () => {
           </div>
         </div>
 
-        <div className="footer-bottom d-flex flex-column flex-md-row justify-content-between align-items-center mt-4 pt-3">
+        <div className="footer-bottom d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 pt-2">
           <small>Copyright {new Date().getFullYear()} MyShop. All rights reserved.</small>
           <small>Built for better shopping experience.</small>
         </div>

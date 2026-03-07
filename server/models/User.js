@@ -19,6 +19,24 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isSuperAdmin: {
+      type: Boolean,
+      default: false,
+    },
+    profileImage: {
+      type: String,
+      default: "",
+    },
+    phone: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    address: {
+      type: String,
+      default: "",
+      trim: true,
+    },
   },
   { timestamps: true }
 );

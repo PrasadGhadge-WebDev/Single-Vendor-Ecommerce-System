@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import API, { getImageUrl } from "../api";
+import "./ProductDetails.css";
 
 const ProductDetails = () => {
   const { id } = useParams();
@@ -47,8 +48,12 @@ const ProductDetails = () => {
     );
   }
 
+  const averageRating = Number(product.averageRating || 0);
+  const roundedRating = Math.round(averageRating);
+  const starRating = `${"★".repeat(roundedRating)}${"☆".repeat(5 - roundedRating)}`;
+
   return (
-    <div className="container py-5">
+    <div className="container py-5 product-details-page">
       <button type="button" className="btn btn-sm btn-outline-secondary mb-4" onClick={() => navigate(-1)}>
         Back
       </button>
@@ -101,15 +106,22 @@ const ProductDetails = () => {
 
           <div className="row g-2">
             <div className="col-sm-6">
-              <div className="p-3 border rounded bg-light">
-                <small className="text-muted d-block">Stock</small>
-                <strong>{product.stock > 0 ? `${product.stock} available` : "Out of stock"}</strong>
+              <div className="p-3 border rounded product-stat-card">
+                <small className="d-block product-stat-label">Stock</small>
+                <strong className={product.stock > 0 ? "product-stock-in" : "product-stock-out"}>
+                  {product.stock > 0 ? `${product.stock} available` : "Out of stock"}
+                </strong>
               </div>
             </div>
             <div className="col-sm-6">
-              <div className="p-3 border rounded bg-light">
-                <small className="text-muted d-block">Rating</small>
-                <strong>{product.averageRating || 0} / 5 ({product.numReviews || 0} reviews)</strong>
+              <div className="p-3 border rounded product-stat-card">
+                <small className="d-block product-stat-label">Rating</small>
+                <strong className="d-block">
+                  {averageRating.toFixed(1)} / 5 ({product.numReviews || 0} reviews)
+                </strong>
+                <span className="product-rating-stars" aria-label={`Rating ${averageRating.toFixed(1)} out of 5`}>
+                  {starRating}
+                </span>
               </div>
             </div>
           </div>

@@ -1,14 +1,20 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
+import { FaPlus, FaTimes } from "react-icons/fa";
 import API, { getImageUrl } from "../../api";
 import { AuthContext } from "../../context/AuthContext";
+import { downloadCsv, inDateRange } from "../../utils/adminHelpers";
 
 const ManageCategories = () => {
   const { user } = useContext(AuthContext);
-
   const [categories, setCategories] = useState([]);
   const [newCategory, setNewCategory] = useState("");
   const [newImage, setNewImage] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
 
   const [editCategoryId, setEditCategoryId] = useState(null);
   const [editCategoryName, setEditCategoryName] = useState("");
@@ -29,9 +35,14 @@ const ManageCategories = () => {
     fetchCategories();
   }, []);
 
+  useEffect(() => {
+    if (!autoRefresh) return undefined;
+    const timer = setInterval(() => fetchCategories(), 30000);
+    return () => clearInterval(timer);
+  }, [autoRefresh]);
+
   const addCategory = async () => {
     if (!newCategory.trim()) return alert("Enter category name");
-
     if (!user?.isAdmin) return alert("Admin only");
 
     const formData = new FormData();
@@ -44,9 +55,9 @@ const ManageCategories = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      alert("Category added successfully");
       setNewCategory("");
       setNewImage(null);
+      setShowAddForm(false);
       fetchCategories();
     } catch (err) {
       alert(err.response?.data?.message || "Error adding category");
@@ -57,21 +68,19 @@ const ManageCategories = () => {
 
   const deleteCategory = async (id) => {
     if (!user?.isAdmin) return alert("Admin only");
-
     if (!window.confirm("Delete this category?")) return;
 
     try {
       await API.delete(`/categories/${id}`);
-      alert("Category deleted");
       fetchCategories();
     } catch (err) {
       alert(err.response?.data?.message || "Delete failed");
     }
   };
 
-  const startEdit = (cat) => {
-    setEditCategoryId(cat._id);
-    setEditCategoryName(cat.name);
+  const startEdit = (category) => {
+    setEditCategoryId(category._id);
+    setEditCategoryName(category.name);
     setEditCategoryImage(null);
   };
 
@@ -83,7 +92,6 @@ const ManageCategories = () => {
 
   const updateCategory = async () => {
     if (!editCategoryName.trim()) return alert("Enter category name");
-
     if (!user?.isAdmin) return alert("Admin only");
 
     const formData = new FormData();
@@ -96,7 +104,6 @@ const ManageCategories = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      alert("Category updated");
       cancelEdit();
       fetchCategories();
     } catch (err) {
@@ -106,96 +113,151 @@ const ManageCategories = () => {
     }
   };
 
+  const filteredCategories = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return categories.filter((category) => {
+      if ((dateFrom || dateTo) && !inDateRange(category.createdAt, dateFrom, dateTo)) return false;
+      if (!term) return true;
+      return String(category.name || "")
+        .toLowerCase()
+        .includes(term);
+    });
+  }, [categories, search, dateFrom, dateTo]);
+
+  const exportCategories = () => {
+    downloadCsv(
+      "categories.csv",
+      filteredCategories.map((category) => ({
+        name: category.name,
+        image: category.image || "",
+        createdAt: category.createdAt || "",
+      }))
+    );
+  };
+
   return (
-    <div className="container mt-4" style={{ maxWidth: "700px" }}>
-      <h3>Manage Categories</h3>
-
-      <div className="d-flex mb-3">
-        <input
-          type="text"
-          className="form-control me-2"
-          placeholder="New category"
-          value={newCategory}
-          onChange={(e) => setNewCategory(e.target.value)}
-        />
-
-        <input
-          type="file"
-          className="form-control me-2"
-          onChange={(e) => setNewImage(e.target.files[0])}
-        />
-
-        <button className="btn btn-primary" onClick={addCategory} disabled={loading}>
-          {loading ? "Adding..." : "Add"}
-        </button>
+    <div className="container mt-4" style={{ maxWidth: "900px" }}>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h3 className="mb-0">Manage Categories</h3>
+        <div className="d-flex gap-2">
+          <button
+            type="button"
+            className="btn btn-success btn-sm d-inline-flex align-items-center gap-1"
+            onClick={() => {
+              setShowAddForm((prev) => !prev);
+              if (showAddForm) {
+                setNewCategory("");
+                setNewImage(null);
+              }
+            }}
+            aria-label={showAddForm ? "Close category form" : "Open category form"}
+            title={showAddForm ? "Close category form" : "Add category"}
+          >
+            {showAddForm ? <FaTimes /> : <FaPlus />}
+          </button>
+          <button className="btn btn-outline-primary btn-sm" onClick={fetchCategories}>
+            Refresh
+          </button>
+          <button className="btn btn-primary btn-sm" onClick={exportCategories}>
+            Export CSV
+          </button>
+        </div>
       </div>
 
-      {categories.length === 0 ? (
+      <div className="card p-3 mb-3">
+        {showAddForm && (
+          <div className="d-flex mb-3">
+            <input
+              type="text"
+              className="form-control me-2"
+              placeholder="New category"
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+            />
+
+            <input type="file" className="form-control me-2" onChange={(e) => setNewImage(e.target.files[0])} />
+
+            <button className="btn btn-primary me-2" onClick={addCategory} disabled={loading}>
+              {loading ? "Adding..." : "Add"}
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline-secondary"
+              onClick={() => {
+                setShowAddForm(false);
+                setNewCategory("");
+                setNewImage(null);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
+        <div className="row g-2">
+          <div className="col-md-4">
+            <input className="form-control" placeholder="Search categories" value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
+          <div className="col-md-3">
+            <input type="datetime-local" className="form-control" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          </div>
+          <div className="col-md-3">
+            <input type="datetime-local" className="form-control" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          </div>
+          <div className="col-md-2 d-flex align-items-center">
+            <div className="form-check">
+              <input
+                id="categoriesAutoRefresh"
+                className="form-check-input"
+                type="checkbox"
+                checked={autoRefresh}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+              />
+              <label className="form-check-label" htmlFor="categoriesAutoRefresh">
+                Auto 30s
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {filteredCategories.length === 0 ? (
         <p className="text-muted">No categories found</p>
       ) : (
         <ul className="list-group">
-          {categories.map((cat) => (
-            <li
-              key={cat._id}
-              className="list-group-item d-flex justify-content-between align-items-center"
-            >
+          {filteredCategories.map((category) => (
+            <li key={category._id} className="list-group-item d-flex justify-content-between align-items-center">
               <div className="d-flex align-items-center">
-                {cat.image && (
-                  <img
-                    src={getImageUrl(cat.image)}
-                    alt={cat.name}
-                    style={{ width: "40px", marginRight: "10px" }}
-                  />
+                {category.image && (
+                  <img src={getImageUrl(category.image)} alt={category.name} style={{ width: "40px", marginRight: "10px" }} />
                 )}
 
-                {editCategoryId === cat._id ? (
+                {editCategoryId === category._id ? (
                   <>
-                    <input
-                      type="text"
-                      className="form-control me-2"
-                      value={editCategoryName}
-                      onChange={(e) => setEditCategoryName(e.target.value)}
-                    />
-                    <input
-                      type="file"
-                      className="form-control"
-                      onChange={(e) => setEditCategoryImage(e.target.files[0])}
-                    />
+                    <input type="text" className="form-control me-2" value={editCategoryName} onChange={(e) => setEditCategoryName(e.target.value)} />
+                    <input type="file" className="form-control" onChange={(e) => setEditCategoryImage(e.target.files[0])} />
                   </>
                 ) : (
-                  <span>{cat.name}</span>
+                  <span>{category.name}</span>
                 )}
               </div>
 
               <div>
-                {editCategoryId === cat._id ? (
+                {editCategoryId === category._id ? (
                   <>
-                    <button
-                      className="btn btn-success btn-sm me-2"
-                      onClick={updateCategory}
-                      disabled={editLoading}
-                    >
+                    <button className="btn btn-success btn-sm me-2" onClick={updateCategory} disabled={editLoading}>
                       {editLoading ? "Updating..." : "Update"}
                     </button>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      onClick={cancelEdit}
-                    >
+                    <button className="btn btn-secondary btn-sm" onClick={cancelEdit}>
                       Cancel
                     </button>
                   </>
                 ) : (
                   <>
-                    <button
-                      className="btn btn-warning btn-sm me-2"
-                      onClick={() => startEdit(cat)}
-                    >
+                    <button className="btn btn-warning btn-sm me-2" onClick={() => startEdit(category)}>
                       Edit
                     </button>
-                    <button
-                      className="btn btn-danger btn-sm"
-                      onClick={() => deleteCategory(cat._id)}
-                    >
+                    <button className="btn btn-danger btn-sm" onClick={() => deleteCategory(category._id)}>
                       Delete
                     </button>
                   </>
