@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import API from "../../api";
+import { toast } from "react-toastify";
+import "./StockHistory.css";
 
 const StockHistory = () => {
   const [items, setItems] = useState([]);
@@ -33,7 +35,7 @@ const StockHistory = () => {
       const { data } = await API.get("/stock-history", { params });
       setItems(Array.isArray(data.items) ? data.items : []);
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to load stock history");
+      toast.error(error.response?.data?.message || "Failed to load stock history");
       setItems([]);
     } finally {
       setLoading(false);
@@ -126,9 +128,17 @@ const StockHistory = () => {
                   <td>{entry.createdAt ? new Date(entry.createdAt).toLocaleString() : "-"}</td>
                   <td>{entry.product?.name || "-"}</td>
                   <td>{entry.eventType}</td>
-                  <td className={Number(entry.quantityChange) >= 0 ? "text-success" : "text-danger"}>
-                    {Number(entry.quantityChange) >= 0 ? "+" : ""}
-                    {entry.quantityChange}
+                  <td>
+                    <span
+                      className={
+                        Number(entry.quantityChange) >= 0
+                          ? "stock-change stock-change-positive"
+                          : "stock-change stock-change-negative"
+                      }
+                    >
+                      {Number(entry.quantityChange) >= 0 ? "+" : "-"}
+                      {Math.abs(Number(entry.quantityChange || 0))}
+                    </span>
                   </td>
                   <td>{entry.previousStock}</td>
                   <td>{entry.newStock}</td>

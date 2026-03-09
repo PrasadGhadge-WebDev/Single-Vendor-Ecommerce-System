@@ -170,10 +170,10 @@ const Home = () => {
                     <p className="text-success fw-bold mb-3">INR {product.price}</p>
 
                     <div className="d-grid gap-2 mt-auto">
-                      <button className="btn btn-primary btn-sm" onClick={() => addToCart(product)}>
+                      <button className="btn btn-sm btn-cart-action" onClick={() => addToCart(product)}>
                         Add to Cart
                       </button>
-                      <button className="btn btn-warning btn-sm" onClick={() => handleBuyNow(product)}>
+                      <button className="btn btn-sm btn-buy-action" onClick={() => handleBuyNow(product)}>
                         Buy Now
                       </button>
                     </div>

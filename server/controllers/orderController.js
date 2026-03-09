@@ -384,7 +384,7 @@ exports.getDashboardStats = async (req, res) => {
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]);
 
-    const lowStockProducts = await Product.find({ stock: { $lte: 5 } })
+    const lowStockProducts = await Product.find({ stock: { $lte: 10 } })
       .select("name stock")
       .sort({ stock: 1 })
       .limit(20);

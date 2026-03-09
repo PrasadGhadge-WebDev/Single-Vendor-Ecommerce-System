@@ -1,6 +1,8 @@
 import React, { useContext, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 import CartProvider from "./context/CartContext";
 import AuthProvider, { AuthContext } from "./context/AuthContext";
@@ -123,6 +125,15 @@ function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </LayoutWrapper>
+          <ToastContainer
+            position="top-right"
+            autoClose={1800}
+            hideProgressBar={false}
+            newestOnTop
+            closeOnClick
+            pauseOnHover
+            theme="colored"
+          />
         </Router>
       </CartProvider>
     </AuthProvider>

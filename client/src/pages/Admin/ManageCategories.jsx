@@ -3,6 +3,7 @@ import { FaPlus, FaTimes } from "react-icons/fa";
 import API, { getImageUrl } from "../../api";
 import { AuthContext } from "../../context/AuthContext";
 import { downloadCsv, inDateRange } from "../../utils/adminHelpers";
+import { toast } from "react-toastify";
 
 const ManageCategories = () => {
   const { user } = useContext(AuthContext);
@@ -42,8 +43,8 @@ const ManageCategories = () => {
   }, [autoRefresh]);
 
   const addCategory = async () => {
-    if (!newCategory.trim()) return alert("Enter category name");
-    if (!user?.isAdmin) return alert("Admin only");
+    if (!newCategory.trim()) return toast.warning("Enter category name");
+    if (!user?.isAdmin) return toast.warning("Admin only");
 
     const formData = new FormData();
     formData.append("name", newCategory);
@@ -60,21 +61,21 @@ const ManageCategories = () => {
       setShowAddForm(false);
       fetchCategories();
     } catch (err) {
-      alert(err.response?.data?.message || "Error adding category");
+      toast.error(err.response?.data?.message || "Error adding category");
     } finally {
       setLoading(false);
     }
   };
 
   const deleteCategory = async (id) => {
-    if (!user?.isAdmin) return alert("Admin only");
+    if (!user?.isAdmin) return toast.warning("Admin only");
     if (!window.confirm("Delete this category?")) return;
 
     try {
       await API.delete(`/categories/${id}`);
       fetchCategories();
     } catch (err) {
-      alert(err.response?.data?.message || "Delete failed");
+      toast.error(err.response?.data?.message || "Delete failed");
     }
   };
 
@@ -91,8 +92,8 @@ const ManageCategories = () => {
   };
 
   const updateCategory = async () => {
-    if (!editCategoryName.trim()) return alert("Enter category name");
-    if (!user?.isAdmin) return alert("Admin only");
+    if (!editCategoryName.trim()) return toast.warning("Enter category name");
+    if (!user?.isAdmin) return toast.warning("Admin only");
 
     const formData = new FormData();
     formData.append("name", editCategoryName);
@@ -107,7 +108,7 @@ const ManageCategories = () => {
       cancelEdit();
       fetchCategories();
     } catch (err) {
-      alert(err.response?.data?.message || "Update failed");
+      toast.error(err.response?.data?.message || "Update failed");
     } finally {
       setEditLoading(false);
     }

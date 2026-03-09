@@ -1,5 +1,6 @@
 import { createContext, useState, useEffect } from "react";
 import API from "../api";
+import { toast } from "react-toastify";
 
 export const CartContext = createContext();
 
@@ -12,13 +13,19 @@ const CartProvider = ({ children }) => {
   };
 
   const addToCart = async (product) => {
-    const productId = typeof product === "object" ? product?._id : product;
-    await API.post("/cart/add", {
-      productId,
-      quantity: 1,
-    });
+    try {
+      const productId = typeof product === "object" ? product?._id : product;
+      await API.post("/cart/add", {
+        productId,
+        quantity: 1,
+      });
 
-    fetchCart();
+      await fetchCart();
+      const productName = typeof product === "object" ? product?.name : "";
+      toast.success(productName ? `${productName} added to cart` : "Item added to cart");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to add item to cart");
+    }
   };
 
   const updateQuantity = async (productId, quantity) => {

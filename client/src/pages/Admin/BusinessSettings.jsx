@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import API from "../../api";
 import { downloadCsv } from "../../utils/adminHelpers";
 import "./BusinessSettings.css";
+import { toast } from "react-toastify";
 
 const defaultSettings = {
   businessName: "",
@@ -52,7 +53,7 @@ const BusinessSettings = () => {
       setLoading(true);
       await Promise.all([fetchSettings(), fetchReports()]);
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to load business settings");
+      toast.error(error.response?.data?.message || "Failed to load business settings");
     } finally {
       setLoading(false);
     }
@@ -81,9 +82,9 @@ const BusinessSettings = () => {
       };
       const { data } = await API.put("/business-settings", payload);
       setSettings({ ...defaultSettings, ...data });
-      alert("Business settings updated");
+      toast.success("Business settings updated");
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to save settings");
+      toast.error(error.response?.data?.message || "Failed to save settings");
     } finally {
       setSaving(false);
     }
@@ -91,14 +92,14 @@ const BusinessSettings = () => {
 
   const loadBill = async () => {
     if (!orderId.trim()) {
-      alert("Enter order ID");
+      toast.warning("Enter order ID");
       return;
     }
     try {
       const { data } = await API.get(`/business-settings/bills/${orderId.trim()}`);
       setBill(data);
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to load bill");
+      toast.error(error.response?.data?.message || "Failed to load bill");
       setBill(null);
     }
   };

@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useState } from "react";
 import API from "../../api";
 import { AuthContext } from "../../context/AuthContext";
+import { toast } from "react-toastify";
 
 const AdminProfile = () => {
   const { user, updateUser } = useContext(AuthContext);
@@ -31,7 +32,7 @@ const AdminProfile = () => {
       setCapturedImage(data.profileImage || "");
       setCreatedAt(data.createdAt || "");
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to load profile");
+      toast.error(error.response?.data?.message || "Failed to load profile");
     } finally {
       setLoading(false);
     }
@@ -45,7 +46,7 @@ const AdminProfile = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      alert("Please select a valid image file");
+      toast.warning("Please select a valid image file");
       return;
     }
     const reader = new FileReader();
@@ -63,11 +64,11 @@ const AdminProfile = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name.trim() || !form.email.trim()) {
-      alert("Name and email are required");
+      toast.warning("Name and email are required");
       return;
     }
     if (form.password && form.password !== form.confirmPassword) {
-      alert("Password and confirm password do not match");
+      toast.warning("Password and confirm password do not match");
       return;
     }
 
@@ -87,9 +88,9 @@ const AdminProfile = () => {
       const { data } = await API.put("/users/me", payload);
       updateUser(data);
       setForm((prev) => ({ ...prev, password: "", confirmPassword: "" }));
-      alert("Profile updated");
+      toast.success("Profile updated");
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to update profile");
+      toast.error(error.response?.data?.message || "Failed to update profile");
     } finally {
       setSaving(false);
     }

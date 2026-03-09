@@ -2,6 +2,7 @@ import { useContext, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { CartContext } from "../context/CartContext";
 import { getImageUrl } from "../api";
+import { toast } from "react-toastify";
 
 const FALLBACK_IMAGE =
   "https://via.placeholder.com/120x120/f1f5f9/64748b?text=No+Image";
@@ -31,17 +32,17 @@ const Cart = () => {
 
   const handleBuyTotalOrder = async () => {
     if (cart.length === 0) {
-      alert("Cart is empty");
+      toast.warning("Cart is empty");
       return;
     }
 
     setBuyingAll(true);
     try {
       await buyTotalOrder();
-      alert("Total order placed successfully");
+      toast.success("Total order placed successfully");
       navigate("/orders");
     } catch (error) {
-      alert("Order failed: " + (error.response?.data?.message || error.message));
+      toast.error("Order failed: " + (error.response?.data?.message || error.message));
     } finally {
       setBuyingAll(false);
     }
@@ -102,7 +103,7 @@ const Cart = () => {
                     onChange={(e) => handleQuantityChange(product?._id, e.target.value)}
                   />
 
-                  <button className="btn btn-outline-primary btn-sm" onClick={() => handleBuyNow(item)}>
+                  <button className="btn btn-buy-action btn-sm" onClick={() => handleBuyNow(item)}>
                     Buy Now
                   </button>
 

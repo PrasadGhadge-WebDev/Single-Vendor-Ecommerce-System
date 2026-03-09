@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import API from "../api";
 import { CartContext } from "../context/CartContext";
 import { AuthContext } from "../context/AuthContext";
+import { toast } from "react-toastify";
 
 const Checkout = () => {
   const { cart, clearCart } = useContext(CartContext);
@@ -13,6 +14,7 @@ const Checkout = () => {
   const [offerCode, setOfferCode] = useState("");
   const [offers, setOffers] = useState([]);
   const [appliedOffer, setAppliedOffer] = useState(null);
+  const [buyNowQty, setBuyNowQty] = useState(() => Math.max(1, Number(location.state?.buyNowItem?.quantity) || 1));
 
   const buyNowItem = location.state?.buyNowItem;
 
@@ -21,12 +23,12 @@ const Checkout = () => {
       return [
         {
           productId: buyNowItem.product,
-          quantity: Number(buyNowItem.quantity) || 1,
+          quantity: buyNowQty,
         },
       ];
     }
     return cart;
-  }, [buyNowItem, cart]);
+  }, [buyNowItem, buyNowQty, cart]);
 
   const totalAmount = checkoutItems.reduce(
     (sum, item) => sum + (item.productId?.price || 0) * item.quantity,
@@ -39,7 +41,7 @@ const Checkout = () => {
         const { data } = await API.get("/offers/public");
         const allOffers = Array.isArray(data) ? data : [];
         setOffers(allOffers.filter((offer) => offer?.isCurrentlyValid !== false));
-      } catch (error) {
+      } catch {
         setOffers([]);
       }
     };
@@ -69,12 +71,12 @@ const Checkout = () => {
     }
     const found = offers.find((offer) => offer.code === code);
     if (!found) {
-      alert("Invalid offer code");
+      toast.error("Invalid offer code");
       setAppliedOffer(null);
       return;
     }
     if (totalAmount < (found.minOrderAmount || 0)) {
-      alert(`Minimum order amount for this offer is INR ${found.minOrderAmount}`);
+      toast.warning(`Minimum order amount for this offer is INR ${found.minOrderAmount}`);
       setAppliedOffer(null);
       return;
     }
@@ -83,13 +85,13 @@ const Checkout = () => {
 
   const handleOrder = async () => {
     if (!user) {
-      alert("Please login to checkout");
+      toast.warning("Please login to checkout");
       navigate("/login");
       return;
     }
 
     if (checkoutItems.length === 0) {
-      alert("No items to checkout");
+      toast.warning("No items to checkout");
       return;
     }
 
@@ -103,7 +105,7 @@ const Checkout = () => {
         offerCode: appliedOffer?.code || "",
       });
 
-      alert("Order Placed Successfully");
+      toast.success("Order placed successfully");
 
       if (!buyNowItem) {
         await clearCart();
@@ -112,10 +114,15 @@ const Checkout = () => {
       navigate("/");
     } catch (error) {
       console.error(error);
-      alert("Order failed: " + (error.response?.data?.message || error.message));
+      toast.error("Order failed: " + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
     }
+  };
+
+  const adjustBuyNowQty = (next) => {
+    const safe = Math.max(1, Number(next) || 1);
+    setBuyNowQty(safe);
   };
 
   return (
@@ -124,6 +131,26 @@ const Checkout = () => {
 
       <div className="card p-4">
         <h5>Order Summary</h5>
+        {buyNowItem?.product?._id && (
+          <div className="mb-3">
+            <label className="form-label mb-1">Quantity</label>
+            <div className="d-flex align-items-center gap-2" style={{ maxWidth: "180px" }}>
+              <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => adjustBuyNowQty(buyNowQty - 1)}>
+                -
+              </button>
+              <input
+                type="number"
+                min="1"
+                className="form-control form-control-sm"
+                value={buyNowQty}
+                onChange={(e) => adjustBuyNowQty(e.target.value)}
+              />
+              <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => adjustBuyNowQty(buyNowQty + 1)}>
+                +
+              </button>
+            </div>
+          </div>
+        )}
         {checkoutItems.map((item) => (
           <div key={item.productId?._id} className="d-flex justify-content-between mb-2">
             <span>

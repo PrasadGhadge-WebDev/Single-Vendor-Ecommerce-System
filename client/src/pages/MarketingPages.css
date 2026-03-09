@@ -1,0 +1,139 @@
+﻿.marketing-hero {
+  position: relative;
+  overflow: hidden;
+}
+
+.marketing-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18), transparent 45%);
+  pointer-events: none;
+}
+
+.marketing-fade-up {
+  opacity: 0;
+  transform: translateY(16px);
+  animation: marketingFadeUp 0.7s ease forwards;
+}
+
+.marketing-delay-1 {
+  animation-delay: 0.08s;
+}
+
+.marketing-delay-2 {
+  animation-delay: 0.16s;
+}
+
+.marketing-delay-3 {
+  animation-delay: 0.24s;
+}
+
+.marketing-card {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.marketing-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.12) !important;
+}
+
+.marketing-chip {
+  animation: marketingFloat 4.5s ease-in-out infinite;
+}
+
+.marketing-section-title {
+  position: relative;
+}
+
+.marketing-section-title::after {
+  content: "";
+  display: block;
+  width: 70px;
+  height: 3px;
+  margin: 10px auto 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2563eb, #0ea5e9);
+}
+
+.services-icon-badge {
+  width: 44px;
+  height: 44px;
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+}
+
+.services-stat-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(14, 165, 233, 0.14);
+  color: #0369a1;
+}
+
+.contact-mini-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 184, 166, 0.14);
+  color: #0f766e;
+}
+
+.offer-icon-badge {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(249, 115, 22, 0.16);
+  color: #c2410c;
+}
+
+.offer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fdba74;
+}
+
+.offer-code {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 8px;
+  letter-spacing: 0.03em;
+  font-weight: 700;
+  font-family: "Courier New", Courier, monospace;
+  background: #eff6ff;
+  border: 1px dashed #93c5fd;
+  color: #1d4ed8;
+}
+
+@keyframes marketingFadeUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes marketingFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}

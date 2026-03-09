@@ -1,15 +1,18 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import API, { getImageUrl } from "../api";
+import { CartContext } from "../context/CartContext";
 import "./ProductDetails.css";
 
 const ProductDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { addToCart } = useContext(CartContext);
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [buyQty, setBuyQty] = useState(1);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -50,7 +53,13 @@ const ProductDetails = () => {
 
   const averageRating = Number(product.averageRating || 0);
   const roundedRating = Math.round(averageRating);
-  const starRating = `${"★".repeat(roundedRating)}${"☆".repeat(5 - roundedRating)}`;
+  const starRating = `${"?".repeat(roundedRating)}${"?".repeat(5 - roundedRating)}`;
+  const maxStock = Math.max(1, Number(product.stock || 1));
+
+  const updateBuyQty = (next) => {
+    const safeQty = Math.min(maxStock, Math.max(1, Number(next) || 1));
+    setBuyQty(safeQty);
+  };
 
   return (
     <div className="container py-5 product-details-page">
@@ -83,16 +92,40 @@ const ProductDetails = () => {
             {product.description || "No description available."}
           </p>
 
+          <div className="buy-qty-wrap mb-3">
+            <label className="form-label mb-1">Quantity</label>
+            <div className="buy-qty-controls">
+              <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => updateBuyQty(buyQty - 1)}>
+                -
+              </button>
+              <input
+                type="number"
+                min="1"
+                max={maxStock}
+                className="form-control form-control-sm"
+                value={buyQty}
+                onChange={(e) => updateBuyQty(e.target.value)}
+              />
+              <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => updateBuyQty(buyQty + 1)}>
+                +
+              </button>
+            </div>
+          </div>
+
           <div className="d-flex flex-wrap gap-2">
-            <button className="btn btn-primary" onClick={() => navigate("/shop")}>Continue Shopping</button>
+            <button className="btn btn-cart-action" onClick={() => addToCart(product)}>
+              Add to Cart
+            </button>
+            <button className="btn btn-outline-primary" onClick={() => navigate("/shop")}>Continue Shopping</button>
             <button
-              className="btn btn-warning"
+              className="btn btn-buy-action"
+              disabled={Number(product.stock || 0) <= 0}
               onClick={() =>
                 navigate("/checkout", {
                   state: {
                     buyNowItem: {
                       product,
-                      quantity: 1,
+                      quantity: buyQty,
                     },
                   },
                 })

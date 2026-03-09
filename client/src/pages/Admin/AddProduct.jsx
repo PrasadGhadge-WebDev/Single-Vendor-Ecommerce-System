@@ -1,6 +1,7 @@
 import React, { useState, useContext, useEffect } from "react";
 import API from "../../api";
 import { AuthContext } from "../../context/AuthContext";
+import { toast } from "react-toastify";
 
 const AddProduct = () => {
   const { user } = useContext(AuthContext);
@@ -61,7 +62,7 @@ const AddProduct = () => {
     e.preventDefault();
 
     if (!user || !user.token) {
-      alert("Please login as admin");
+      toast.warning("Please login as admin");
       return;
     }
 
@@ -83,12 +84,12 @@ const AddProduct = () => {
         headers: { "Content-Type": "multipart/form-data" }
       });
 
-      alert("Product Added Successfully");
+      toast.success("Product added successfully");
       setForm({ name: "", description: "", price: "", category: "", newCategory: "", stock: "", supplier: "" });
       setImage(null);
       window.dispatchEvent(new Event('products-updated'));
     } catch (error) {
-      alert("Error adding product: " + (error.response?.data?.message || error.message));
+      toast.error("Error adding product: " + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
     }

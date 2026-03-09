@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import API, { getImageUrl } from "../../api";
 import { downloadCsv, inDateRange } from "../../utils/adminHelpers";
 import { FaPlus } from "react-icons/fa";
+import { toast } from "react-toastify";
+
+const LOW_STOCK_THRESHOLD = 10;
 
 const ManageProducts = () => {
   const [products, setProducts] = useState([]);
@@ -41,7 +44,7 @@ const ManageProducts = () => {
       setProducts(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching products:", error);
-      if (showLoader) alert("Failed to load products");
+      if (showLoader) toast.error("Failed to load products");
     }
   };
 
@@ -72,7 +75,7 @@ const ManageProducts = () => {
       fetchProducts();
       window.dispatchEvent(new Event("products-updated"));
     } catch (error) {
-      alert("Error deleting product: " + (error.response?.data?.message || error.message));
+      toast.error("Error deleting product: " + (error.response?.data?.message || error.message));
     }
   };
 
@@ -121,7 +124,7 @@ const ManageProducts = () => {
   const createProduct = async (e) => {
     e.preventDefault();
     if (!addForm.name || !addForm.price || addForm.stock === "") {
-      alert("Name, price and stock are required");
+      toast.warning("Name, price and stock are required");
       return;
     }
 
@@ -146,7 +149,7 @@ const ManageProducts = () => {
       fetchProducts();
       window.dispatchEvent(new Event("products-updated"));
     } catch (error) {
-      alert("Error adding product: " + (error.response?.data?.message || error.message));
+      toast.error("Error adding product: " + (error.response?.data?.message || error.message));
     } finally {
       setAddingProduct(false);
     }
@@ -172,7 +175,7 @@ const ManageProducts = () => {
       fetchProducts();
       window.dispatchEvent(new Event("products-updated"));
     } catch (error) {
-      alert("Error updating product: " + (error.response?.data?.message || error.message));
+      toast.error("Error updating product: " + (error.response?.data?.message || error.message));
     }
   };
 
@@ -193,12 +196,19 @@ const ManageProducts = () => {
     [products]
   );
 
+  const lowStockCount = useMemo(
+    () => products.filter((product) => Number(product.stock || 0) <= LOW_STOCK_THRESHOLD).length,
+    [products]
+  );
+
   const filteredProducts = useMemo(() => {
     const term = search.trim().toLowerCase();
     return products.filter((product) => {
+      const stockValue = Number(product.stock || 0);
       if (categoryFilter !== "all" && product.category !== categoryFilter) return false;
-      if (stockFilter === "in-stock" && Number(product.stock || 0) <= 0) return false;
-      if (stockFilter === "out-of-stock" && Number(product.stock || 0) > 0) return false;
+      if (stockFilter === "in-stock" && stockValue <= 0) return false;
+      if (stockFilter === "out-of-stock" && stockValue > 0) return false;
+      if (stockFilter === "low-stock" && stockValue > LOW_STOCK_THRESHOLD) return false;
       if (supplierFilter !== "all") {
         const currentSupplierId = product.supplier?._id || String(product.supplier || "");
         if (currentSupplierId !== supplierFilter) return false;
@@ -241,6 +251,12 @@ const ManageProducts = () => {
         </div>
       </div>
 
+      {lowStockCount > 0 && (
+        <div className="alert alert-warning py-2" role="alert">
+          Stock Alert: {lowStockCount} product(s) have stock at or below 10.
+        </div>
+      )}
+
       <div className="card p-3 mb-3">
         <div className="row g-2">
           <div className="col-md-3">
@@ -261,6 +277,7 @@ const ManageProducts = () => {
               <option value="all">All Stock</option>
               <option value="in-stock">In Stock</option>
               <option value="out-of-stock">Out of Stock</option>
+              <option value="low-stock">Low Stock (≤ 10)</option>
             </select>
           </div>
           <div className="col-md-2">
@@ -313,24 +330,33 @@ const ManageProducts = () => {
           </thead>
 
           <tbody>
-            {filteredProducts.map((product) => (
-              <tr key={product._id}>
-                <td>{product.image ? <img src={getImageUrl(product.image)} width="60" alt={product.name} /> : "-"}</td>
-                <td>{product.name}</td>
-                <td>{product.category}</td>
-                <td>INR {product.price}</td>
-                <td>{product.stock}</td>
-                <td>{product.supplier?.name || "-"}</td>
-                <td>
-                  <button className="btn btn-primary btn-sm me-2" onClick={() => startEdit(product)}>
-                    Edit
-                  </button>
-                  <button className="btn btn-danger btn-sm" onClick={() => deleteProduct(product._id)}>
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {filteredProducts.map((product) => {
+              const stockValue = Number(product.stock || 0);
+              const isLowStock = stockValue <= LOW_STOCK_THRESHOLD;
+              return (
+                <tr key={product._id} className={isLowStock ? "table-danger" : undefined}>
+                  <td>{product.image ? <img src={getImageUrl(product.image)} width="60" alt={product.name} /> : "-"}</td>
+                  <td>{product.name}</td>
+                  <td>{product.category}</td>
+                  <td>INR {product.price}</td>
+                  <td>
+                    {product.stock}
+                    {isLowStock && (
+                      <span className="badge bg-warning text-dark ms-2">Low</span>
+                    )}
+                  </td>
+                  <td>{product.supplier?.name || "-"}</td>
+                  <td>
+                    <button className="btn btn-primary btn-sm me-2" onClick={() => startEdit(product)}>
+                      Edit
+                    </button>
+                    <button className="btn btn-danger btn-sm" onClick={() => deleteProduct(product._id)}>
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}

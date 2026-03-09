@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { FaPlus, FaTimes } from "react-icons/fa";
 import API from "../../api";
 import { downloadCsv, inDateRange } from "../../utils/adminHelpers";
+import { toast } from "react-toastify";
 
 const initialForm = {
   title: "",
@@ -36,7 +37,7 @@ const ManageOffers = () => {
       const { data } = await API.get("/offers");
       setOffers(Array.isArray(data) ? data : []);
     } catch {
-      alert("Failed to load offers");
+      toast.error("Failed to load offers");
       setOffers([]);
     } finally {
       if (showLoader) setLoading(false);
@@ -85,7 +86,7 @@ const ManageOffers = () => {
     const payload = buildPayload();
 
     if (!payload.title || !payload.code || payload.discountValue <= 0) {
-      alert("Title, code and discount value are required");
+      toast.warning("Title, code and discount value are required");
       return;
     }
 
@@ -99,7 +100,7 @@ const ManageOffers = () => {
       resetForm();
       fetchOffers(false);
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to save offer");
+      toast.error(error.response?.data?.message || "Failed to save offer");
     } finally {
       setSubmitting(false);
     }
@@ -128,7 +129,7 @@ const ManageOffers = () => {
       await API.delete(`/offers/${id}`);
       fetchOffers(false);
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to delete offer");
+      toast.error(error.response?.data?.message || "Failed to delete offer");
     }
   };
 
@@ -137,7 +138,7 @@ const ManageOffers = () => {
       await API.put(`/offers/${offer._id}`, { isActive: !offer.isActive });
       fetchOffers(false);
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to update offer status");
+      toast.error(error.response?.data?.message || "Failed to update offer status");
     }
   };
 

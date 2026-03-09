@@ -5,8 +5,6 @@ import {
   CartesianGrid,
   Cell,
   Legend,
-  Line,
-  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -107,10 +105,23 @@ const Dashboard = () => {
 
   const lowStockConditionedData = useMemo(() => {
     if (lowStockCondition === "out") return lowStockData.filter((item) => item.stock === 0);
-    if (lowStockCondition === "critical") return lowStockData.filter((item) => item.stock > 0 && item.stock <= 2);
-    if (lowStockCondition === "reorder") return lowStockData.filter((item) => item.stock >= 3 && item.stock <= 5);
+    if (lowStockCondition === "critical") return lowStockData.filter((item) => item.stock > 0 && item.stock <= 3);
+    if (lowStockCondition === "reorder") return lowStockData.filter((item) => item.stock >= 4 && item.stock <= 10);
     return lowStockData;
   }, [lowStockData, lowStockCondition]);
+
+  const lowStockChartData = useMemo(
+    () =>
+      [...lowStockConditionedData]
+        .sort((a, b) => a.stock - b.stock)
+        .slice(0, 10)
+        .map((item) => ({
+          ...item,
+          shortName: item.name.length > 16 ? `${item.name.slice(0, 16)}...` : item.name,
+          severity: item.stock === 0 ? "out" : item.stock <= 3 ? "critical" : "reorder",
+        })),
+    [lowStockConditionedData]
+  );
 
   const inventorySnapshot = useMemo(
     () => [
@@ -341,8 +352,8 @@ const Dashboard = () => {
                   >
                     <option value="all">All Low Stock</option>
                     <option value="out">Out of Stock</option>
-                    <option value="critical">Critical (1-2)</option>
-                    <option value="reorder">Reorder (3-5)</option>
+                    <option value="critical">Critical (1-3)</option>
+                    <option value="reorder">Low (4-10)</option>
                   </select>
                 </div>
                 {lowStockConditionedData.length === 0 ? (
@@ -350,14 +361,30 @@ const Dashboard = () => {
                 ) : (
                   <div className="dashboard-chart">
                     <ResponsiveContainer>
-                      <LineChart data={lowStockConditionedData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
+                      <BarChart
+                        data={lowStockChartData}
+                        layout="vertical"
+                        margin={{ top: 8, right: 18, left: 10, bottom: 8 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                        <XAxis type="number" />
+                        <YAxis dataKey="shortName" type="category" width={130} tick={{ fontSize: 12 }} />
                         <Tooltip />
-                        <Legend />
-                        <Line type="monotone" dataKey="stock" name="Stock" stroke="#dc2626" strokeWidth={2.5} />
-                      </LineChart>
+                        <Bar dataKey="stock" name="Stock Units" radius={[0, 8, 8, 0]} barSize={22}>
+                          {lowStockChartData.map((item) => (
+                            <Cell
+                              key={`${item.name}-${item.stock}`}
+                              fill={
+                                item.severity === "out"
+                                  ? "#dc2626"
+                                  : item.severity === "critical"
+                                    ? "#f97316"
+                                    : "#f59e0b"
+                              }
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
                     </ResponsiveContainer>
                   </div>
                 )}

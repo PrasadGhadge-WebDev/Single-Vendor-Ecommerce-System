@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { FaPlus, FaTimes } from "react-icons/fa";
 import API from "../../api";
 import { downloadCsv, inDateRange } from "../../utils/adminHelpers";
+import { toast } from "react-toastify";
 
 const supplierInitialForm = {
   name: "",
@@ -98,7 +99,7 @@ const ManageSuppliers = () => {
       await Promise.all([fetchSuppliers(), fetchProducts(), fetchPurchases(), fetchAnalytics()]);
     } catch (error) {
       console.error("Supplier data load error:", error);
-      alert(error.response?.data?.message || "Failed to load supplier module data");
+      toast.error(error.response?.data?.message || "Failed to load  data");
     } finally {
       if (showLoader) setLoading(false);
     }
@@ -145,10 +146,29 @@ const ManageSuppliers = () => {
     setShowSupplierForm(false);
   };
 
+  const toggleSupplierForm = () => {
+    if (activeModuleSection !== "suppliers") {
+      setActiveModuleSection("suppliers");
+      setShowSupplierForm(true);
+      setEditingSupplierId(null);
+      setSupplierForm(supplierInitialForm);
+      return;
+    }
+
+    setShowSupplierForm((prev) => {
+      const next = !prev;
+      if (!next) {
+        setSupplierForm(supplierInitialForm);
+        setEditingSupplierId(null);
+      }
+      return next;
+    });
+  };
+
   const onSaveSupplier = async (e) => {
     e.preventDefault();
     if (!supplierForm.name.trim()) {
-      alert("Supplier name is required");
+      toast.warning("Supplier name is required");
       return;
     }
 
@@ -161,9 +181,10 @@ const ManageSuppliers = () => {
       }
       await fetchSuppliers();
       await fetchAnalytics();
+      toast.success(editingSupplierId ? "Supplier updated" : "Supplier created");
       resetSupplierForm();
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to save supplier");
+      toast.error(error.response?.data?.message || "Failed to save supplier");
     } finally {
       setSavingSupplier(false);
     }
@@ -192,7 +213,7 @@ const ManageSuppliers = () => {
         setSelectedSupplierId("");
       }
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to delete supplier");
+      toast.error(error.response?.data?.message || "Failed to delete supplier");
     }
   };
 
@@ -202,7 +223,7 @@ const ManageSuppliers = () => {
     const qty = Number(purchaseForm.quantity);
     const cost = Number(purchaseForm.unitCost);
     if (!purchaseForm.supplierId || !purchaseForm.productId || qty <= 0 || Number.isNaN(cost) || cost < 0) {
-      alert("Supplier, product, quantity and unit cost are required");
+      toast.warning("Supplier, product, quantity and unit cost are required");
       return;
     }
 
@@ -219,7 +240,7 @@ const ManageSuppliers = () => {
         await fetchSupplierProducts(selectedSupplierId);
       }
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to create purchase");
+      toast.error(error.response?.data?.message || "Failed to create purchase");
     } finally {
       setSavingPurchase(false);
     }
@@ -278,20 +299,35 @@ const ManageSuppliers = () => {
   };
 
   return (
+    
     <div className="container-fluid">
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h3 className="mb-0">Supplier Module</h3>
+      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
+        <div>
+          <h3 className="mb-1">Supplier Module</h3>
+          <div className="d-flex flex-wrap gap-2">
+            {[
+              { value: "record-purchase", label: "Record Purchase" },
+              { value: "suppliers", label: "Suppliers" },
+              { value: "recent-purchases", label: "Recent Purchases" },
+              { value: "product-source", label: "Product Source Tracking" },
+            ].map((section) => (
+              <button
+                key={section.value}
+                type="button"
+                className={`btn btn-sm ${activeModuleSection === section.value ? "btn-primary" : "btn-outline-secondary"}`}
+                onClick={() => setActiveModuleSection(section.value)}
+              >
+                {section.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        
         <div className="d-flex gap-2">
           <button
             type="button"
             className="btn btn-success btn-sm d-inline-flex align-items-center gap-1"
-            onClick={() => {
-              setShowSupplierForm((prev) => !prev);
-              if (showSupplierForm) {
-                setSupplierForm(supplierInitialForm);
-                setEditingSupplierId(null);
-              }
-            }}
+            onClick={toggleSupplierForm}
             aria-label={showSupplierForm ? "Close supplier form" : "Open supplier form"}
             title={showSupplierForm ? "Close supplier form" : "Add supplier"}
           >
@@ -308,81 +344,7 @@ const ManageSuppliers = () => {
           </button>
         </div>
       </div>
-
-      {loading ? (
-        <p>Loading supplier module...</p>
-      ) : (
-        <>
-          <div className="card p-3 mb-3">
-            <div className="row g-2">
-              <div className="col-md-3">
-                <input className="form-control" placeholder="Search supplier" value={supplierSearch} onChange={(e) => setSupplierSearch(e.target.value)} />
-              </div>
-              <div className="col-md-2">
-                <select className="form-select" value={supplierStatusFilter} onChange={(e) => setSupplierStatusFilter(e.target.value)}>
-                  <option value="all">All Supplier Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-              <div className="col-md-2">
-                <input type="datetime-local" className="form-control" value={supplierDateFrom} onChange={(e) => setSupplierDateFrom(e.target.value)} />
-              </div>
-              <div className="col-md-2">
-                <input type="datetime-local" className="form-control" value={supplierDateTo} onChange={(e) => setSupplierDateTo(e.target.value)} />
-              </div>
-              <div className="col-md-2">
-                <select className="form-select" value={purchaseSupplierFilter} onChange={(e) => setPurchaseSupplierFilter(e.target.value)}>
-                  <option value="all">All Purchase Suppliers</option>
-                  {suppliers.map((supplier) => (
-                    <option key={supplier._id} value={supplier._id}>
-                      {supplier.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-md-1 d-flex align-items-center">
-                <div className="form-check">
-                  <input
-                    id="suppliersAutoRefresh"
-                    className="form-check-input"
-                    type="checkbox"
-                    checked={autoRefresh}
-                    onChange={(e) => setAutoRefresh(e.target.checked)}
-                  />
-                  <label className="form-check-label" htmlFor="suppliersAutoRefresh">
-                    Auto
-                  </label>
-                </div>
-              </div>
-            </div>
-            <div className="row g-2 mt-1">
-              <div className="col-md-2">
-                <input type="datetime-local" className="form-control" value={purchaseDateFrom} onChange={(e) => setPurchaseDateFrom(e.target.value)} />
-              </div>
-              <div className="col-md-2">
-                <input type="datetime-local" className="form-control" value={purchaseDateTo} onChange={(e) => setPurchaseDateTo(e.target.value)} />
-              </div>
-              <div className="col-md-8 text-end">
-                <button
-                  className="btn btn-outline-secondary btn-sm"
-                  onClick={() => {
-                    setSupplierSearch("");
-                    setSupplierStatusFilter("all");
-                    setSupplierDateFrom("");
-                    setSupplierDateTo("");
-                    setPurchaseSupplierFilter("all");
-                    setPurchaseDateFrom("");
-                    setPurchaseDateTo("");
-                  }}
-                >
-                  Reset Filters
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="row g-3 mb-4">
+         <div className="row g-3 mb-4">
             <div className="col-md-3">
               <div className="card p-3 h-100">
                 <small className="text-muted">Suppliers</small>
@@ -409,24 +371,107 @@ const ManageSuppliers = () => {
             </div>
           </div>
 
-          <div className="card p-3 mt-4">
-            <div className="row g-2 align-items-end">
-              <div className="col-md-4">
-                <label className="form-label mb-1">Supplier Module Sections</label>
-                <select
-                  className="form-select"
-                  value={activeModuleSection}
-                  onChange={(e) => setActiveModuleSection(e.target.value)}
-                >
-                  <option value="">Select section</option>
-                  <option value="record-purchase">Record Purchase (Inventory Tracking)</option>
-                  <option value="suppliers">Suppliers</option>
-                  <option value="recent-purchases">Recent Purchases</option>
-                  <option value="product-source">Product Source Tracking</option>
-                </select>
+      {loading ? (
+        <p>Loading supplier module...</p>
+      ) : (
+        <>
+          {!activeModuleSection ? (
+            <div className="card p-3 mb-3">
+              <p className="mb-0 text-muted">Choose a module option above to view its filters and data.</p>
+            </div>
+          ) : activeModuleSection === "suppliers" ? (
+            <div className="card p-3 mb-3">
+              <h5 className="mb-3">Supplier Filters</h5>
+              <div className="row g-2">
+                <div className="col-12">
+                  <input
+                    className="form-control"
+                    placeholder="Search supplier"
+                    value={supplierSearch}
+                    onChange={(e) => setSupplierSearch(e.target.value)}
+                  />
+                </div>
+                <div className="col-md-6">
+                  <select className="form-select" value={supplierStatusFilter} onChange={(e) => setSupplierStatusFilter(e.target.value)}>
+                    <option value="all">All Supplier Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+                <div className="col-md-6">
+                  <div className="row g-2">
+                    <div className="col-md-6">
+                      <input type="datetime-local" className="form-control" value={supplierDateFrom} onChange={(e) => setSupplierDateFrom(e.target.value)} />
+                    </div>
+                    <div className="col-md-6">
+                      <input type="datetime-local" className="form-control" value={supplierDateTo} onChange={(e) => setSupplierDateTo(e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+                <div className="col-12 text-end">
+                  <button
+                    className="btn btn-outline-secondary btn-sm"
+                    onClick={() => {
+                      setSupplierSearch("");
+                      setSupplierStatusFilter("all");
+                      setSupplierDateFrom("");
+                      setSupplierDateTo("");
+                    }}
+                  >
+                    Reset Supplier Filters
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="card p-3 mb-3">
+              <h5 className="mb-3">Purchase Filters</h5>
+              <div className="row g-2 align-items-center">
+                <div className="col-md-12">
+                  <select className="form-select" value={purchaseSupplierFilter} onChange={(e) => setPurchaseSupplierFilter(e.target.value)}>
+                    <option value="all">All Purchase Suppliers</option>
+                    {suppliers.map((supplier) => (
+                      <option key={supplier._id} value={supplier._id}>
+                        {supplier.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-md-6">
+                  <input type="datetime-local" className="form-control" value={purchaseDateFrom} onChange={(e) => setPurchaseDateFrom(e.target.value)} />
+                </div>
+                <div className="col-md-6">
+                  <input type="datetime-local" className="form-control" value={purchaseDateTo} onChange={(e) => setPurchaseDateTo(e.target.value)} />
+                </div>
+                <div className="col-md-6">
+                  <div className="form-check">
+                    <input
+                      id="suppliersAutoRefresh"
+                      className="form-check-input"
+                      type="checkbox"
+                      checked={autoRefresh}
+                      onChange={(e) => setAutoRefresh(e.target.checked)}
+                    />
+                    <label className="form-check-label" htmlFor="suppliersAutoRefresh">
+                      Auto refresh
+                    </label>
+                  </div>
+                </div>
+                <div className="col-md-6 text-end">
+                  <button
+                    className="btn btn-outline-secondary btn-sm"
+                    onClick={() => {
+                      setPurchaseSupplierFilter("all");
+                      setPurchaseDateFrom("");
+                      setPurchaseDateTo("");
+                    }}
+                  >
+                    Reset Purchase Filters
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {activeModuleSection === "record-purchase" && (
             <div className="card p-3 mt-4">
@@ -609,25 +654,41 @@ const ManageSuppliers = () => {
           )}
 
           {activeModuleSection === "product-source" && (
-            <div className="card p-3 mt-4">
-              <div className="d-flex justify-content-between align-items-center mb-2">
-                <h5 className="mb-0">Product Source Tracking</h5>
-                <button className="btn btn-outline-primary btn-sm" onClick={exportSupplierProducts}>
-                  Export Sources
-                </button>
-              </div>
-              <select className="form-select mb-3" value={selectedSupplierId} onChange={(e) => setSelectedSupplierId(e.target.value)}>
-                <option value="">Select supplier</option>
-                {suppliers.map((supplier) => (
-                  <option key={supplier._id} value={supplier._id}>
-                    {supplier.name}
-                  </option>
-                ))}
-              </select>
+              <div className="card p-3 mt-4">
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <h5 className="mb-0">Product Source Tracking</h5>
+                  <button className="btn btn-outline-primary btn-sm" onClick={exportSupplierProducts}>
+                    Export Sources
+                  </button>
+                </div>
+                <div className="dropdown mb-3">
+                  <button
+                    className="btn btn-outline-secondary dropdown-toggle w-100 text-start"
+                    type="button"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                  >
+                    {selectedSupplier ? selectedSupplier.name : "Select supplier"}
+                  </button>
+                  <ul className="dropdown-menu w-100">
+                    <li>
+                      <button className="dropdown-item" type="button" onClick={() => setSelectedSupplierId("")}>
+                        Select supplier
+                      </button>
+                    </li>
+                    {suppliers.map((supplier) => (
+                      <li key={supplier._id}>
+                        <button className="dropdown-item" type="button" onClick={() => setSelectedSupplierId(supplier._id)}>
+                          {supplier.name}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
 
-              {!selectedSupplier ? (
-                <p className="text-muted mb-0">Select a supplier to view sourced products.</p>
-              ) : supplierProducts.length === 0 ? (
+                {!selectedSupplier ? (
+                  <p className="text-muted mb-0">Select a supplier to view sourced products.</p>
+                ) : supplierProducts.length === 0 ? (
                 <p className="text-muted mb-0">No products linked with this supplier.</p>
               ) : (
                 <div className="table-responsive">

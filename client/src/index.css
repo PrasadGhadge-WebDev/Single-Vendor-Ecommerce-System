@@ -20,6 +20,12 @@
   --navbar-btn-hover-text: #f8fafc;
 
   --accent-color: #2563eb;
+  --cart-btn-bg: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%);
+  --cart-btn-hover: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+  --cart-btn-text: #eff6ff;
+  --buy-btn-bg: linear-gradient(135deg, #c2410c 0%, #ea580c 100%);
+  --buy-btn-hover: linear-gradient(135deg, #9a3412 0%, #c2410c 100%);
+  --buy-btn-text: #fff7ed;
 
   --search-bg: #ffffff;
   --search-border: #cbd5e1;
@@ -58,6 +64,12 @@
   --navbar-btn-hover-text: #0b1220;
 
   --accent-color: #22d3ee;
+  --cart-btn-bg: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  --cart-btn-hover: linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%);
+  --cart-btn-text: #eff6ff;
+  --buy-btn-bg: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+  --buy-btn-hover: linear-gradient(135deg, #c2410c 0%, #9a3412 100%);
+  --buy-btn-text: #fff7ed;
 
   --search-bg: rgba(15, 23, 42, 0.55);
   --search-border: rgba(148, 163, 184, 0.3);
@@ -159,4 +171,49 @@ small.text-muted {
 .shadow-sm,
 .shadow {
   box-shadow: 0 8px 20px var(--shadow-color) !important;
+}
+
+.btn-cart-action {
+  background: var(--cart-btn-bg) !important;
+  border-color: transparent !important;
+  color: var(--cart-btn-text) !important;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.btn-cart-action:hover {
+  background: var(--cart-btn-hover) !important;
+  border-color: transparent !important;
+}
+
+.btn-buy-action {
+  background: var(--buy-btn-bg) !important;
+  border-color: transparent !important;
+  color: var(--buy-btn-text) !important;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.btn-buy-action:hover {
+  background: var(--buy-btn-hover) !important;
+  border-color: transparent !important;
+}
+
+.btn-cart-action,
+.btn-buy-action {
+  transition: transform 0.18s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.14);
+}
+
+.btn-cart-action:hover,
+.btn-buy-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.2);
+  filter: saturate(1.05);
+}
+
+.btn-cart-action:focus-visible,
+.btn-buy-action:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(14, 165, 233, 0.28), 0 8px 18px rgba(15, 23, 42, 0.2);
 }

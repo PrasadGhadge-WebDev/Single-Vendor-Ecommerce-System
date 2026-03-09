@@ -291,7 +291,7 @@ exports.getSupplierAnalytics = async (req, res) => {
       totalPurchaseAmount: 0,
     };
 
-    const lowStockProducts = await Product.find({ stock: { $lte: 5 } })
+    const lowStockProducts = await Product.find({ stock: { $lte: 10 } })
       .select("name stock supplier")
       .populate("supplier", "name")
       .sort({ stock: 1 })

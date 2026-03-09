@@ -112,10 +112,10 @@ const Shop = () => {
                     <p className="card-text mb-3">INR {product.price}</p>
 
                     <div className="d-grid gap-2 mt-auto">
-                      <button className="btn btn-primary" onClick={() => addToCart(product)}>
+                      <button className="btn btn-cart-action" onClick={() => addToCart(product)}>
                         Add to Cart
                       </button>
-                      <button className="btn btn-warning" onClick={() => handleBuyNow(product)}>
+                      <button className="btn btn-buy-action" onClick={() => handleBuyNow(product)}>
                         Buy Now
                       </button>
                     </div>

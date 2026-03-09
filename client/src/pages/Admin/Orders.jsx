@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from "react";
 import API from "../../api";
 import { AuthContext } from "../../context/AuthContext";
 import { downloadCsv, inDateRange } from "../../utils/adminHelpers";
+import { toast } from "react-toastify";
 
 const Orders = () => {
   const { user } = useContext(AuthContext);
@@ -32,7 +33,7 @@ const Orders = () => {
       await API.put(`/orders/${orderId}`, { status });
       fetchOrders(false);
     } catch (error) {
-      alert("Error updating status: " + (error.response?.data?.message || error.message));
+      toast.error("Error updating status: " + (error.response?.data?.message || error.message));
     }
   };
 

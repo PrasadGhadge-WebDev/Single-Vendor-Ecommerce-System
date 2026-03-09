@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext } from "react";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
+import { toast } from "react-toastify";
 
 const UserOrders = () => {
   const { user } = useContext(AuthContext);
@@ -24,10 +25,10 @@ const UserOrders = () => {
     const reason = window.prompt("Cancellation reason (optional):", "");
     try {
       await API.put(`/orders/${orderId}/cancel`, { reason: reason || "" });
-      alert("Order cancelled successfully");
+      toast.success("Order cancelled successfully");
       fetchOrders();
     } catch (error) {
-      alert("Cancel failed: " + (error.response?.data?.message || error.message));
+      toast.error("Cancel failed: " + (error.response?.data?.message || error.message));
     }
   };
 

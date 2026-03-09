@@ -31,7 +31,7 @@ const ProductCard = ({ product }) => {
 
           <p className="text-success fw-bold">INR {product.price}</p>
 
-          <button className="btn btn-warning btn-sm" onClick={() => addToCart(product._id)}>
+          <button className="btn btn-sm btn-cart-action" onClick={() => addToCart(product._id)}>
             Add to Cart
           </button>
         </div>

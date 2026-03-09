@@ -3,6 +3,7 @@ import API from "../api";
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "./Register.css";
+import { toast } from "react-toastify";
 
 const Register = () => {
   const [form, setForm] = useState({
@@ -23,7 +24,7 @@ const Register = () => {
 
     try {
       await API.post("/auth/register", form, { headers: { "Content-Type": "application/json" } });
-      alert("Registered Successfully");
+      toast.success("Registered successfully");
       navigate("/login");
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed");

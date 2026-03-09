@@ -3,6 +3,7 @@ import { FaPlus, FaTimes } from "react-icons/fa";
 import API from "../../api";
 import { AuthContext } from "../../context/AuthContext";
 import { downloadCsv, inDateRange } from "../../utils/adminHelpers";
+import { toast } from "react-toastify";
 
 const ManageUsers = () => {
   const { user } = useContext(AuthContext);
@@ -48,7 +49,7 @@ const ManageUsers = () => {
       await API.delete(`/users/${id}`);
       setUsers((prev) => prev.filter((current) => current._id !== id));
     } catch (err) {
-      alert("Error deleting user: " + (err.response?.data?.message || err.message));
+      toast.error("Error deleting user: " + (err.response?.data?.message || err.message));
     }
   };
 
@@ -60,7 +61,7 @@ const ManageUsers = () => {
       setShowCreateForm(false);
       fetchUsers(false);
     } catch (err) {
-      alert("Error creating user: " + (err.response?.data?.message || err.message));
+      toast.error("Error creating user: " + (err.response?.data?.message || err.message));
     }
   };
 
