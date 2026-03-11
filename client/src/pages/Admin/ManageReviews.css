@@ -1,0 +1,133 @@
+.review-module-header {
+  background: linear-gradient(135deg, #07214a 0%, #0f4d92 100%);
+  color: white;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 15px 40px rgba(7, 33, 74, 0.35);
+}
+.review-module-header h3 {
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+.review-module-header p {
+  opacity: 0.8;
+}
+.stats-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.stats-card {
+  flex: 1 1 220px;
+  background: #fff;
+  border-radius: 1rem;
+  padding: 1.25rem;
+  box-shadow: 0 15px 30px rgba(15, 77, 146, 0.15);
+  border: 1px solid #e9ecef;
+}
+.stats-card .label {
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+.stats-card .value {
+  font-size: 2rem;
+  font-weight: 600;
+}
+.card-panel {
+  border-radius: 1rem;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 10px 30px rgba(15, 77, 146, 0.12);
+}
+.rating-distribution {
+  margin-top: 1.25rem;
+}
+.rating-distribution .distribution-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.rating-distribution progress,
+.rating-distribution .progress {
+  height: 0.45rem;
+  border-radius: 0.25rem;
+  overflow: hidden;
+  width: 100%;
+  background: #e9ecef;
+}
+.rating-distribution .progress-bar {
+  background: #ff9900;
+}
+.review-card {
+  border-radius: 1rem;
+  border: 1px solid #e9ecef;
+  transition: transform 0.2s ease;
+  min-height: 100%;
+}
+.review-card:hover {
+  transform: translateY(-4px);
+}
+.review-card .card-body {
+  padding: 1.5rem;
+}
+.review-card .review-actions button {
+  min-width: 38px;
+}
+.review-card .review-comment {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #4b5563;
+}
+.review-card .review-meta {
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+.review-card .review-rating-group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.review-card-edit {
+  background: #f8f9fa;
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+.review-card-edit .form-control {
+  border-radius: 0.5rem;
+}
+.review-card-edit .btn + .btn {
+  margin-left: 0.35rem;
+}
+.suggestion-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.suggestion-pill {
+  border-radius: 999px;
+  padding: 0.25rem 0.85rem;
+  font-size: 0.85rem;
+  border: 1px solid #ced4da;
+  background: #f8f9fa;
+  color: #495057;
+  cursor: pointer;
+}
+.suggestion-pill.active {
+  background: #0f4d92;
+  color: white;
+  border-color: #0f4d92;
+}
+.suggestion-pill.empty {
+  cursor: default;
+  border-color: transparent;
+  background: transparent;
+}
+@media (max-width: 768px) {
+  .stats-card,
+  .card-panel {
+    border-radius: 0.75rem;
+  }
+  .review-card .card-body {
+    padding: 1rem;
+  }
+}

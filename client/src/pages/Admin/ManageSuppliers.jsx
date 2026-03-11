@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FaPlus, FaTimes } from "react-icons/fa";
 import API from "../../api";
 import { downloadCsv, inDateRange } from "../../utils/adminHelpers";
 import { toast } from "react-toastify";
+import Pagination from "../../components/Pagination";
 
 const supplierInitialForm = {
   name: "",
@@ -23,6 +24,8 @@ const purchaseInitialForm = {
   paymentStatus: "PENDING",
   notes: "",
 };
+const SUPPLIERS_PER_PAGE = 12;
+const PURCHASES_PER_PAGE = 10;
 
 const ManageSuppliers = () => {
   const [suppliers, setSuppliers] = useState([]);
@@ -44,9 +47,22 @@ const ManageSuppliers = () => {
   const [supplierStatusFilter, setSupplierStatusFilter] = useState("all");
   const [supplierDateFrom, setSupplierDateFrom] = useState("");
   const [supplierDateTo, setSupplierDateTo] = useState("");
+  const [supplierPage, setSupplierPage] = useState(1);
   const [purchaseSupplierFilter, setPurchaseSupplierFilter] = useState("all");
   const [purchaseDateFrom, setPurchaseDateFrom] = useState("");
   const [purchaseDateTo, setPurchaseDateTo] = useState("");
+  const [purchasePage, setPurchasePage] = useState(1);
+  const [purchaseSupplierFilterSearch, setPurchaseSupplierFilterSearch] = useState("");
+  const [purchaseSupplierFormSearch, setPurchaseSupplierFormSearch] = useState("");
+  const [purchaseProductFormSearch, setPurchaseProductFormSearch] = useState("");
+  const [productSourceProductSearch, setProductSourceProductSearch] = useState("");
+  const [productSourceSupplierSearch, setProductSourceSupplierSearch] = useState("");
+  const [showFilterSupplierSuggestions, setShowFilterSupplierSuggestions] = useState(false);
+  const [showSupplierSuggestions, setShowSupplierSuggestions] = useState(false);
+  const [showProductSuggestions, setShowProductSuggestions] = useState(false);
+  const filterSupplierSuggestionTimeout = useRef(null);
+  const supplierSuggestionTimeout = useRef(null);
+  const productSuggestionTimeout = useRef(null);
 
   const [supplierForm, setSupplierForm] = useState(supplierInitialForm);
   const [purchaseForm, setPurchaseForm] = useState(purchaseInitialForm);
@@ -119,6 +135,15 @@ const ManageSuppliers = () => {
       console.error(error);
       setSupplierProducts([]);
     });
+  }, [selectedSupplierId]);
+
+  useEffect(() => {
+    const selectedSupplier = suppliers.find((supplier) => supplier._id === selectedSupplierId);
+    setProductSourceSupplierSearch(selectedSupplier?.name || "");
+  }, [selectedSupplierId, suppliers]);
+
+  useEffect(() => {
+    setProductSourceProductSearch("");
   }, [selectedSupplierId]);
 
   useEffect(() => {
@@ -235,6 +260,9 @@ const ManageSuppliers = () => {
         unitCost: cost,
       });
       setPurchaseForm(purchaseInitialForm);
+      setPurchaseSupplierFormSearch("");
+      setPurchaseProductFormSearch("");
+      setPurchaseSupplierFilterSearch("");
       await Promise.all([fetchPurchases(), fetchProducts(), fetchAnalytics()]);
       if (selectedSupplierId) {
         await fetchSupplierProducts(selectedSupplierId);
@@ -257,6 +285,170 @@ const ManageSuppliers = () => {
       return haystack.includes(term);
     });
   }, [suppliers, supplierSearch, supplierStatusFilter, supplierDateFrom, supplierDateTo]);
+
+  useEffect(() => {
+    setSupplierPage(1);
+  }, [supplierSearch, supplierStatusFilter, supplierDateFrom, supplierDateTo]);
+
+  const totalSupplierPages = Math.max(1, Math.ceil(filteredSuppliers.length / SUPPLIERS_PER_PAGE));
+
+  useEffect(() => {
+    if (supplierPage > totalSupplierPages) {
+      setSupplierPage(totalSupplierPages);
+    }
+  }, [supplierPage, totalSupplierPages]);
+
+  const paginatedSuppliers = useMemo(() => {
+    const startIndex = (supplierPage - 1) * SUPPLIERS_PER_PAGE;
+    return filteredSuppliers.slice(startIndex, startIndex + SUPPLIERS_PER_PAGE);
+  }, [filteredSuppliers, supplierPage]);
+
+  useEffect(() => {
+    setPurchasePage((prev) => (prev === 1 ? prev : 1));
+  }, [purchaseDateFrom, purchaseDateTo, purchaseSupplierFilter, purchases.length]);
+
+  const totalPurchasePages = Math.max(1, Math.ceil(purchases.length / PURCHASES_PER_PAGE));
+
+  useEffect(() => {
+    if (purchasePage > totalPurchasePages) {
+      setPurchasePage(totalPurchasePages);
+    }
+  }, [purchasePage, totalPurchasePages]);
+
+  const paginatedPurchases = useMemo(() => {
+    const startIndex = (purchasePage - 1) * PURCHASES_PER_PAGE;
+    return purchases.slice(startIndex, startIndex + PURCHASES_PER_PAGE);
+  }, [purchases, purchasePage]);
+
+  const supplierSearchOptions = useMemo(() => {
+    const term = purchaseSupplierFormSearch.trim().toLowerCase();
+    if (!term) return [];
+    return suppliers.filter((supplier) => supplier.name?.toLowerCase().includes(term));
+  }, [suppliers, purchaseSupplierFormSearch]);
+
+  const filterSupplierOptions = useMemo(() => {
+    const term = purchaseSupplierFilterSearch.trim().toLowerCase();
+    return suppliers.filter((supplier) => supplier.name?.toLowerCase().includes(term));
+  }, [suppliers, purchaseSupplierFilterSearch]);
+
+  const productSearchOptions = useMemo(() => {
+    const term = purchaseProductFormSearch.trim().toLowerCase();
+    if (!term) return [];
+    return products.filter((product) => product.name?.toLowerCase().includes(term));
+  }, [products, purchaseProductFormSearch]);
+
+  const selectedSupplierName = useMemo(() => {
+    const supplier = suppliers.find((row) => row._id === purchaseForm.supplierId);
+    return supplier?.name || "";
+  }, [suppliers, purchaseForm.supplierId]);
+
+  const selectedProductName = useMemo(() => {
+    const product = products.find((row) => row._id === purchaseForm.productId);
+    return product?.name || "";
+  }, [products, purchaseForm.productId]);
+
+  const handleSelectSupplierSuggestion = (supplier) => {
+    setPurchaseForm((prev) => ({ ...prev, supplierId: supplier._id }));
+    setPurchaseSupplierFormSearch(supplier.name || "");
+    setShowSupplierSuggestions(false);
+  };
+
+  const handleSelectProductSuggestion = (product) => {
+    setPurchaseForm((prev) => ({ ...prev, productId: product._id }));
+    setPurchaseProductFormSearch(product.name || "");
+    setShowProductSuggestions(false);
+  };
+
+  const handleSupplierInputFocus = () => {
+    if (supplierSuggestionTimeout.current) {
+      clearTimeout(supplierSuggestionTimeout.current);
+      supplierSuggestionTimeout.current = null;
+    }
+    setShowSupplierSuggestions(true);
+  };
+
+  const handleSupplierInputBlur = () => {
+    supplierSuggestionTimeout.current = setTimeout(() => {
+      setShowSupplierSuggestions(false);
+      supplierSuggestionTimeout.current = null;
+    }, 100);
+  };
+
+  const handleProductInputFocus = () => {
+    if (productSuggestionTimeout.current) {
+      clearTimeout(productSuggestionTimeout.current);
+      productSuggestionTimeout.current = null;
+    }
+    setShowProductSuggestions(true);
+  };
+
+  const handleProductInputBlur = () => {
+    productSuggestionTimeout.current = setTimeout(() => {
+      setShowProductSuggestions(false);
+      productSuggestionTimeout.current = null;
+    }, 100);
+  };
+
+  const handleFilterSupplierInputFocus = () => {
+    if (filterSupplierSuggestionTimeout.current) {
+      clearTimeout(filterSupplierSuggestionTimeout.current);
+      filterSupplierSuggestionTimeout.current = null;
+    }
+    setShowFilterSupplierSuggestions(true);
+  };
+
+  const handleFilterSupplierInputBlur = () => {
+    filterSupplierSuggestionTimeout.current = setTimeout(() => {
+      setShowFilterSupplierSuggestions(false);
+      filterSupplierSuggestionTimeout.current = null;
+    }, 100);
+  };
+
+  const handleProductSourceSupplierSearchChange = (value) => {
+    setProductSourceSupplierSearch(value);
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) {
+      setSelectedSupplierId("");
+      return;
+    }
+    const matched = suppliers.find((supplier) => (supplier.name || "").trim().toLowerCase() === normalized);
+    if (matched) {
+      setSelectedSupplierId(matched._id);
+    }
+  };
+
+  const filterSupplierSelectedName = useMemo(() => {
+    const supplier = suppliers.find((row) => row._id === purchaseSupplierFilter);
+    return supplier?.name || "";
+  }, [suppliers, purchaseSupplierFilter]);
+
+  const productSourceSuggestions = useMemo(() => {
+    if (!supplierProducts.length) return [];
+    const term = productSourceProductSearch.trim().toLowerCase();
+    const seen = new Set();
+    const suggestions = [];
+    for (const product of supplierProducts) {
+      const name = (product.name || "").trim();
+      if (!name) continue;
+      const normalized = name.toLowerCase();
+      if (term && !normalized.includes(term)) continue;
+      if (seen.has(name)) continue;
+      seen.add(name);
+      suggestions.push(name);
+      if (suggestions.length >= 10) break;
+    }
+    return suggestions;
+  }, [supplierProducts, productSourceProductSearch]);
+
+  const filteredSupplierProducts = useMemo(() => {
+    if (!supplierProducts.length) return [];
+    const term = productSourceProductSearch.trim().toLowerCase();
+    if (!term) return supplierProducts;
+    return supplierProducts.filter((product) => {
+      const searchable = `${product.name || ""} ${product.category || ""}`.toLowerCase();
+      return searchable.includes(term);
+    });
+  }, [supplierProducts, productSourceProductSearch]);
 
   const exportSuppliers = () => {
     downloadCsv(
@@ -331,7 +523,17 @@ const ManageSuppliers = () => {
             aria-label={showSupplierForm ? "Close supplier form" : "Open supplier form"}
             title={showSupplierForm ? "Close supplier form" : "Add supplier"}
           >
-            {showSupplierForm ? <FaTimes /> : <FaPlus />}
+            {showSupplierForm ? (
+              <>
+                <FaTimes />
+                <span>Close supplier form</span>
+              </>
+            ) : (
+              <>
+                <FaPlus />
+                <span>Add supplier</span>
+              </>
+            )}
           </button>
           <button className="btn btn-outline-primary btn-sm" onClick={() => fetchAll()}>
             Refresh
@@ -382,8 +584,8 @@ const ManageSuppliers = () => {
           ) : activeModuleSection === "suppliers" ? (
             <div className="card p-3 mb-3">
               <h5 className="mb-3">Supplier Filters</h5>
-              <div className="row g-2">
-                <div className="col-12">
+              <div className="row g-2 align-items-end">
+                <div className="col-12 col-md-4 col-lg-4">
                   <input
                     className="form-control"
                     placeholder="Search supplier"
@@ -391,24 +593,20 @@ const ManageSuppliers = () => {
                     onChange={(e) => setSupplierSearch(e.target.value)}
                   />
                 </div>
-                <div className="col-md-6">
+                <div className="col-6 col-md-2 col-lg-2">
                   <select className="form-select" value={supplierStatusFilter} onChange={(e) => setSupplierStatusFilter(e.target.value)}>
                     <option value="all">All Supplier Status</option>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                   </select>
                 </div>
-                <div className="col-md-6">
-                  <div className="row g-2">
-                    <div className="col-md-6">
-                      <input type="datetime-local" className="form-control" value={supplierDateFrom} onChange={(e) => setSupplierDateFrom(e.target.value)} />
-                    </div>
-                    <div className="col-md-6">
-                      <input type="datetime-local" className="form-control" value={supplierDateTo} onChange={(e) => setSupplierDateTo(e.target.value)} />
-                    </div>
-                  </div>
+                <div className="col-6 col-md-2 col-lg-2">
+                  <input type="datetime-local" className="form-control" value={supplierDateFrom} onChange={(e) => setSupplierDateFrom(e.target.value)} />
                 </div>
-                <div className="col-12 text-end">
+                <div className="col-6 col-md-2 col-lg-2">
+                  <input type="datetime-local" className="form-control" value={supplierDateTo} onChange={(e) => setSupplierDateTo(e.target.value)} />
+                </div>
+                <div className="col-6 col-md-2 col-lg-2 text-end">
                   <button
                     className="btn btn-outline-secondary btn-sm"
                     onClick={() => {
@@ -427,23 +625,47 @@ const ManageSuppliers = () => {
             <div className="card p-3 mb-3">
               <h5 className="mb-3">Purchase Filters</h5>
               <div className="row g-2 align-items-center">
-                <div className="col-md-12">
-                  <select className="form-select" value={purchaseSupplierFilter} onChange={(e) => setPurchaseSupplierFilter(e.target.value)}>
-                    <option value="all">All Purchase Suppliers</option>
-                    {suppliers.map((supplier) => (
-                      <option key={supplier._id} value={supplier._id}>
-                        {supplier.name}
-                      </option>
-                    ))}
-                  </select>
+                <div className="col-12 col-md-4 col-lg-4 position-relative">
+                  <input
+                    className="form-control form-control-sm mb-1"
+                    placeholder="Search supplier..."
+                    value={purchaseSupplierFilterSearch}
+                    onChange={(e) => setPurchaseSupplierFilterSearch(e.target.value)}
+                    onFocus={handleFilterSupplierInputFocus}
+                    onBlur={handleFilterSupplierInputBlur}
+                  />
+                  {purchaseSupplierFilterSearch.trim().length > 0 && showFilterSupplierSuggestions && filterSupplierOptions.length > 0 && (
+                    <div
+                      className="list-group position-absolute top-100 start-0 w-100 shadow-sm rounded overflow-hidden"
+                      style={{ zIndex: 800, maxHeight: "220px", overflowY: "auto" }}
+                    >
+                      {filterSupplierOptions.slice(0, 8).map((supplier) => (
+                        <button
+                          key={supplier._id}
+                          type="button"
+                          className="list-group-item list-group-item-action py-2 px-3"
+                          onMouseDown={() => {
+                            setPurchaseSupplierFilter(supplier._id);
+                            setPurchaseSupplierFilterSearch(supplier.name || "");
+                            setShowFilterSupplierSuggestions(false);
+                          }}
+                        >
+                          {supplier.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {purchaseSupplierFilter !== "all" && filterSupplierSelectedName && (
+                    <small className="text-muted d-block">Filtering by: {filterSupplierSelectedName}</small>
+                  )}
                 </div>
-                <div className="col-md-6">
+                <div className="col-6 col-md-2 col-lg-2">
                   <input type="datetime-local" className="form-control" value={purchaseDateFrom} onChange={(e) => setPurchaseDateFrom(e.target.value)} />
                 </div>
-                <div className="col-md-6">
+                <div className="col-6 col-md-2 col-lg-2">
                   <input type="datetime-local" className="form-control" value={purchaseDateTo} onChange={(e) => setPurchaseDateTo(e.target.value)} />
                 </div>
-                <div className="col-md-6">
+                <div className="col-6 col-md-2 col-lg-2">
                   <div className="form-check">
                     <input
                       id="suppliersAutoRefresh"
@@ -457,13 +679,15 @@ const ManageSuppliers = () => {
                     </label>
                   </div>
                 </div>
-                <div className="col-md-6 text-end">
+                <div className="col-6 col-md-2 col-lg-2 text-end">
                   <button
                     className="btn btn-outline-secondary btn-sm"
                     onClick={() => {
                       setPurchaseSupplierFilter("all");
                       setPurchaseDateFrom("");
                       setPurchaseDateTo("");
+                      setPurchaseSupplierFilterSearch("");
+                      setShowFilterSupplierSuggestions(false);
                     }}
                   >
                     Reset Purchase Filters
@@ -478,25 +702,69 @@ const ManageSuppliers = () => {
               <h5>Record Purchase (Inventory Tracking)</h5>
               <form onSubmit={onCreatePurchase}>
                 <div className="row g-2">
-                  <div className="col-md-6">
-                    <select className="form-select" name="supplierId" value={purchaseForm.supplierId} onChange={handlePurchaseChange} required>
-                      <option value="">Select supplier</option>
-                      {suppliers.map((supplier) => (
-                        <option key={supplier._id} value={supplier._id}>
-                          {supplier.name} {supplier.company ? `(${supplier.company})` : ""}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="col-md-6 position-relative">
+                    <input
+                      className="form-control form-control-sm mb-1"
+                      placeholder="Search supplier..."
+                      value={purchaseSupplierFormSearch}
+                      onChange={(e) => setPurchaseSupplierFormSearch(e.target.value)}
+                      onFocus={handleSupplierInputFocus}
+                      onBlur={handleSupplierInputBlur}
+                      required
+                    />
+                    <input type="hidden" name="supplierId" value={purchaseForm.supplierId} />
+                    {purchaseSupplierFormSearch.trim().length > 0 && showSupplierSuggestions && supplierSearchOptions.length > 0 && (
+                      <div
+                        className="list-group position-absolute top-100 start-0 w-100 shadow-sm rounded overflow-hidden"
+                        style={{ zIndex: 1000, maxHeight: "220px", overflowY: "auto" }}
+                      >
+                        {supplierSearchOptions.slice(0, 8).map((supplier) => (
+                          <button
+                            key={supplier._id}
+                            type="button"
+                            className="list-group-item list-group-item-action py-2 px-3"
+                            onMouseDown={() => handleSelectSupplierSuggestion(supplier)}
+                          >
+                            {supplier.name} {supplier.company ? `(${supplier.company})` : ""}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {selectedSupplierName && (
+                      <small className="text-muted d-block">Selected: {selectedSupplierName}</small>
+                    )}
                   </div>
-                  <div className="col-md-6">
-                    <select className="form-select" name="productId" value={purchaseForm.productId} onChange={handlePurchaseChange} required>
-                      <option value="">Select product</option>
-                      {products.map((product) => (
-                        <option key={product._id} value={product._id}>
-                          {product.name} (stock: {product.stock})
-                        </option>
-                      ))}
-                    </select>
+                  <div className="col-md-6 position-relative">
+                    <input
+                      className="form-control form-control-sm mb-1"
+                      placeholder="Search product..."
+                      value={purchaseProductFormSearch}
+                      onChange={(e) => setPurchaseProductFormSearch(e.target.value)}
+                      onFocus={handleProductInputFocus}
+                      onBlur={handleProductInputBlur}
+                      required
+                    />
+                    <input type="hidden" name="productId" value={purchaseForm.productId} />
+                    {purchaseProductFormSearch.trim().length > 0 && showProductSuggestions && productSearchOptions.length > 0 && (
+                      <div
+                        className="list-group position-absolute top-100 start-0 w-100 shadow-sm rounded overflow-hidden"
+                        style={{ zIndex: 1000, maxHeight: "220px", overflowY: "auto" }}
+                      >
+                        {productSearchOptions.slice(0, 8).map((product) => (
+                          <button
+                            key={product._id}
+                            type="button"
+                            className="list-group-item list-group-item-action py-2 px-3"
+                            onMouseDown={() => handleSelectProductSuggestion(product)}
+                          >
+                            {product.name} (stock: {product.stock})
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {selectedProductName && (
+                      <small className="text-muted d-block">Selected: {selectedProductName}</small>
+                    )}
                   </div>
                   <div className="col-md-4">
                     <input type="number" min="1" className="form-control" name="quantity" placeholder="Quantity" value={purchaseForm.quantity} onChange={handlePurchaseChange} required />
@@ -596,7 +864,7 @@ const ManageSuppliers = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredSuppliers.map((supplier) => (
+                        {paginatedSuppliers.map((supplier) => (
                           <tr key={supplier._id}>
                             <td>{supplier.name}</td>
                             <td>{supplier.company || "-"}</td>
@@ -617,41 +885,45 @@ const ManageSuppliers = () => {
                     </table>
                   </div>
                 )}
-              </div>
-            </>
+                </div>
+                <Pagination currentPage={supplierPage} totalPages={totalSupplierPages} onPageChange={setSupplierPage} />
+              </>
           )}
 
           {activeModuleSection === "recent-purchases" && (
             <div className="card p-3 mt-4">
               <h5>Recent Purchases</h5>
-              {purchases.length === 0 ? (
-                <p className="text-muted mb-0">No purchases yet.</p>
-              ) : (
-                <div className="table-responsive">
-                  <table className="table table-sm align-middle">
-                    <thead>
-                      <tr>
-                        <th>Supplier</th>
-                        <th>Product</th>
-                        <th>Qty</th>
-                        <th>Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {purchases.slice(0, 8).map((purchase) => (
-                        <tr key={purchase._id}>
-                          <td>{purchase.supplier?.name || "-"}</td>
-                          <td>{purchase.product?.name || "-"}</td>
-                          <td>{purchase.quantity}</td>
+            {purchases.length === 0 ? (
+              <p className="text-muted mb-0">No purchases yet.</p>
+            ) : (
+              <div className="table-responsive">
+                <table className="table table-sm align-middle">
+                  <thead>
+                    <tr>
+                      <th>Supplier</th>
+                      <th>Product</th>
+                      <th>Qty</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedPurchases.map((purchase) => (
+                      <tr key={purchase._id}>
+                        <td>{purchase.supplier?.name || "-"}</td>
+                        <td>{purchase.product?.name || "-"}</td>
+                        <td>{purchase.quantity}</td>
                           <td>INR {Number(purchase.totalCost || 0).toFixed(2)}</td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {purchases.length > 0 && (
+              <Pagination currentPage={purchasePage} totalPages={totalPurchasePages} onPageChange={setPurchasePage} />
+            )}
+          </div>
+        )}
 
           {activeModuleSection === "product-source" && (
               <div className="card p-3 mt-4">
@@ -661,35 +933,59 @@ const ManageSuppliers = () => {
                     Export Sources
                   </button>
                 </div>
-                <div className="dropdown mb-3">
-                  <button
-                    className="btn btn-outline-secondary dropdown-toggle w-100 text-start"
-                    type="button"
-                    data-bs-toggle="dropdown"
-                    aria-expanded="false"
-                  >
-                    {selectedSupplier ? selectedSupplier.name : "Select supplier"}
-                  </button>
-                  <ul className="dropdown-menu w-100">
-                    <li>
-                      <button className="dropdown-item" type="button" onClick={() => setSelectedSupplierId("")}>
-                        Select supplier
-                      </button>
-                    </li>
+                <div className="mb-3">
+                  <label className="form-label mb-1">Supplier</label>
+                  <input
+                    className="form-control"
+                    list="product-source-suppliers"
+                    placeholder="Search supplier..."
+                    value={productSourceSupplierSearch}
+                    onChange={(e) => handleProductSourceSupplierSearchChange(e.target.value)}
+                  />
+                  <datalist id="product-source-suppliers">
                     {suppliers.map((supplier) => (
-                      <li key={supplier._id}>
-                        <button className="dropdown-item" type="button" onClick={() => setSelectedSupplierId(supplier._id)}>
-                          {supplier.name}
-                        </button>
-                      </li>
+                      <option key={supplier._id} value={supplier.name || ""} />
                     ))}
-                  </ul>
+                  </datalist>
+                 
+                </div>
+
+                <div className="card bg-light border-0 mb-3">
+                  <div className="card-body p-3">
+                    <div className="row g-2 align-items-end">
+                      <div className="col-md-8">
+                        <label className="form-label mb-1">Product filter</label>
+                        <input
+                          type="text"
+                          list="product-source-products"
+                          className="form-control"
+                          placeholder="Search by product name"
+                          value={productSourceProductSearch}
+                          onChange={(e) => setProductSourceProductSearch(e.target.value)}
+                        />
+                        <datalist id="product-source-products">
+                          {productSourceSuggestions.map((name) => (
+                            <option key={name} value={name} />
+                          ))}
+                        </datalist>
+                      </div>
+                      <div className="col-md-4 text-end">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={() => setProductSourceProductSearch("")}
+                        >
+                          Reset
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {!selectedSupplier ? (
                   <p className="text-muted mb-0">Select a supplier to view sourced products.</p>
-                ) : supplierProducts.length === 0 ? (
-                <p className="text-muted mb-0">No products linked with this supplier.</p>
+                ) : filteredSupplierProducts.length === 0 ? (
+                <p className="text-muted mb-0">No products found for the selected filters.</p>
               ) : (
                 <div className="table-responsive">
                   <table className="table table-sm align-middle">
@@ -702,7 +998,7 @@ const ManageSuppliers = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {supplierProducts.map((product) => (
+                      {filteredSupplierProducts.map((product) => (
                         <tr key={product._id}>
                           <td>{product.name}</td>
                           <td>{product.category}</td>

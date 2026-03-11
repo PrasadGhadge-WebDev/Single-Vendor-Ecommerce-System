@@ -18,6 +18,12 @@ const reviewSchema = new mongoose.Schema(
       min: 1,
       max: 5,
     },
+    title: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 120,
+    },
     comment: {
       type: String,
       default: "",

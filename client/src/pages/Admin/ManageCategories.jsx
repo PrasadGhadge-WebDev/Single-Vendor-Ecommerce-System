@@ -4,6 +4,9 @@ import API, { getImageUrl } from "../../api";
 import { AuthContext } from "../../context/AuthContext";
 import { downloadCsv, inDateRange } from "../../utils/adminHelpers";
 import { toast } from "react-toastify";
+import Pagination from "../../components/Pagination";
+
+const CATEGORIES_PER_PAGE = 8;
 
 const ManageCategories = () => {
   const { user } = useContext(AuthContext);
@@ -16,6 +19,7 @@ const ManageCategories = () => {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
+  const [categoryPage, setCategoryPage] = useState(1);
 
   const [editCategoryId, setEditCategoryId] = useState(null);
   const [editCategoryName, setEditCategoryName] = useState("");
@@ -125,6 +129,23 @@ const ManageCategories = () => {
     });
   }, [categories, search, dateFrom, dateTo]);
 
+  useEffect(() => {
+    setCategoryPage(1);
+  }, [search, dateFrom, dateTo]);
+
+  const totalCategoryPages = Math.max(1, Math.ceil(filteredCategories.length / CATEGORIES_PER_PAGE));
+
+  useEffect(() => {
+    if (categoryPage > totalCategoryPages) {
+      setCategoryPage(totalCategoryPages);
+    }
+  }, [categoryPage, totalCategoryPages]);
+
+  const paginatedCategories = useMemo(() => {
+    const startIndex = (categoryPage - 1) * CATEGORIES_PER_PAGE;
+    return filteredCategories.slice(startIndex, startIndex + CATEGORIES_PER_PAGE);
+  }, [filteredCategories, categoryPage]);
+
   const exportCategories = () => {
     downloadCsv(
       "categories.csv",
@@ -151,10 +172,20 @@ const ManageCategories = () => {
                 setNewImage(null);
               }
             }}
-            aria-label={showAddForm ? "Close category form" : "Open category form"}
+            aria-label={showAddForm ? "Close category form" : "Open category add form"}
             title={showAddForm ? "Close category form" : "Add category"}
           >
-            {showAddForm ? <FaTimes /> : <FaPlus />}
+            {showAddForm ? (
+              <>
+                <FaTimes />
+                <span>Close category form</span>
+              </>
+            ) : (
+              <>
+                <FaPlus />
+                <span>Add category</span>
+              </>
+            )}
           </button>
           <button className="btn btn-outline-primary btn-sm" onClick={fetchCategories}>
             Refresh
@@ -164,6 +195,8 @@ const ManageCategories = () => {
           </button>
         </div>
       </div>
+
+
 
       <div className="card p-3 mb-3">
         {showAddForm && (
@@ -179,7 +212,7 @@ const ManageCategories = () => {
             <input type="file" className="form-control me-2" onChange={(e) => setNewImage(e.target.files[0])} />
 
             <button className="btn btn-primary me-2" onClick={addCategory} disabled={loading}>
-              {loading ? "Adding..." : "Add"}
+              {loading ? "Adding category..." : "Add category"}
             </button>
             <button
               type="button"
@@ -226,7 +259,7 @@ const ManageCategories = () => {
         <p className="text-muted">No categories found</p>
       ) : (
         <ul className="list-group">
-          {filteredCategories.map((category) => (
+          {paginatedCategories.map((category) => (
             <li key={category._id} className="list-group-item d-flex justify-content-between align-items-center">
               <div className="d-flex align-items-center">
                 {category.image && (
@@ -266,8 +299,9 @@ const ManageCategories = () => {
               </div>
             </li>
           ))}
-        </ul>
+          </ul>
       )}
+      <Pagination currentPage={categoryPage} totalPages={totalCategoryPages} onPageChange={setCategoryPage} />
     </div>
   );
 };

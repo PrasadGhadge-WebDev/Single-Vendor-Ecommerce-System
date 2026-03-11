@@ -2,10 +2,23 @@ import React, { useContext, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import API, { getImageUrl } from "../api";
 import { CartContext } from "../context/CartContext";
+import { FaLayerGroup, FaTv, FaLaptop, FaMobileAlt } from "react-icons/fa";
 import "./Home.css";
 
 const FALLBACK_IMAGE =
   "https://via.placeholder.com/420x320/f1f5f9/64748b?text=No+Image";
+
+const categoryIconMap = {
+  electronics: <FaTv className="category-icon" />,
+  mobiles: <FaMobileAlt className="category-icon" />,
+  laptops: <FaLaptop className="category-icon" />,
+};
+
+const pickCategoryIcon = (categoryName) => {
+  if (!categoryName) return <FaLayerGroup className="category-icon" />;
+  const normalized = categoryName.toLowerCase();
+  return categoryIconMap[normalized] || <FaLayerGroup className="category-icon" />;
+};
 
 const Home = () => {
   const navigate = useNavigate();
@@ -119,10 +132,9 @@ const Home = () => {
                   to={`/shop/category/${encodeURIComponent(cat.name)}`}
                   className="text-decoration-none"
                 >
-                  <div className="category-modern-card h-100">
-                    <div className="category-dot"></div>
-                    <h6 className="mb-1 fw-bold">{cat.name}</h6>
-                    <small className="text-muted">Explore products</small>
+                  <div className="category-modern-card h-100 category-icon-card">
+                    {pickCategoryIcon(cat.name)}
+                    <span className="visually-hidden">{cat.name}</span>
                   </div>
                 </Link>
               </div>

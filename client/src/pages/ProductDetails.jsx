@@ -2,34 +2,76 @@ import React, { useContext, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import API, { getImageUrl } from "../api";
 import { CartContext } from "../context/CartContext";
+import { AuthContext } from "../context/AuthContext";
+import { FaChevronDown, FaChevronUp, FaStar } from "react-icons/fa";
 import "./ProductDetails.css";
 
 const ProductDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addToCart } = useContext(CartContext);
+  const { user } = useContext(AuthContext);
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [buyQty, setBuyQty] = useState(1);
+  const [reviews, setReviews] = useState([]);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewsExpanded, setReviewsExpanded] = useState(false);
+
+  const loadProduct = async () => {
+    try {
+      setLoading(true);
+      const { data } = await API.get(`/products/${id}`);
+      setProduct(data);
+    } catch (err) {
+      console.error("Product details error:", err);
+      setError(err.response?.data?.message || "Product not found");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchReviews = async () => {
+    try {
+      setReviewLoading(true);
+      const { data } = await API.get(`/reviews/product/${id}`);
+      setReviews(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Failed to load reviews", err);
+    } finally {
+      setReviewLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchProduct = async () => {
-      try {
-        setLoading(true);
-        const { data } = await API.get(`/products/${id}`);
-        setProduct(data);
-      } catch (err) {
-        console.error("Product details error:", err);
-        setError(err.response?.data?.message || "Product not found");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProduct();
+    loadProduct();
   }, [id]);
+
+  useEffect(() => {
+    fetchReviews();
+  }, [id]);
+
+  const updateBuyQty = (next) => {
+    const maxStock = Math.max(1, Number(product?.stock || 1));
+    const safeQty = Math.min(maxStock, Math.max(1, Number(next) || 1));
+    setBuyQty(safeQty);
+  };
+
+  const renderStars = (value) => {
+    const rounded = Math.min(5, Math.max(0, Math.round(value || 0)));
+    return Array.from({ length: 5 }, (_, index) => {
+      const starValue = index + 1;
+      const filled = starValue <= rounded;
+      return (
+        <FaStar
+          key={`star-${starValue}`}
+          className={`me-1 ${filled ? "text-warning" : "text-muted"}`}
+        />
+      );
+    });
+  };
 
   if (loading) {
     return (
@@ -46,20 +88,16 @@ const ProductDetails = () => {
     return (
       <div className="container py-5">
         <div className="alert alert-danger">{error || "Product not found"}</div>
-        <Link to="/shop" className="btn btn-outline-primary">Back to Shop</Link>
+        <Link to="/shop" className="btn btn-outline-primary">
+          Back to Shop
+        </Link>
       </div>
     );
   }
 
   const averageRating = Number(product.averageRating || 0);
-  const roundedRating = Math.round(averageRating);
-  const starRating = `${"?".repeat(roundedRating)}${"?".repeat(5 - roundedRating)}`;
+  const reviewCount = Number(product.numReviews || 0);
   const maxStock = Math.max(1, Number(product.stock || 1));
-
-  const updateBuyQty = (next) => {
-    const safeQty = Math.min(maxStock, Math.max(1, Number(next) || 1));
-    setBuyQty(safeQty);
-  };
 
   return (
     <div className="container py-5 product-details-page">
@@ -116,7 +154,9 @@ const ProductDetails = () => {
             <button className="btn btn-cart-action" onClick={() => addToCart(product)}>
               Add to Cart
             </button>
-            <button className="btn btn-outline-primary" onClick={() => navigate("/shop")}>Continue Shopping</button>
+            <button className="btn btn-outline-primary" onClick={() => navigate("/shop")}>
+              Continue Shopping
+            </button>
             <button
               className="btn btn-buy-action"
               disabled={Number(product.stock || 0) <= 0}
@@ -147,15 +187,71 @@ const ProductDetails = () => {
               </div>
             </div>
             <div className="col-sm-6">
-              <div className="p-3 border rounded product-stat-card">
-                <small className="d-block product-stat-label">Rating</small>
-                <strong className="d-block">
-                  {averageRating.toFixed(1)} / 5 ({product.numReviews || 0} reviews)
-                </strong>
-                <span className="product-rating-stars" aria-label={`Rating ${averageRating.toFixed(1)} out of 5`}>
-                  {starRating}
-                </span>
+            
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="row g-4 mt-5">
+        <div className="col-lg-7">
+          <div className="card shadow-sm">
+            <div className="card-header d-flex flex-column align-items-start gap-2">
+              <div className="d-flex align-items-center gap-3 w-100 flex-wrap">
+                <h5 className="mb-0">Customer Reviews</h5>
+                <div className="text-muted small">{reviews.length} review{reviews.length === 1 ? "" : "s"}</div>
               </div>
+              <div className="d-flex align-items-center gap-3 flex-wrap">
+                <span className="fw-semibold">Rating {averageRating.toFixed(1)} / 5</span>
+                <span className="text-muted small">({reviewCount} review{reviewCount === 1 ? "" : "s"})</span>
+                <div className="d-flex align-items-center">
+                  {renderStars(averageRating)}
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                  onClick={() => setReviewsExpanded((prev) => !prev)}
+                >
+                  {reviewsExpanded ? (
+                    <>
+                      <FaChevronUp />
+                      Hide reviews
+                    </>
+                  ) : (
+                    <>
+                      <FaChevronDown />
+                      Show reviews
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+            <div className="card-body">
+              {!reviewsExpanded ? (
+                <p className="text-muted mb-0">Click "Show reviews" to read customer feedback.</p>
+              ) : reviewLoading ? (
+                <p className="text-muted mb-0">Loading reviews...</p>
+              ) : reviews.length === 0 ? (
+                <p className="text-muted mb-0">No reviews yet.</p>
+              ) : (
+                reviews.map((review) => (
+                  <div key={review._id} className="border-bottom pb-3 mb-3 last-child-border-0">
+                    <div className="d-flex justify-content-between align-items-start">
+                      <div>
+                        <strong>{review.user?.name || "Anonymous"}</strong>
+                        <div className="d-flex align-items-center mt-1">
+                          {renderStars(review.rating)}
+                          <span className="ms-2 text-muted">{review.rating}</span>
+                        </div>
+                      </div>
+                      <small className="text-muted">{new Date(review.createdAt).toLocaleDateString()}</small>
+                    </div>
+                    <p className="mb-0 mt-2 text-wrap">
+                      {review.comment || <span className="text-muted">No comment provided.</span>}
+                    </p>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

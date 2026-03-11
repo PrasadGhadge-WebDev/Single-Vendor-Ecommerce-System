@@ -144,6 +144,18 @@
   box-shadow: 0 8px 20px var(--home-card-shadow);
 }
 
+.category-icon-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+}
+
+.category-icon {
+  color: #fff;
+  font-size: 1.25rem;
+}
+
 .category-modern-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 14px 28px var(--home-card-hover-shadow);

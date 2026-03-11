@@ -81,8 +81,10 @@ const BusinessSettings = () => {
         taxPercent: Number(settings.taxPercent || 0),
       };
       const { data } = await API.put("/business-settings", payload);
-      setSettings({ ...defaultSettings, ...data });
+      const updatedProfile = { ...defaultSettings, ...data };
+      setSettings(updatedProfile);
       toast.success("Business settings updated");
+      window.dispatchEvent(new CustomEvent("business-settings-updated", { detail: updatedProfile }));
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to save settings");
     } finally {

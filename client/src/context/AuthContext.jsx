@@ -36,13 +36,25 @@ const AuthProvider = ({ children }) => {
 
   const updateUser = (nextUserData) => {
     if (!nextUserData) return;
-    const currentToken = sessionStorage.getItem("token") || user?.token;
-    const merged = { ...user, ...nextUserData, token: currentToken };
-    sessionStorage.setItem("userInfo", JSON.stringify(merged));
-    if (currentToken) {
-      sessionStorage.setItem("token", currentToken);
-    }
-    setUser(merged);
+
+    setUser((prevUser) => {
+      const currentToken = sessionStorage.getItem("token") || prevUser?.token;
+      const baseUser = prevUser || {};
+      const merged = { ...baseUser, ...nextUserData, token: currentToken };
+
+      sessionStorage.setItem("userInfo", JSON.stringify(merged));
+      if (currentToken) {
+        sessionStorage.setItem("token", currentToken);
+      }
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("user-profile-updated", { detail: merged })
+        );
+      }
+
+      return merged;
+    });
   };
 
   return (

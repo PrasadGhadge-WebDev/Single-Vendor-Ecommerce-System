@@ -226,8 +226,13 @@ exports.getUserOrders = async (req, res) => {
 exports.updateOrderStatus = async (req, res) => {
   try {
     const status = normalizeStatus(req.body.status);
+    const description = String(req.body.description || "").trim();
     if (!status) {
       return res.status(400).json({ message: "Invalid order status" });
+    }
+
+    if (!description) {
+      return res.status(400).json({ message: "Status description is required" });
     }
 
     const order = await Order.findById(req.params.id).populate("products.product");
@@ -296,9 +301,18 @@ exports.updateOrderStatus = async (req, res) => {
       }
       order.stockUpdated = false;
       order.cancelledAt = new Date();
-      if (!order.cancellationReason) {
-        order.cancellationReason = "Cancelled by admin";
-      }
+      order.cancellationReason = description;
+    }
+
+    order.statusHistory.push({
+      status,
+      description,
+      updatedBy: req.user?._id || null,
+    });
+
+    if (status === "cancelled") {
+      order.cancelledAt = order.cancelledAt || new Date();
+      order.cancellationReason = description;
     }
 
     await order.save();

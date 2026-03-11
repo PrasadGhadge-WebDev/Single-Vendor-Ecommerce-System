@@ -64,6 +64,17 @@
   color: var(--search-btn-hover-text);
 }
 
+.navbar-profile-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.navbar-profile-name {
+  white-space: nowrap;
+}
+
 @media (max-width: 991px) {
   .navbar-search {
     min-width: 100%;

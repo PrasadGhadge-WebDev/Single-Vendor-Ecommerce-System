@@ -3,6 +3,9 @@ import API from "../../api";
 import { AuthContext } from "../../context/AuthContext";
 import { downloadCsv, inDateRange } from "../../utils/adminHelpers";
 import { toast } from "react-toastify";
+import Pagination from "../../components/Pagination";
+
+const ORDERS_PER_PAGE = 12;
 
 const Orders = () => {
   const { user } = useContext(AuthContext);
@@ -13,6 +16,9 @@ const Orders = () => {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [orderPage, setOrderPage] = useState(1);
+  const [statusUpdates, setStatusUpdates] = useState({});
+  const [statusSaving, setStatusSaving] = useState({});
 
   const fetchOrders = async (showLoader = true) => {
     if (!user?.token) return;
@@ -28,12 +34,37 @@ const Orders = () => {
     }
   };
 
-  const updateStatus = async (orderId, status) => {
+  const handleStatusInputChange = (orderId, field, value) => {
+    setStatusUpdates((prev) => ({
+      ...prev,
+      [orderId]: {
+        ...prev[orderId],
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleApplyStatus = async (order) => {
+    const update = statusUpdates[order._id] || {};
+    const nextStatus = update.status || order.status;
+    const description = (update.description || "").trim();
+    if (!description) {
+      toast.warning("Description is required before updating the status");
+      return;
+    }
     try {
-      await API.put(`/orders/${orderId}`, { status });
+      setStatusSaving((prev) => ({ ...prev, [order._id]: true }));
+      await API.put(`/orders/${order._id}`, {
+        status: nextStatus,
+        description,
+      });
+      toast.success("Order status updated");
+      setStatusUpdates((prev) => ({ ...prev, [order._id]: { status: nextStatus, description: "" } }));
       fetchOrders(false);
     } catch (error) {
       toast.error("Error updating status: " + (error.response?.data?.message || error.message));
+    } finally {
+      setStatusSaving((prev) => ({ ...prev, [order._id]: false }));
     }
   };
 
@@ -57,6 +88,23 @@ const Orders = () => {
       return haystack.includes(term);
     });
   }, [orders, statusFilter, search, dateFrom, dateTo]);
+
+  useEffect(() => {
+    setOrderPage(1);
+  }, [statusFilter, search, dateFrom, dateTo]);
+
+  const totalOrderPages = Math.max(1, Math.ceil(filteredOrders.length / ORDERS_PER_PAGE));
+
+  useEffect(() => {
+    if (orderPage > totalOrderPages) {
+      setOrderPage(totalOrderPages);
+    }
+  }, [orderPage, totalOrderPages]);
+
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (orderPage - 1) * ORDERS_PER_PAGE;
+    return filteredOrders.slice(startIndex, startIndex + ORDERS_PER_PAGE);
+  }, [filteredOrders, orderPage]);
 
   const exportOrders = () => {
     downloadCsv(
@@ -154,34 +202,66 @@ const Orders = () => {
               <th>User</th>
               <th>Total</th>
               <th>Status</th>
+              <th>Note</th>
               <th>Date</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
-            {filteredOrders.map((order) => (
-              <tr key={order._id}>
-                <td>{order._id}</td>
-                <td>{order.user?.name || "Unknown"}</td>
-                <td>INR {order.totalAmount}</td>
-                <td>
-                  <select
-                    value={order.status}
-                    onChange={(e) => updateStatus(order._id, e.target.value)}
-                    className="form-select form-select-sm"
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="shipped">Shipped</option>
-                    <option value="delivered">Delivered</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
-                </td>
-                <td>{new Date(order.createdAt).toLocaleString()}</td>
-              </tr>
-            ))}
+            {paginatedOrders.map((order) => {
+              const history = Array.isArray(order.statusHistory) ? order.statusHistory : [];
+              const lastNote = history[history.length - 1];
+              const update = statusUpdates[order._id] || {};
+              const selectedStatus = update.status || order.status;
+              const descriptionValue = update.description || "";
+              return (
+                <tr key={order._id}>
+                  <td>{order._id}</td>
+                  <td>{order.user?.name || "Unknown"}</td>
+                  <td>INR {order.totalAmount}</td>
+                  <td>
+                    <select
+                      value={selectedStatus}
+                      onChange={(e) => handleStatusInputChange(order._id, "status", e.target.value)}
+                      className="form-select form-select-sm"
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="shipped">Shipped</option>
+                      <option value="delivered">Delivered</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                    <small className="text-muted d-block mt-1">
+                      Latest note: {lastNote?.description || "No description yet"}
+                    </small>
+                  </td>
+                  <td>
+                    <textarea
+                      rows={2}
+                      className="form-control form-control-sm"
+                      value={descriptionValue}
+                      placeholder="Describe the status update"
+                      onChange={(e) => handleStatusInputChange(order._id, "description", e.target.value)}
+                    />
+                  </td>
+                  <td>{new Date(order.createdAt).toLocaleString()}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-primary"
+                      disabled={statusSaving[order._id]}
+                      onClick={() => handleApplyStatus(order)}
+                    >
+                      {statusSaving[order._id] ? "Updating..." : "Update"}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}
+      <Pagination currentPage={orderPage} totalPages={totalOrderPages} onPageChange={setOrderPage} />
     </div>
   );
 };

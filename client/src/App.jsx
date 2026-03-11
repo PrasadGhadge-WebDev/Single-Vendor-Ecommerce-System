@@ -32,6 +32,7 @@ import ManageSuppliers from "./pages/Admin/ManageSuppliers";
 import BusinessSettings from "./pages/Admin/BusinessSettings";
 import AdminProfile from "./pages/Admin/AdminProfile";
 import StockHistory from "./pages/Admin/StockHistory";
+import ManageReviews from "./pages/Admin/ManageReviews";
 
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
@@ -106,6 +107,7 @@ function App() {
                 <Route path="users" element={<ManageUsers />} />
                 <Route path="offers" element={<ManageOffers />} />
                 <Route path="suppliers" element={<ManageSuppliers />} />
+                <Route path="reviews" element={<ManageReviews />} />
                 <Route path="business-settings" element={<BusinessSettings />} />
                 <Route path="stock-history" element={<StockHistory />} />
                 <Route path="profile" element={<AdminProfile />} />

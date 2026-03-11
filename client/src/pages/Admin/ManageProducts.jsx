@@ -3,8 +3,10 @@ import API, { getImageUrl } from "../../api";
 import { downloadCsv, inDateRange } from "../../utils/adminHelpers";
 import { FaPlus } from "react-icons/fa";
 import { toast } from "react-toastify";
+import Pagination from "../../components/Pagination";
 
 const LOW_STOCK_THRESHOLD = 10;
+const PRODUCTS_PER_PAGE = 12;
 
 const ManageProducts = () => {
   const [products, setProducts] = useState([]);
@@ -37,6 +39,7 @@ const ManageProducts = () => {
     supplier: "",
     image: null,
   });
+  const [productPage, setProductPage] = useState(1);
 
   const fetchProducts = async (showLoader = false) => {
     try {
@@ -220,6 +223,23 @@ const ManageProducts = () => {
     });
   }, [products, search, categoryFilter, stockFilter, supplierFilter, dateFrom, dateTo]);
 
+  useEffect(() => {
+    setProductPage(1);
+  }, [search, categoryFilter, stockFilter, supplierFilter, dateFrom, dateTo]);
+
+  const totalProductPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE));
+
+  useEffect(() => {
+    if (productPage > totalProductPages) {
+      setProductPage(totalProductPages);
+    }
+  }, [productPage, totalProductPages]);
+
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (productPage - 1) * PRODUCTS_PER_PAGE;
+    return filteredProducts.slice(startIndex, startIndex + PRODUCTS_PER_PAGE);
+  }, [filteredProducts, productPage]);
+
   const exportProducts = () => {
     downloadCsv(
       "products.csv",
@@ -239,8 +259,9 @@ const ManageProducts = () => {
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h3 className="mb-0">Manage Products</h3>
         <div className="d-flex gap-2">
-          <button className="btn btn-success btn-sm" title="Add Product" onClick={() => setShowAddModal(true)}>
-            <FaPlus /> Add
+          <button className="btn btn-success btn-sm d-inline-flex align-items-center gap-1" title="Add Product" onClick={() => setShowAddModal(true)}>
+            <FaPlus />
+            <span>Add Product</span>
           </button>
           <button className="btn btn-outline-primary btn-sm" onClick={() => fetchProducts(true)}>
             Refresh
@@ -330,10 +351,10 @@ const ManageProducts = () => {
           </thead>
 
           <tbody>
-            {filteredProducts.map((product) => {
-              const stockValue = Number(product.stock || 0);
-              const isLowStock = stockValue <= LOW_STOCK_THRESHOLD;
-              return (
+            {paginatedProducts.map((product) => {
+          const stockValue = Number(product.stock || 0);
+          const isLowStock = stockValue <= LOW_STOCK_THRESHOLD;
+          return (
                 <tr key={product._id} className={isLowStock ? "table-danger" : undefined}>
                   <td>{product.image ? <img src={getImageUrl(product.image)} width="60" alt={product.name} /> : "-"}</td>
                   <td>{product.name}</td>
@@ -360,6 +381,7 @@ const ManageProducts = () => {
           </tbody>
         </table>
       )}
+      <Pagination currentPage={productPage} totalPages={totalProductPages} onPageChange={setProductPage} />
 
       {editingProduct && (
         <div className="modal show d-block" tabIndex="-1">

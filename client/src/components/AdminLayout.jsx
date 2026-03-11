@@ -1,5 +1,4 @@
-import React, { useState, useContext } from "react";
-import { NavLink, useNavigate, Outlet } from "react-router-dom";
+import React, { useState, useContext, useEffect, useCallback } from "react";
 import {
   FaTachometerAlt,
   FaBoxOpen,
@@ -16,10 +15,13 @@ import {
   FaTruck,
   FaCog,
   FaHistory,
+  FaStar,
   FaIdBadge,
   FaChevronDown,
 } from "react-icons/fa";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import API from "../api";
 import "./AdminLayout.css";
 
 const AdminLayout = () => {
@@ -27,6 +29,7 @@ const AdminLayout = () => {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
+  const [businessProfile, setBusinessProfile] = useState({});
 
   React.useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -38,6 +41,27 @@ const AdminLayout = () => {
     logout();
     navigate("/login");
   };
+
+  const fetchBusinessProfile = useCallback(async () => {
+    try {
+      const { data } = await API.get("/business-settings");
+      setBusinessProfile(data || {});
+    } catch (error) {
+      console.error("Failed to load business profile", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchBusinessProfile();
+    const handler = (event) => {
+      if (event?.detail) {
+        setBusinessProfile(event.detail);
+      }
+      fetchBusinessProfile();
+    };
+    window.addEventListener("business-settings-updated", handler);
+    return () => window.removeEventListener("business-settings-updated", handler);
+  }, [fetchBusinessProfile]);
 
   return (
     <div className="admin-wrapper">
@@ -57,10 +81,13 @@ const AdminLayout = () => {
               ) : (
                 <FaUserCircle className="sidebar-header-avatar-icon" />
               )}
-              <div className="sidebar-header-meta">
-                <span className="sidebar-header-name">{user?.name || "Admin"}</span>
-                <small>{user?.isSuperAdmin ? "Super Admin" : "Admin"}</small>
-              </div>
+                <div className="sidebar-header-meta">
+                  <span className="sidebar-header-name">{user?.name || "Admin"}</span>
+                  <small className="sidebar-header-business">
+                    {businessProfile.businessName || "Business Profile"}
+                  </small>
+                  <small>{user?.isSuperAdmin ? "Super Admin" : "Admin"}</small>
+                </div>
             </div>
           )}
         </div>
@@ -134,6 +161,18 @@ const AdminLayout = () => {
             >
               <FaTags />
               {!collapsed && <span>Offers</span>}
+            </NavLink>
+          </li>
+
+          {/* Reviews */}
+          <li>
+            <NavLink
+              to="/admin/reviews"
+              className={({ isActive }) => (isActive ? "active-link" : "")}
+              title="Reviews"
+            >
+              <FaStar />
+              {!collapsed && <span>Reviews</span>}
             </NavLink>
           </li>
 

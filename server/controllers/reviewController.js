@@ -43,6 +43,7 @@ exports.addReview = async (req, res) => {
       user: req.user._id,
       product: productId,
       rating,
+      title: req.body.title || "",
       comment,
     });
 
@@ -70,6 +71,7 @@ exports.updateReview = async (req, res) => {
     }
 
     if (rating !== undefined) review.rating = rating;
+    if (title !== undefined) review.title = title;
     if (comment !== undefined) review.comment = comment;
 
     await review.save();
@@ -108,6 +110,61 @@ exports.getProductReviews = async (req, res) => {
       .sort({ createdAt: -1 });
 
     res.status(200).json(reviews);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getAllReviews = async (req, res) => {
+  try {
+  const { productId, search, rating } = req.query;
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(50, Math.max(5, Number(req.query.limit) || 20));
+
+  const match = {};
+  if (productId) {
+    match.product = productId;
+  }
+  const ratingValue = Number(rating);
+  if (ratingValue && ratingValue >= 1 && ratingValue <= 5) {
+    match.rating = ratingValue;
+  }
+  if (search) {
+      match.$or = [
+        { comment: { $regex: search, $options: "i" } },
+        { title: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const [total, stats] = await Promise.all([
+      Review.countDocuments(match),
+      Review.aggregate([
+        { $match: match },
+        {
+          $group: {
+            _id: null,
+            averageRating: { $avg: "$rating" },
+          },
+        },
+      ]),
+    ]);
+
+    const reviews = await Review.find(match)
+      .populate("user", "name email")
+      .populate("product", "name averageRating numReviews")
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    const averageRating = stats[0] ? Number(stats[0].averageRating.toFixed(2)) : 0;
+
+    res.status(200).json({
+      reviews,
+      total,
+      page,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+      averageRating,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

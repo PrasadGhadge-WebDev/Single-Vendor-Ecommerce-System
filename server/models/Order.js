@@ -88,6 +88,36 @@ const orderSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    statusHistory: {
+      type: [
+        new mongoose.Schema(
+          {
+            status: {
+              type: String,
+              enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
+              required: true,
+            },
+            description: {
+              type: String,
+              required: true,
+              trim: true,
+              maxlength: 2000,
+            },
+            updatedBy: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "User",
+              default: null,
+            },
+            createdAt: {
+              type: Date,
+              default: Date.now,
+            },
+          },
+          { _id: false }
+        ),
+      ],
+      default: [],
+    },
   },
   { timestamps: true }
 );

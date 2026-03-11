@@ -22,6 +22,8 @@ const Navbar = () => {
   const [categories, setCategories] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [theme, setTheme] = useState(getInitialTheme);
+  const [profileName, setProfileName] = useState(user?.name || "");
+  const [profileAvatar, setProfileAvatar] = useState(user?.profileImage || "");
 
   const handleLogout = () => {
     logout();
@@ -52,6 +54,29 @@ const Navbar = () => {
     document.body.setAttribute("data-bs-theme", theme);
     localStorage.setItem("theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    setProfileName(user?.name || "");
+    setProfileAvatar(user?.profileImage || "");
+  }, [user?.name, user?.profileImage]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const handleProfileUpdate = (event) => {
+      const detail = event?.detail;
+      if (!detail) return;
+      if (typeof detail.name === "string") {
+        setProfileName(detail.name);
+      }
+      if (detail.profileImage !== undefined) {
+        setProfileAvatar(detail.profileImage || "");
+      }
+    };
+
+    window.addEventListener("user-profile-updated", handleProfileUpdate);
+    return () => window.removeEventListener("user-profile-updated", handleProfileUpdate);
+  }, []);
 
   const toggleTheme = () => {
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
@@ -198,8 +223,16 @@ const Navbar = () => {
                   type="button"
                   data-bs-toggle="dropdown"
                 >
-                  <FaUserCircle size={22} className="me-2" />
-                  {user.name}
+                  {profileAvatar ? (
+                    <img
+                      src={profileAvatar}
+                      alt={profileName || user?.name || "User profile"}
+                      className="navbar-profile-avatar me-2"
+                    />
+                  ) : (
+                    <FaUserCircle size={22} className="me-2" />
+                  )}
+                  <span className="navbar-profile-name">{profileName || user?.name}</span>
                 </button>
 
                 <ul className="dropdown-menu dropdown-menu-end shadow border-0 rounded-3">

@@ -4,6 +4,9 @@ import API from "../../api";
 import { AuthContext } from "../../context/AuthContext";
 import { downloadCsv, inDateRange } from "../../utils/adminHelpers";
 import { toast } from "react-toastify";
+import Pagination from "../../components/Pagination";
+
+const USERS_PER_PAGE = 12;
 
 const ManageUsers = () => {
   const { user } = useContext(AuthContext);
@@ -18,6 +21,7 @@ const ManageUsers = () => {
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newUser, setNewUser] = useState({ name: "", email: "", password: "" });
+  const [userPage, setUserPage] = useState(1);
 
   const fetchUsers = async (showLoader = true) => {
     try {
@@ -78,6 +82,23 @@ const ManageUsers = () => {
     });
   }, [users, search, roleFilter, dateFrom, dateTo]);
 
+  useEffect(() => {
+    setUserPage(1);
+  }, [search, roleFilter, dateFrom, dateTo]);
+
+  const totalUserPages = Math.max(1, Math.ceil(filteredUsers.length / USERS_PER_PAGE));
+
+  useEffect(() => {
+    if (userPage > totalUserPages) {
+      setUserPage(totalUserPages);
+    }
+  }, [userPage, totalUserPages]);
+
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (userPage - 1) * USERS_PER_PAGE;
+    return filteredUsers.slice(startIndex, startIndex + USERS_PER_PAGE);
+  }, [filteredUsers, userPage]);
+
   const exportUsers = () => {
     downloadCsv(
       "users.csv",
@@ -105,7 +126,17 @@ const ManageUsers = () => {
             title={showCreateForm ? "Close add sub-admin form" : "Add sub-admin"}
             disabled={!canCreateSubAdmin}
           >
-            {showCreateForm ? <FaTimes /> : <FaPlus />}
+            {showCreateForm ? (
+              <>
+                <FaTimes />
+                <span>Close user form</span>
+              </>
+            ) : (
+              <>
+                <FaPlus />
+                <span>Add Admin</span>
+              </>
+            )}
           </button>
           <button className="btn btn-outline-primary btn-sm" onClick={() => fetchUsers()}>
             Refresh
@@ -235,7 +266,7 @@ const ManageUsers = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredUsers.map((entry) => (
+            {paginatedUsers.map((entry) => (
               <tr key={entry._id}>
                 <td>{entry.name}</td>
                 <td>{entry.email}</td>
@@ -253,6 +284,7 @@ const ManageUsers = () => {
           </tbody>
         </table>
       )}
+      <Pagination currentPage={userPage} totalPages={totalUserPages} onPageChange={setUserPage} />
     </div>
   );
 };

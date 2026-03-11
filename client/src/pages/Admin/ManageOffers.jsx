@@ -3,6 +3,7 @@ import { FaPlus, FaTimes } from "react-icons/fa";
 import API from "../../api";
 import { downloadCsv, inDateRange } from "../../utils/adminHelpers";
 import { toast } from "react-toastify";
+import Pagination from "../../components/Pagination";
 
 const initialForm = {
   title: "",
@@ -16,6 +17,7 @@ const initialForm = {
   expiresAt: "",
   isActive: true,
 };
+const OFFERS_PER_PAGE = 10;
 
 const ManageOffers = () => {
   const [offers, setOffers] = useState([]);
@@ -30,6 +32,7 @@ const ManageOffers = () => {
   const [dateTo, setDateTo] = useState("");
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [offerPage, setOfferPage] = useState(1);
 
   const fetchOffers = async (showLoader = true) => {
     try {
@@ -155,6 +158,23 @@ const ManageOffers = () => {
     });
   }, [offers, search, statusFilter, typeFilter, dateFrom, dateTo]);
 
+  useEffect(() => {
+    setOfferPage(1);
+  }, [search, statusFilter, typeFilter, dateFrom, dateTo]);
+
+  const totalOfferPages = Math.max(1, Math.ceil(filteredOffers.length / OFFERS_PER_PAGE));
+
+  useEffect(() => {
+    if (offerPage > totalOfferPages) {
+      setOfferPage(totalOfferPages);
+    }
+  }, [offerPage, totalOfferPages]);
+
+  const paginatedOffers = useMemo(() => {
+    const startIndex = (offerPage - 1) * OFFERS_PER_PAGE;
+    return filteredOffers.slice(startIndex, startIndex + OFFERS_PER_PAGE);
+  }, [filteredOffers, offerPage]);
+
   const exportOffers = () => {
     downloadCsv(
       "offers.csv",
@@ -189,7 +209,17 @@ const ManageOffers = () => {
             aria-label={showCreateForm ? "Close offer form" : "Open offer form"}
             title={showCreateForm ? "Close offer form" : "Add offer"}
           >
-            {showCreateForm ? <FaTimes /> : <FaPlus />}
+            {showCreateForm ? (
+              <>
+                <FaTimes />
+                <span>Close offer form</span>
+              </>
+            ) : (
+              <>
+                <FaPlus />
+                <span>Add offer</span>
+              </>
+            )}
           </button>
           <button className="btn btn-outline-primary btn-sm" onClick={() => fetchOffers()}>
             Refresh
@@ -314,7 +344,7 @@ const ManageOffers = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredOffers.map((offer) => (
+            {paginatedOffers.map((offer) => (
               <tr key={offer._id}>
                 <td>{offer.title}</td>
                 <td>{offer.code}</td>
@@ -338,6 +368,7 @@ const ManageOffers = () => {
           </tbody>
         </table>
       )}
+      <Pagination currentPage={offerPage} totalPages={totalOfferPages} onPageChange={setOfferPage} />
     </div>
   );
 };

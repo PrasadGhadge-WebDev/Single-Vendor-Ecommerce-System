@@ -206,6 +206,17 @@ const Dashboard = () => {
           <span>Inventory Value: {formatCurrency(supplierStats?.inventory?.inventoryValue || 0)}</span>
         </div>
       </div>
+        <div className="dashboard-export-actions mt-3">
+          <button className="btn btn-sm btn-primary" onClick={exportSummary}>
+            Export Summary
+          </button>
+          <button className="btn btn-sm btn-outline-primary" onClick={exportOrderStatus}>
+            Export Order Status
+          </button>
+          <button className="btn btn-sm btn-outline-primary" onClick={exportTopSuppliers}>
+            Export Top Suppliers
+          </button>
+        </div>
 
       <div className="dashboard-toolbar card border-0 p-3">
         <div className="row g-3 align-items-end">
@@ -248,17 +259,8 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-        <div className="dashboard-export-actions mt-3">
-          <button className="btn btn-sm btn-primary" onClick={exportSummary}>
-            Export Summary
-          </button>
-          <button className="btn btn-sm btn-outline-primary" onClick={exportOrderStatus}>
-            Export Order Status
-          </button>
-          <button className="btn btn-sm btn-outline-primary" onClick={exportTopSuppliers}>
-            Export Top Suppliers
-          </button>
-        </div>
+      
+        
       </div>
 
       {loading || !stats ? (
