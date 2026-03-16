@@ -21,6 +21,7 @@
   --home-link-btn-text: #1e293b;
   --home-link-btn-hover-bg: #1e293b;
   --home-link-btn-hover-text: #f8fafc;
+  --category-icon-bg: #0ea5e9;
 }
 
 :root[data-theme="dark"] {
@@ -46,6 +47,7 @@
   --home-link-btn-text: #e2e8f0;
   --home-link-btn-hover-bg: #e2e8f0;
   --home-link-btn-hover-text: #0b1220;
+  --category-icon-bg: #2563eb;
 }
 
 .home-modern {
@@ -163,6 +165,36 @@
 
 .category-modern-card h6 {
   color: var(--page-text) !important;
+}
+
+.category-icon-card {
+  padding: 28px;
+  text-align: center;
+}
+
+.category-icon-wrapper {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--category-icon-bg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.18);
+}
+
+.category-icon {
+  color: #fff;
+  font-size: 1.6rem;
+}
+
+.category-label {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--page-text);
+  margin-top: 6px;
 }
 
 .category-dot {

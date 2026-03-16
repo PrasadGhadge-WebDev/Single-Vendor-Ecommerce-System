@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useCallback, useEffect, useState, useContext } from "react";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
 import { toast } from "react-toastify";
@@ -99,7 +99,7 @@ const UserOrders = () => {
   const [reviewDrafts, setReviewDrafts] = useState({});
   const [reviewSubmitting, setReviewSubmitting] = useState({});
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     if (!user?.token) return;
     try {
       setLoading(true);
@@ -110,7 +110,7 @@ const UserOrders = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.token]);
 
   const cancelOrder = async (orderId) => {
     const reason = window.prompt("Cancellation reason (optional):", "");
@@ -125,7 +125,7 @@ const UserOrders = () => {
 
   useEffect(() => {
     fetchOrders();
-  }, [user]);
+  }, [fetchOrders]);
 
   const reviewKey = (orderId, productId) => `${orderId}-${productId}`;
 

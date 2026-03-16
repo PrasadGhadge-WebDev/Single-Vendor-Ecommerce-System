@@ -94,7 +94,7 @@ const Register = () => {
         </form>
 
         <div className="register-footer">
-          <small>© 2026 Your Company</small>
+          <small>(c) 2026 Your Company</small>
         </div>
       </div>
     </div>

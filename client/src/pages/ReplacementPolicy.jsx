@@ -11,7 +11,7 @@ const ReplacementPolicy = () => {
         setLoading(true);
         const { data } = await API.get("/policies/replacement");
         setPolicy(data);
-      } catch (error) {
+      } catch {
         setPolicy(null);
       } finally {
         setLoading(false);

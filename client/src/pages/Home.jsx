@@ -2,22 +2,40 @@ import React, { useContext, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import API, { getImageUrl } from "../api";
 import { CartContext } from "../context/CartContext";
-import { FaLayerGroup, FaTv, FaLaptop, FaMobileAlt } from "react-icons/fa";
+import {
+  FaLayerGroup,
+  FaTv,
+  FaLaptop,
+  FaMobileAlt,
+  FaTshirt,
+  FaCouch,
+  FaCamera,
+  FaGamepad,
+  FaShoePrints,
+} from "react-icons/fa";
 import "./Home.css";
 
 const FALLBACK_IMAGE =
   "https://via.placeholder.com/420x320/f1f5f9/64748b?text=No+Image";
 
-const categoryIconMap = {
-  electronics: <FaTv className="category-icon" />,
-  mobiles: <FaMobileAlt className="category-icon" />,
-  laptops: <FaLaptop className="category-icon" />,
-};
+const categoryIconMap = [
+  { keywords: ["electronics"], icon: <FaTv className="category-icon" />, label: false },
+  { keywords: ["mobile", "phone", "mobiles"], icon: <FaMobileAlt className="category-icon" />, label: false },
+  { keywords: ["laptop", "laptops", "computers"], icon: <FaLaptop className="category-icon" />, label: false },
+  { keywords: ["fashion", "clothing", "apparel", "mens"], icon: <FaTshirt className="category-icon" />, label: false },
+  { keywords: ["home", "furniture", "decor"], icon: <FaCouch className="category-icon" />, label: false },
+  { keywords: ["photography", "camera", "audio"], icon: <FaCamera className="category-icon" />, label: false },
+  { keywords: ["gaming", "game", "consoles"], icon: <FaGamepad className="category-icon" />, label: false },
+  { keywords: ["shoe", "shoes", "footwear"], icon: <FaShoePrints className="category-icon" />, label: true },
+];
 
 const pickCategoryIcon = (categoryName) => {
-  if (!categoryName) return <FaLayerGroup className="category-icon" />;
+  if (!categoryName) return { icon: <FaLayerGroup className="category-icon" />, label: false };
   const normalized = categoryName.toLowerCase();
-  return categoryIconMap[normalized] || <FaLayerGroup className="category-icon" />;
+  const entry = categoryIconMap.find((item) =>
+    item.keywords.some((keyword) => normalized.includes(keyword))
+  );
+  return entry || { icon: <FaLayerGroup className="category-icon" />, label: false };
 };
 
 const Home = () => {
@@ -132,10 +150,21 @@ const Home = () => {
                   to={`/shop/category/${encodeURIComponent(cat.name)}`}
                   className="text-decoration-none"
                 >
-                  <div className="category-modern-card h-100 category-icon-card">
-                    {pickCategoryIcon(cat.name)}
-                    <span className="visually-hidden">{cat.name}</span>
-                  </div>
+                {(() => {
+                  const iconMeta = pickCategoryIcon(cat.name);
+                  return (
+                    <div className="category-modern-card h-100 category-icon-card">
+                      <div className="category-icon-wrapper">
+                        {iconMeta.icon}
+                      </div>
+                      {iconMeta.label ? (
+                        <span className="category-label">{cat.name}</span>
+                      ) : (
+                        <span className="visually-hidden">{cat.name}</span>
+                      )}
+                    </div>
+                  );
+                })()}
                 </Link>
               </div>
             ))}

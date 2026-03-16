@@ -298,7 +298,7 @@ const ManageProducts = () => {
               <option value="all">All Stock</option>
               <option value="in-stock">In Stock</option>
               <option value="out-of-stock">Out of Stock</option>
-              <option value="low-stock">Low Stock (≤ 10)</option>
+              <option value="low-stock">Low Stock (&lt;= 10)</option>
             </select>
           </div>
           <div className="col-md-2">
@@ -353,7 +353,8 @@ const ManageProducts = () => {
           <tbody>
             {paginatedProducts.map((product) => {
           const stockValue = Number(product.stock || 0);
-          const isLowStock = stockValue <= LOW_STOCK_THRESHOLD;
+          const isOutOfStock = stockValue <= 0;
+          const isLowStock = !isOutOfStock && stockValue <= LOW_STOCK_THRESHOLD;
           return (
                 <tr key={product._id} className={isLowStock ? "table-danger" : undefined}>
                   <td>{product.image ? <img src={getImageUrl(product.image)} width="60" alt={product.name} /> : "-"}</td>
@@ -362,9 +363,11 @@ const ManageProducts = () => {
                   <td>INR {product.price}</td>
                   <td>
                     {product.stock}
-                    {isLowStock && (
+                    {isOutOfStock ? (
+                      <span className="badge bg-danger ms-2">Out of stock</span>
+                    ) : isLowStock ? (
                       <span className="badge bg-warning text-dark ms-2">Low</span>
-                    )}
+                    ) : null}
                   </td>
                   <td>{product.supplier?.name || "-"}</td>
                   <td>

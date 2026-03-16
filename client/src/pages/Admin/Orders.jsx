@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import API from "../../api";
 import { AuthContext } from "../../context/AuthContext";
 import { downloadCsv, inDateRange } from "../../utils/adminHelpers";
@@ -20,7 +20,7 @@ const Orders = () => {
   const [statusUpdates, setStatusUpdates] = useState({});
   const [statusSaving, setStatusSaving] = useState({});
 
-  const fetchOrders = async (showLoader = true) => {
+  const fetchOrders = useCallback(async (showLoader = true) => {
     if (!user?.token) return;
 
     try {
@@ -32,7 +32,7 @@ const Orders = () => {
     } finally {
       if (showLoader) setLoading(false);
     }
-  };
+  }, [user?.token]);
 
   const handleStatusInputChange = (orderId, field, value) => {
     setStatusUpdates((prev) => ({
@@ -70,13 +70,13 @@ const Orders = () => {
 
   useEffect(() => {
     fetchOrders();
-  }, [user]);
+  }, [fetchOrders]);
 
   useEffect(() => {
     if (!autoRefresh) return undefined;
     const timer = setInterval(() => fetchOrders(false), 30000);
     return () => clearInterval(timer);
-  }, [autoRefresh, user]);
+  }, [autoRefresh, fetchOrders]);
 
   const filteredOrders = useMemo(() => {
     const term = search.trim().toLowerCase();

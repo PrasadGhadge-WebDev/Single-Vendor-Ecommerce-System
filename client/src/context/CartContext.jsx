@@ -2,6 +2,7 @@ import { createContext, useState, useEffect } from "react";
 import API from "../api";
 import { toast } from "react-toastify";
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const CartContext = createContext();
 
 const CartProvider = ({ children }) => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import API from "../../api";
 import { downloadCsv } from "../../utils/adminHelpers";
 import "./BusinessSettings.css";
@@ -31,12 +31,12 @@ const BusinessSettings = () => {
   const [orderId, setOrderId] = useState("");
   const [openSection, setOpenSection] = useState("profile");
 
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     const { data } = await API.get("/business-settings");
     setSettings({ ...defaultSettings, ...data });
-  };
+  }, []);
 
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     const params = {};
     if (dateFrom) params.dateFrom = new Date(dateFrom).toISOString();
     if (dateTo) params.dateTo = new Date(dateTo).toISOString();
@@ -46,9 +46,9 @@ const BusinessSettings = () => {
       statusSummary: Array.isArray(data.statusSummary) ? data.statusSummary : [],
       orders: Array.isArray(data.orders) ? data.orders : [],
     });
-  };
+  }, [dateFrom, dateTo]);
 
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
     try {
       setLoading(true);
       await Promise.all([fetchSettings(), fetchReports()]);
@@ -57,15 +57,15 @@ const BusinessSettings = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchReports, fetchSettings]);
 
   useEffect(() => {
     fetchAll();
-  }, []);
+  }, [fetchAll]);
 
   useEffect(() => {
     fetchReports();
-  }, [dateFrom, dateTo]);
+  }, [fetchReports]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

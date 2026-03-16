@@ -1,8 +1,7 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import API, { getImageUrl } from "../api";
 import { CartContext } from "../context/CartContext";
-import { AuthContext } from "../context/AuthContext";
 import { FaChevronDown, FaChevronUp, FaStar } from "react-icons/fa";
 import "./ProductDetails.css";
 
@@ -10,7 +9,6 @@ const ProductDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addToCart } = useContext(CartContext);
-  const { user } = useContext(AuthContext);
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -20,7 +18,7 @@ const ProductDetails = () => {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewsExpanded, setReviewsExpanded] = useState(false);
 
-  const loadProduct = async () => {
+  const loadProduct = useCallback(async () => {
     try {
       setLoading(true);
       const { data } = await API.get(`/products/${id}`);
@@ -31,9 +29,9 @@ const ProductDetails = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  const fetchReviews = async () => {
+  const fetchReviews = useCallback(async () => {
     try {
       setReviewLoading(true);
       const { data } = await API.get(`/reviews/product/${id}`);
@@ -43,15 +41,15 @@ const ProductDetails = () => {
     } finally {
       setReviewLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     loadProduct();
-  }, [id]);
+  }, [loadProduct]);
 
   useEffect(() => {
     fetchReviews();
-  }, [id]);
+  }, [fetchReviews]);
 
   const updateBuyQty = (next) => {
     const maxStock = Math.max(1, Number(product?.stock || 1));

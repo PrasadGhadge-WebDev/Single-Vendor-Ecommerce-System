@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -41,7 +41,7 @@ const Dashboard = () => {
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [lowStockCondition, setLowStockCondition] = useState("all");
 
-  const fetchStats = async (showLoader = true) => {
+  const fetchStats = useCallback(async (showLoader = true) => {
     if (!user?.token) return;
     try {
       if (showLoader) setLoading(true);
@@ -61,11 +61,11 @@ const Dashboard = () => {
     } finally {
       if (showLoader) setLoading(false);
     }
-  };
+  }, [dateFrom, dateTo, user?.token]);
 
   useEffect(() => {
     fetchStats();
-  }, [user, dateFrom, dateTo]);
+  }, [fetchStats]);
 
   useEffect(() => {
     if (!autoRefresh) return undefined;
@@ -73,7 +73,7 @@ const Dashboard = () => {
       fetchStats(false);
     }, 30000);
     return () => clearInterval(timer);
-  }, [autoRefresh, dateFrom, dateTo, user]);
+  }, [autoRefresh, fetchStats]);
 
   const orderStatusData = useMemo(
     () =>

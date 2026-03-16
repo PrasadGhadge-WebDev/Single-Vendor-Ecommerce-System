@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import API from "../../api";
 import { toast } from "react-toastify";
 import { downloadCsv } from "../../utils/adminHelpers";
@@ -23,16 +23,16 @@ const StockHistory = () => {
   const [historyPage, setHistoryPage] = useState(1);
   const fileInputRef = useRef(null);
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       const { data } = await API.get("/products");
       setProducts(Array.isArray(data) ? data : []);
     } catch {
       setProducts([]);
     }
-  };
+  }, []);
 
-  const fetchHistory = async () => {
+  const fetchHistory = useCallback(async () => {
     try {
       setLoading(true);
       const params = {};
@@ -50,16 +50,15 @@ const StockHistory = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateFrom, dateTo, eventType, productId, search]);
 
   useEffect(() => {
     fetchProducts();
-    fetchHistory();
-  }, []);
+  }, [fetchProducts]);
 
   useEffect(() => {
     fetchHistory();
-  }, [eventType, productId, dateFrom, dateTo]);
+  }, [fetchHistory]);
 
   const exportHistory = () => {
     if (!items.length) {

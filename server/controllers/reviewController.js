@@ -61,7 +61,7 @@ exports.addReview = async (req, res) => {
 exports.updateReview = async (req, res) => {
   try {
     const { id } = req.params;
-    const { rating, comment } = req.body;
+    const { rating, title, comment } = req.body;
 
     const review = await Review.findById(id);
     if (!review) return res.status(404).json({ message: "Review not found" });

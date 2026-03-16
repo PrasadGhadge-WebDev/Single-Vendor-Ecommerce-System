@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FaPlus, FaTimes } from "react-icons/fa";
 import API from "../../api";
 import { downloadCsv, inDateRange } from "../../utils/adminHelpers";
@@ -72,44 +72,44 @@ const ManageSuppliers = () => {
     [suppliers, selectedSupplierId]
   );
 
-  const fetchSuppliers = async () => {
+  const fetchSuppliers = useCallback(async () => {
     const { data } = await API.get("/suppliers");
     setSuppliers(Array.isArray(data) ? data : []);
-  };
+  }, []);
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     const { data } = await API.get("/products?limit=500&sortBy=createdAt&order=desc");
     const list = Array.isArray(data) ? data : data?.products || [];
     setProducts(Array.isArray(list) ? list : []);
-  };
+  }, []);
 
-  const fetchPurchases = async () => {
+  const fetchPurchases = useCallback(async () => {
     const params = {};
     if (purchaseDateFrom) params.dateFrom = new Date(purchaseDateFrom).toISOString();
     if (purchaseDateTo) params.dateTo = new Date(purchaseDateTo).toISOString();
     if (purchaseSupplierFilter !== "all") params.supplierId = purchaseSupplierFilter;
     const { data } = await API.get("/suppliers/purchases", { params });
     setPurchases(Array.isArray(data) ? data : []);
-  };
+  }, [purchaseDateFrom, purchaseDateTo, purchaseSupplierFilter]);
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     const params = {};
     if (purchaseDateFrom) params.dateFrom = new Date(purchaseDateFrom).toISOString();
     if (purchaseDateTo) params.dateTo = new Date(purchaseDateTo).toISOString();
     const { data } = await API.get("/suppliers/analytics/overview", { params });
     setAnalytics(data || null);
-  };
+  }, [purchaseDateFrom, purchaseDateTo]);
 
-  const fetchSupplierProducts = async (supplierId) => {
+  const fetchSupplierProducts = useCallback(async (supplierId) => {
     if (!supplierId) {
       setSupplierProducts([]);
       return;
     }
     const { data } = await API.get(`/suppliers/${supplierId}/products`);
     setSupplierProducts(Array.isArray(data) ? data : []);
-  };
+  }, []);
 
-  const fetchAll = async (showLoader = true) => {
+  const fetchAll = useCallback(async (showLoader = true) => {
     try {
       if (showLoader) setLoading(true);
       await Promise.all([fetchSuppliers(), fetchProducts(), fetchPurchases(), fetchAnalytics()]);
@@ -119,23 +119,23 @@ const ManageSuppliers = () => {
     } finally {
       if (showLoader) setLoading(false);
     }
-  };
+  }, [fetchAnalytics, fetchProducts, fetchPurchases, fetchSuppliers]);
 
   useEffect(() => {
     fetchAll();
-  }, []);
+  }, [fetchAll]);
 
   useEffect(() => {
     fetchPurchases();
     fetchAnalytics();
-  }, [purchaseDateFrom, purchaseDateTo, purchaseSupplierFilter]);
+  }, [fetchAnalytics, fetchPurchases]);
 
   useEffect(() => {
     fetchSupplierProducts(selectedSupplierId).catch((error) => {
       console.error(error);
       setSupplierProducts([]);
     });
-  }, [selectedSupplierId]);
+  }, [fetchSupplierProducts, selectedSupplierId]);
 
   useEffect(() => {
     const selectedSupplier = suppliers.find((supplier) => supplier._id === selectedSupplierId);
@@ -150,7 +150,7 @@ const ManageSuppliers = () => {
     if (!autoRefresh) return undefined;
     const timer = setInterval(() => fetchAll(false), 30000);
     return () => clearInterval(timer);
-  }, [autoRefresh, purchaseDateFrom, purchaseDateTo, purchaseSupplierFilter]);
+  }, [autoRefresh, fetchAll]);
 
   const handleSupplierChange = (e) => {
     const { name, value, type, checked } = e.target;
