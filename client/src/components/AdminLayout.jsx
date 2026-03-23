@@ -18,6 +18,7 @@ import {
   FaStar,
   FaIdBadge,
   FaChevronDown,
+  FaCreditCard,
 } from "react-icons/fa";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
@@ -69,7 +70,7 @@ const AdminLayout = () => {
       <div className={`sidebar ${collapsed ? "collapsed" : ""}`}>
         <div className="sidebar-header">
           {collapsed ? (
-            "AP"
+            <span className="sidebar-header-badge">AP</span>
           ) : (
             <div className="sidebar-header-profile">
               {user?.profileImage ? (
@@ -91,146 +92,159 @@ const AdminLayout = () => {
             </div>
           )}
         </div>
-        <ul>
-          {/* Home */}
-          <li>
-            <button
-              className="sidebar-btn"
-              onClick={() => navigate("/")}
-              title="Home"
-            >
-              <FaHome />
-              {!collapsed && <span>Home</span>}
-            </button>
-          </li>
+        <div className="sidebar-scroll">
+          <ul className="sidebar-nav">
+            {/* Home */}
+            <li>
+              <button
+                className="sidebar-btn"
+                onClick={() => navigate("/")}
+                title="Home"
+              >
+                <FaHome />
+                {!collapsed && <span>Home</span>}
+              </button>
+            </li>
 
-          {/* Dashboard */}
-          <li>
-            <NavLink
-              to="/admin/dashboard"
-              className={({ isActive }) => (isActive ? "active-link" : "")}
-              title="Dashboard"
-            >
-              <FaTachometerAlt />
-              {!collapsed && <span>Dashboard</span>}
-            </NavLink>
-          </li>
+            {/* Dashboard */}
+            <li>
+              <NavLink
+                to="/admin/dashboard"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+                title="Dashboard"
+              >
+                <FaTachometerAlt />
+                {!collapsed && <span>Dashboard</span>}
+              </NavLink>
+            </li>
 
-          {/* Categories */}
-          <li>
-            <NavLink
-              to="/admin/categories"
-              className={({ isActive }) => (isActive ? "active-link" : "")}
-              title="Categories"
-            >
-              <FaList />
-              {!collapsed && <span>Categories</span>}
-            </NavLink>
-          </li>
+            {/* Categories */}
+            <li>
+              <NavLink
+                to="/admin/categories"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+                title="Categories"
+              >
+                <FaList />
+                {!collapsed && <span>Categories</span>}
+              </NavLink>
+            </li>
 
-          {/* Users */}
-          <li>
-            <NavLink
-              to="/admin/users"
-              className={({ isActive }) => (isActive ? "active-link" : "")}
-              title="Users"
-            >
-              <FaUsers />
-              {!collapsed && <span>Users</span>}
-            </NavLink>
-          </li>
+            {/* Users */}
+            <li>
+              <NavLink
+                to="/admin/users"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+                title="Users"
+              >
+                <FaUsers />
+                {!collapsed && <span>Users</span>}
+              </NavLink>
+            </li>
 
-          {/* Products */}
-          <li>
-            <NavLink
-              to="/admin/products"
-              className={({ isActive }) => (isActive ? "active-link" : "")}
-              title="Products"
-            >
-              <FaBoxOpen />
-              {!collapsed && <span>Products</span>}
-            </NavLink>
-          </li>
+            {/* Products */}
+            <li>
+              <NavLink
+                to="/admin/products"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+                title="Products"
+              >
+                <FaBoxOpen />
+                {!collapsed && <span>Products</span>}
+              </NavLink>
+            </li>
 
-          {/* Offers */}
-          <li>
-            <NavLink
-              to="/admin/offers"
-              className={({ isActive }) => (isActive ? "active-link" : "")}
-              title="Offers"
-            >
-              <FaTags />
-              {!collapsed && <span>Offers</span>}
-            </NavLink>
-          </li>
+            {/* Offers */}
+            <li>
+              <NavLink
+                to="/admin/offers"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+                title="Offers"
+              >
+                <FaTags />
+                {!collapsed && <span>Offers</span>}
+              </NavLink>
+            </li>
 
-          {/* Reviews */}
-          <li>
-            <NavLink
-              to="/admin/reviews"
-              className={({ isActive }) => (isActive ? "active-link" : "")}
-              title="Reviews"
-            >
-              <FaStar />
-              {!collapsed && <span>Reviews</span>}
-            </NavLink>
-          </li>
+            {/* Reviews */}
+            <li>
+              <NavLink
+                to="/admin/reviews"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+                title="Reviews"
+              >
+                <FaStar />
+                {!collapsed && <span>Reviews</span>}
+              </NavLink>
+            </li>
 
-          {/* Suppliers */}
-          <li>
-            <NavLink
-              to="/admin/suppliers"
-              className={({ isActive }) => (isActive ? "active-link" : "")}
-              title="Suppliers"
-            >
-              <FaTruck />
-              {!collapsed && <span>Suppliers</span>}
-            </NavLink>
-          </li>
+            {/* Suppliers */}
+            <li>
+              <NavLink
+                to="/admin/suppliers"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+                title="Suppliers"
+              >
+                <FaTruck />
+                {!collapsed && <span>Suppliers</span>}
+              </NavLink>
+            </li>
 
-          {/* Business Settings */}
-          <li>
-            <NavLink
-              to="/admin/business-settings"
-              className={({ isActive }) => (isActive ? "active-link" : "")}
-              title="Business Settings"
-            >
-              <FaCog />
-              {!collapsed && <span>Business Settings</span>}
-            </NavLink>
-          </li>
+            {/* Business Settings */}
+            <li>
+              <NavLink
+                to="/admin/business-settings"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+                title="Business Settings"
+              >
+                <FaCog />
+                {!collapsed && <span>Business Settings</span>}
+              </NavLink>
+            </li>
 
-          <li>
-            <NavLink
-              to="/admin/stock-history"
-              className={({ isActive }) => (isActive ? "active-link" : "")}
-              title="Stock History"
-            >
-              <FaHistory />
-              {!collapsed && <span>Stock History</span>}
-            </NavLink>
-          </li>
+            {/* Payments */}
+            <li>
+              <NavLink
+                to="/admin/payments"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+                title="Payments"
+              >
+                <FaCreditCard />
+                {!collapsed && <span>Payments</span>}
+              </NavLink>
+            </li>
 
-          {/* Orders */}
-          <li>
-            <NavLink
-              to="/admin/orders"
-              className={({ isActive }) => (isActive ? "active-link" : "")}
-              title="Orders"
-            >
-              <FaShoppingCart />
-              {!collapsed && <span>Orders</span>}
-            </NavLink>
-          </li>
+            <li>
+              <NavLink
+                to="/admin/stock-history"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+                title="Stock History"
+              >
+                <FaHistory />
+                {!collapsed && <span>Stock History</span>}
+              </NavLink>
+            </li>
 
-          {/* Logout */}
-          <li>
-            <button className="sidebar-btn logout-btn" onClick={handleLogout}>
-  <FaSignOutAlt />
-  <span>Logout</span>
-</button>
-          </li>
-        </ul>
+            {/* Orders */}
+            <li>
+              <NavLink
+                to="/admin/orders"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+                title="Orders"
+              >
+                <FaShoppingCart />
+                {!collapsed && <span>Orders</span>}
+              </NavLink>
+            </li>
+          </ul>
+        </div>
+
+        <div className="sidebar-footer">
+          <button className="sidebar-btn logout-btn" onClick={handleLogout} title="Logout">
+            <FaSignOutAlt />
+            {!collapsed && <span>Logout</span>}
+          </button>
+        </div>
       </div>
 
       {/* Main Section */}

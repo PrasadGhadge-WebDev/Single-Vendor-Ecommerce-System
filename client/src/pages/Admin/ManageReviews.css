@@ -1,9 +1,13 @@
+.reviews-page {
+  color: var(--page-text);
+}
+
 .review-module-header {
-  background: linear-gradient(135deg, #07214a 0%, #0f4d92 100%);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-color) 65%, #0f172a), color-mix(in srgb, var(--accent-color) 82%, #2563eb));
   color: white;
   border-radius: 1rem;
   padding: 1.5rem;
-  box-shadow: 0 15px 40px rgba(7, 33, 74, 0.35);
+  box-shadow: 0 15px 40px var(--shadow-color);
 }
 .review-module-header h3 {
   font-size: 1.8rem;
@@ -19,15 +23,15 @@
 }
 .stats-card {
   flex: 1 1 220px;
-  background: #fff;
+  background: var(--surface-1);
   border-radius: 1rem;
   padding: 1.25rem;
-  box-shadow: 0 15px 30px rgba(15, 77, 146, 0.15);
-  border: 1px solid #e9ecef;
+  box-shadow: 0 15px 30px var(--shadow-color);
+  border: 1px solid var(--border-color);
 }
 .stats-card .label {
   font-size: 0.85rem;
-  color: #6c757d;
+  color: var(--muted-text);
 }
 .stats-card .value {
   font-size: 2rem;
@@ -35,8 +39,13 @@
 }
 .card-panel {
   border-radius: 1rem;
-  border: 1px solid #e9ecef;
-  box-shadow: 0 10px 30px rgba(15, 77, 146, 0.12);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 10px 30px var(--shadow-color);
+}
+.review-filter-badge {
+  background: var(--surface-2);
+  color: var(--page-text);
+  border: 1px solid var(--border-color);
 }
 .rating-distribution {
   margin-top: 1.25rem;
@@ -53,16 +62,18 @@
   border-radius: 0.25rem;
   overflow: hidden;
   width: 100%;
-  background: #e9ecef;
+  background: var(--surface-3);
 }
 .rating-distribution .progress-bar {
-  background: #ff9900;
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
 }
 .review-card {
   border-radius: 1rem;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--border-color);
   transition: transform 0.2s ease;
   min-height: 100%;
+  background: var(--surface-1);
+  box-shadow: 0 12px 28px var(--shadow-color);
 }
 .review-card:hover {
   transform: translateY(-4px);
@@ -76,11 +87,11 @@
 .review-card .review-comment {
   font-size: 0.95rem;
   line-height: 1.5;
-  color: #4b5563;
+  color: var(--page-text);
 }
 .review-card .review-meta {
   font-size: 0.85rem;
-  color: #6c757d;
+  color: var(--muted-text);
 }
 .review-card .review-rating-group {
   display: flex;
@@ -88,9 +99,10 @@
   gap: 0.35rem;
 }
 .review-card-edit {
-  background: #f8f9fa;
+  background: var(--surface-2);
   border-radius: 0.75rem;
   padding: 1rem;
+  border: 1px solid var(--border-color);
 }
 .review-card-edit .form-control {
   border-radius: 0.5rem;
@@ -107,20 +119,21 @@
   border-radius: 999px;
   padding: 0.25rem 0.85rem;
   font-size: 0.85rem;
-  border: 1px solid #ced4da;
-  background: #f8f9fa;
-  color: #495057;
+  border: 1px solid var(--border-color);
+  background: var(--surface-2);
+  color: var(--page-text);
   cursor: pointer;
 }
 .suggestion-pill.active {
-  background: #0f4d92;
+  background: var(--accent-color);
   color: white;
-  border-color: #0f4d92;
+  border-color: var(--accent-color);
 }
 .suggestion-pill.empty {
   cursor: default;
   border-color: transparent;
   background: transparent;
+  color: var(--muted-text);
 }
 @media (max-width: 768px) {
   .stats-card,

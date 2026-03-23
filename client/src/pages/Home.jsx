@@ -19,23 +19,23 @@ const FALLBACK_IMAGE =
   "https://via.placeholder.com/420x320/f1f5f9/64748b?text=No+Image";
 
 const categoryIconMap = [
-  { keywords: ["electronics"], icon: <FaTv className="category-icon" />, label: false },
-  { keywords: ["mobile", "phone", "mobiles"], icon: <FaMobileAlt className="category-icon" />, label: false },
-  { keywords: ["laptop", "laptops", "computers"], icon: <FaLaptop className="category-icon" />, label: false },
-  { keywords: ["fashion", "clothing", "apparel", "mens"], icon: <FaTshirt className="category-icon" />, label: false },
-  { keywords: ["home", "furniture", "decor"], icon: <FaCouch className="category-icon" />, label: false },
-  { keywords: ["photography", "camera", "audio"], icon: <FaCamera className="category-icon" />, label: false },
-  { keywords: ["gaming", "game", "consoles"], icon: <FaGamepad className="category-icon" />, label: false },
-  { keywords: ["shoe", "shoes", "footwear"], icon: <FaShoePrints className="category-icon" />, label: true },
+  { keywords: ["electronics"], icon: <FaTv className="category-icon" /> },
+  { keywords: ["mobile", "phone", "mobiles"], icon: <FaMobileAlt className="category-icon" /> },
+  { keywords: ["laptop", "laptops", "computers"], icon: <FaLaptop className="category-icon" /> },
+  { keywords: ["fashion", "clothing", "apparel", "mens"], icon: <FaTshirt className="category-icon" /> },
+  { keywords: ["home", "furniture", "decor"], icon: <FaCouch className="category-icon" /> },
+  { keywords: ["photography", "camera", "audio"], icon: <FaCamera className="category-icon" /> },
+  { keywords: ["gaming", "game", "consoles"], icon: <FaGamepad className="category-icon" /> },
+  { keywords: ["shoe", "shoes", "footwear"], icon: <FaShoePrints className="category-icon" /> },
 ];
 
 const pickCategoryIcon = (categoryName) => {
-  if (!categoryName) return { icon: <FaLayerGroup className="category-icon" />, label: false };
+  if (!categoryName) return <FaLayerGroup className="category-icon" />;
   const normalized = categoryName.toLowerCase();
   const entry = categoryIconMap.find((item) =>
     item.keywords.some((keyword) => normalized.includes(keyword))
   );
-  return entry || { icon: <FaLayerGroup className="category-icon" />, label: false };
+  return entry?.icon || <FaLayerGroup className="category-icon" />;
 };
 
 const Home = () => {
@@ -130,7 +130,8 @@ const Home = () => {
         </div>
       </section>
 
-      <section className="container py-5">
+<br></br>
+      {/* <section className="container py-5">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h3 className="fw-bold mb-0">Shop by Category</h3>
           <Link to="/shop" className="text-decoration-none fw-semibold">
@@ -145,37 +146,52 @@ const Home = () => {
         ) : (
           <div className="row g-3">
             {categories.map((cat, index) => (
-              <div key={cat._id || cat.name} className="col-6 col-md-4 col-lg-3 fade-in-up" style={{ animationDelay: `${index * 80}ms` }}>
-                <Link
-                  to={`/shop/category/${encodeURIComponent(cat.name)}`}
-                  className="text-decoration-none"
-                >
-                {(() => {
-                  const iconMeta = pickCategoryIcon(cat.name);
-                  return (
-                    <div className="category-modern-card h-100 category-icon-card">
+              <div key={cat._id || cat.name} className="col-12 col-md-6 col-lg-4 fade-in-up" style={{ animationDelay: `${index * 80}ms` }}>
+                <div className="category-modern-card h-100">
+                  <Link
+                    to={`/shop/category/${encodeURIComponent(cat.name)}`}
+                    className="text-decoration-none"
+                  >
+                    <div className="category-card-header">
                       <div className="category-icon-wrapper">
-                        {iconMeta.icon}
+                        {pickCategoryIcon(cat.name)}
                       </div>
-                      {iconMeta.label ? (
-                        <span className="category-label">{cat.name}</span>
-                      ) : (
-                        <span className="visually-hidden">{cat.name}</span>
-                      )}
+                      <div>
+                        <h5 className="category-label mb-1">{cat.name}</h5>
+                        <p className="category-caption mb-0">
+                          {cat.subCategories?.length
+                            ? `${cat.subCategories.length} subcategories`
+                            : "Browse products"}
+                        </p>
+                      </div>
                     </div>
-                  );
-                })()}
-                </Link>
+                  </Link>
+
+                  {Array.isArray(cat.subCategories) && cat.subCategories.length > 0 && (
+                    <div className="sub-category-chip-list">
+                      {cat.subCategories.map((subCategory) => (
+                        <Link
+                          key={`${cat._id || cat.name}-${subCategory}`}
+                          to={`/shop/category/${encodeURIComponent(cat.name)}?sub=${encodeURIComponent(subCategory)}`}
+                          className="sub-category-chip"
+                        >
+                          {subCategory}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         )}
-      </section>
+      </section> */}
 
       <section className="container pb-5">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h3 className="fw-bold mb-0">Featured Products</h3>
           <Link to="/shop" className="btn btn-sm home-view-all">
+
             View All
           </Link>
         </div>

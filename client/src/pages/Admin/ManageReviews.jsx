@@ -318,7 +318,7 @@ const ManageReviews = () => {
   }, [canAddReview]);
 
   return (
-    <div className="container-fluid py-3">
+    <div className="container-fluid py-3 reviews-page">
 
       <section className="stats-grid mb-4">
         <div className="stats-card">
@@ -346,7 +346,7 @@ const ManageReviews = () => {
             <h5 className="mb-1">Review filters</h5>
             <p className="text-muted mb-0">Slice the data like a modern marketplace dashboard.</p>
           </div>
-          <div className="badge bg-light text-dark px-3 py-2">{filterSummary}</div>
+          <div className="badge review-filter-badge px-3 py-2">{filterSummary}</div>
         </div>
         <div className="row g-3 align-items-end mt-2">
           <div className="col-md-4">
@@ -498,7 +498,7 @@ const ManageReviews = () => {
             <div className="row g-3">
               {reviews.map((review) => (
                 <div className="col-md-6" key={`card-${review._id}`}>
-                  <article className="review-card h-100 bg-white">
+                  <article className="review-card h-100">
                     <div className="card-body">
                       {editingId === review._id ? (
                         <div className="review-card-edit">

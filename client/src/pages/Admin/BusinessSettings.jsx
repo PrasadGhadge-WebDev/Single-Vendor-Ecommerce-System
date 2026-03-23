@@ -1,20 +1,67 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import API from "../../api";
 import { downloadCsv } from "../../utils/adminHelpers";
 import "./BusinessSettings.css";
 import { toast } from "react-toastify";
+import { 
+  FaStore, FaInfoCircle, FaCreditCard, FaTruck, FaFileInvoiceDollar, 
+  FaCog, FaBell, FaSearch, FaShieldAlt, FaChartLine, FaReceipt 
+} from "react-icons/fa";
 
 const defaultSettings = {
-  businessName: "",
-  ownerName: "",
+  // General Settings
+  storeName: "",
+  logoUrl: "",
   email: "",
   phone: "",
   address: "",
-  gstNumber: "",
-  invoicePrefix: "INV",
-  invoiceFooter: "",
   currency: "INR",
+  timezone: "UTC",
+
+  // Store Information
+  businessName: "",
+  gstNumber: "",
+  ownerName: "",
+
+  // Payment Settings
+  codEnabled: true,
+  onlinePaymentEnabled: false,
+  upiId: "",
+  razorpayKeyId: "",
+  razorpayKeySecret: "",
+
+  // Shipping Settings
+  freeShippingEnabled: false,
+  deliveryCharges: 0,
+  minOrderAmount: 0,
+  deliveryTime: "",
+
+  // Tax Settings
   taxPercent: 0,
+  isTaxInclusive: false,
+
+  // Order Settings
+  orderStatusFlow: ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"],
+  autoConfirmOrders: false,
+  cancelEnabled: true,
+  returnEnabled: true,
+
+  // Notification Settings
+  emailNotificationsEnabled: true,
+  orderAlertsEnabled: true,
+
+  // SEO Settings
+  metaTitle: "",
+  metaDescription: "",
+
+  // Policy Pages
+  privacyPolicy: "",
+  termsAndConditions: "",
+  refundPolicy: "",
+
+  // Legacy
+  invoicePrefix: "INV",
+  invoiceFooter: "Thank you for your purchase.",
 };
 
 const formatCurrency = (value, currency = "INR") =>
@@ -29,62 +76,57 @@ const BusinessSettings = () => {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [orderId, setOrderId] = useState("");
-  const [openSection, setOpenSection] = useState("profile");
+  const [activeTab, setActiveTab] = useState("general");
 
   const fetchSettings = useCallback(async () => {
-    const { data } = await API.get("/business-settings");
-    setSettings({ ...defaultSettings, ...data });
+    try {
+      const { data } = await API.get("/business-settings");
+      setSettings((prev) => ({ ...prev, ...data }));
+    } catch (error) {
+      console.error("Error fetching settings:", error);
+    }
   }, []);
 
   const fetchReports = useCallback(async () => {
-    const params = {};
-    if (dateFrom) params.dateFrom = new Date(dateFrom).toISOString();
-    if (dateTo) params.dateTo = new Date(dateTo).toISOString();
-    const { data } = await API.get("/business-settings/reports", { params });
-    setReports({
-      summary: data.summary || null,
-      statusSummary: Array.isArray(data.statusSummary) ? data.statusSummary : [],
-      orders: Array.isArray(data.orders) ? data.orders : [],
-    });
+    try {
+      const params = {};
+      if (dateFrom) params.dateFrom = new Date(dateFrom).toISOString();
+      if (dateTo) params.dateTo = new Date(dateTo).toISOString();
+      const { data } = await API.get("/business-settings/reports", { params });
+      setReports({
+        summary: data.summary || null,
+        statusSummary: Array.isArray(data.statusSummary) ? data.statusSummary : [],
+        orders: Array.isArray(data.orders) ? data.orders : [],
+      });
+    } catch (error) {
+      console.error("Error fetching reports:", error);
+    }
   }, [dateFrom, dateTo]);
 
-  const fetchAll = useCallback(async () => {
-    try {
+  useEffect(() => {
+    const loadData = async () => {
       setLoading(true);
       await Promise.all([fetchSettings(), fetchReports()]);
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to load business settings");
-    } finally {
       setLoading(false);
-    }
-  }, [fetchReports, fetchSettings]);
-
-  useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
-
-  useEffect(() => {
-    fetchReports();
-  }, [fetchReports]);
+    };
+    loadData();
+  }, [fetchSettings, fetchReports]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setSettings((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setSettings((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   };
 
-  const saveSettings = async (e) => {
-    e.preventDefault();
+  const handleSave = async (e) => {
+    if (e) e.preventDefault();
+    setSaving(true);
     try {
-      setSaving(true);
-      const payload = {
-        ...settings,
-        taxPercent: Number(settings.taxPercent || 0),
-      };
-      const { data } = await API.put("/business-settings", payload);
-      const updatedProfile = { ...defaultSettings, ...data };
-      setSettings(updatedProfile);
-      toast.success("Business settings updated");
-      window.dispatchEvent(new CustomEvent("business-settings-updated", { detail: updatedProfile }));
+      const { data } = await API.put("/business-settings", settings);
+      setSettings((prev) => ({ ...prev, ...data }));
+      toast.success("Settings saved successfully!");
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to save settings");
     } finally {
@@ -106,20 +148,21 @@ const BusinessSettings = () => {
     }
   };
 
-  const printableBill = useMemo(() => {
-    if (!bill) return "";
+  const printBill = () => {
+    if (!bill) return;
+    const popup = window.open("", "_blank", "width=900,height=700");
+    if (!popup) return;
+    
     const rows = bill.order.items
-      .map(
-        (item, index) =>
+      .map((item, index) =>
           `<tr><td>${index + 1}</td><td>${item.productName}</td><td>${item.quantity}</td><td>${item.unitPrice}</td><td>${item.lineTotal}</td></tr>`
-      )
-      .join("");
+      ).join("");
 
-    return `
+    const printable = `
       <html><head><title>${bill.invoiceNumber}</title>
       <style>body{font-family:Arial;padding:24px;color:#111}table{width:100%;border-collapse:collapse;margin-top:12px}td,th{border:1px solid #ccc;padding:8px}</style>
       </head><body>
-      <h2>${bill.business.businessName}</h2>
+      <h2>${bill.business.businessName || bill.business.storeName}</h2>
       <p>${bill.business.address || ""}</p>
       <p>Invoice: <strong>${bill.invoiceNumber}</strong></p>
       <p>Customer: ${bill.customer.name} (${bill.customer.email || ""})</p>
@@ -133,13 +176,8 @@ const BusinessSettings = () => {
       <h3>Grand Total: ${bill.order.grandTotal}</h3>
       <p>${bill.footerNote || ""}</p>
       </body></html>`;
-  }, [bill]);
 
-  const printBill = () => {
-    if (!bill) return;
-    const popup = window.open("", "_blank", "width=900,height=700");
-    if (!popup) return;
-    popup.document.write(printableBill);
+    popup.document.write(printable);
     popup.document.close();
     popup.focus();
     popup.print();
@@ -159,288 +197,381 @@ const BusinessSettings = () => {
     );
   };
 
-  const exportBillCsv = () => {
-    if (!bill) return;
-    downloadCsv(
-      `${bill.invoiceNumber}.csv`,
-      bill.order.items.map((item) => ({
-        invoiceNumber: bill.invoiceNumber,
-        product: item.productName,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        lineTotal: item.lineTotal,
-      }))
-    );
-  };
+  const tabs = [
+    { id: "general", label: "General", icon: <FaStore /> },
+    { id: "store", label: "Store Info", icon: <FaInfoCircle /> },
+    { id: "payment", label: "Payment", icon: <FaCreditCard /> },
+    { id: "shipping", label: "Shipping", icon: <FaTruck /> },
+    { id: "tax", label: "Tax", icon: <FaFileInvoiceDollar /> },
+    { id: "order", label: "Orders", icon: <FaCog /> },
+    { id: "notification", label: "Notifications", icon: <FaBell /> },
+    { id: "seo", label: "SEO", icon: <FaSearch /> },
+    { id: "policies", label: "Policies", icon: <FaShieldAlt /> },
+    { id: "reports", label: "Reports", icon: <FaChartLine /> },
+    { id: "invoices", label: "Invoices", icon: <FaReceipt /> },
+  ];
+
+  if (loading) return <div className="bs-loading">Loading configuration...</div>;
 
   return (
-    <div className="container-fluid bs-page">
-      <div className="bs-hero mb-3">
-        <div>
-          <h3 className="mb-1">Business Settings</h3>
-          <p className="mb-0 text-muted">
-            Manage business profile, reporting window and invoice generation from one place.
-          </p>
-        </div>
-        <div className="bs-hero-metrics">
-          <div className="bs-chip">
-            <small>Orders</small>
-            <strong>{reports.summary?.orders || 0}</strong>
-          </div>
-          <div className="bs-chip">
-            <small>Revenue</small>
-            <strong>{formatCurrency(reports.summary?.revenue || 0, settings.currency || "INR")}</strong>
-          </div>
-        </div>
+    <div className="bs-container">
+      <div className="bs-header">
+        <h1>Business Settings</h1>
+        <p>Configure and manage your store's global parameters</p>
       </div>
-      {loading ? (
-        <p>Loading business settings...</p>
-      ) : (
-        <>
-          <div className="accordion bs-accordion" id="businessSettingsAccordion">
-            <div className="accordion-item mb-3 border rounded bs-accordion-item">
-              <h2 className="accordion-header">
-                <button
-                  className={`accordion-button ${openSection === "profile" ? "" : "collapsed"}`}
-                  type="button"
-                  onClick={() => setOpenSection(openSection === "profile" ? "" : "profile")}
-                >
-                  Business Profile
-                </button>
-              </h2>
-              <div className={`accordion-collapse collapse ${openSection === "profile" ? "show" : ""}`}>
-                <div className="accordion-body">
-                  <form className="card p-3 border-0 bs-form-card" onSubmit={saveSettings}>
-                    <div className="bs-subheading">Business Identity</div>
-                    <div className="row g-3">
-                      <div className="col-md-6">
-                        <label className="form-label">Business Name</label>
-                        <input className="form-control" name="businessName" placeholder="Business name" value={settings.businessName} onChange={handleChange} required />
-                      </div>
-                      <div className="col-md-6">
-                        <label className="form-label">Owner Name</label>
-                        <input className="form-control" name="ownerName" placeholder="Owner name" value={settings.ownerName} onChange={handleChange} />
-                      </div>
-                      <div className="col-md-6">
-                        <label className="form-label">Email</label>
-                        <input className="form-control" name="email" placeholder="Email" value={settings.email} onChange={handleChange} />
-                      </div>
-                      <div className="col-md-6">
-                        <label className="form-label">Phone</label>
-                        <input className="form-control" name="phone" placeholder="Phone" value={settings.phone} onChange={handleChange} />
-                      </div>
-                      <div className="col-12">
-                        <label className="form-label">Address</label>
-                        <textarea className="form-control" rows="2" name="address" placeholder="Address" value={settings.address} onChange={handleChange} />
-                      </div>
-                    </div>
 
-                    <div className="bs-subheading mt-4">Billing & Tax</div>
-                    <div className="row g-3">
-                      <div className="col-md-4">
-                        <label className="form-label">GST Number</label>
-                        <input className="form-control" name="gstNumber" placeholder="GST Number" value={settings.gstNumber} onChange={handleChange} />
-                      </div>
-                      <div className="col-md-4">
-                        <label className="form-label">Invoice Prefix</label>
-                        <input className="form-control" name="invoicePrefix" placeholder="Invoice Prefix" value={settings.invoicePrefix} onChange={handleChange} />
-                      </div>
-                      <div className="col-md-4">
-                        <label className="form-label">Tax %</label>
-                        <input type="number" min="0" className="form-control" name="taxPercent" placeholder="Tax %" value={settings.taxPercent} onChange={handleChange} />
-                      </div>
-                      <div className="col-md-4">
-                        <label className="form-label">Currency</label>
-                        <input className="form-control" name="currency" placeholder="Currency" value={settings.currency} onChange={handleChange} />
-                      </div>
-                      <div className="col-md-8">
-                        <label className="form-label">Invoice Footer</label>
-                        <input className="form-control" name="invoiceFooter" placeholder="Invoice Footer" value={settings.invoiceFooter} onChange={handleChange} />
-                      </div>
-                    </div>
-                    <div className="mt-4 bs-action-row">
-                      <button className="btn btn-primary" type="submit" disabled={saving}>
-                        {saving ? "Updating..." : "Update Settings"}
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
+      <div className="bs-layout">
+        <aside className="bs-sidebar">
+          <nav>
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                className={activeTab === tab.id ? "active" : ""}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </nav>
+        </aside>
 
-            <div className="accordion-item mb-3 border rounded bs-accordion-item">
-              <h2 className="accordion-header">
-                <button
-                  className={`accordion-button ${openSection === "reports" ? "" : "collapsed"}`}
-                  type="button"
-                  onClick={() => setOpenSection(openSection === "reports" ? "" : "reports")}
-                >
-                  Reports
-                </button>
-              </h2>
-              <div className={`accordion-collapse collapse ${openSection === "reports" ? "show" : ""}`}>
-                <div className="accordion-body">
-                  <div className="card p-3 h-100 border-0 bs-form-card">
-                    <div className="d-flex justify-content-between align-items-center mb-2">
-                      <h5 className="mb-0">Reports</h5>
-                      <button className="btn btn-sm btn-outline-primary" onClick={exportReportCsv}>
-                        Export Report
-                      </button>
-                    </div>
-                    <div className="row g-3 mb-3">
-                      <div className="col-md-6">
-                        <label className="form-label">From</label>
-                        <input type="datetime-local" className="form-control" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-                      </div>
-                      <div className="col-md-6">
-                        <label className="form-label">To</label>
-                        <input type="datetime-local" className="form-control" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-                      </div>
-                    </div>
-                    <div className="row g-2 mb-3">
-                      <div className="col-md-3">
-                        <div className="border rounded p-2 bs-metric">
-                          <small className="text-muted d-block">Orders</small>
-                          <strong>{reports.summary?.orders || 0}</strong>
-                        </div>
-                      </div>
-                      <div className="col-md-3">
-                        <div className="border rounded p-2 bs-metric">
-                          <small className="text-muted d-block">Revenue</small>
-                          <strong>{formatCurrency(reports.summary?.revenue || 0, settings.currency || "INR")}</strong>
-                        </div>
-                      </div>
-                      <div className="col-md-3">
-                        <div className="border rounded p-2 bs-metric">
-                          <small className="text-muted d-block">Discount</small>
-                          <strong>{formatCurrency(reports.summary?.discount || 0, settings.currency || "INR")}</strong>
-                        </div>
-                      </div>
-                      <div className="col-md-3">
-                        <div className="border rounded p-2 bs-metric">
-                          <small className="text-muted d-block">Net Revenue</small>
-                          <strong>
-                            {formatCurrency(
-                              Number(reports.summary?.revenue || 0) - Number(reports.summary?.discount || 0),
-                              settings.currency || "INR"
-                            )}
-                          </strong>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="table-responsive" style={{ maxHeight: 280 }}>
-                      <table className="table table-sm">
-                        <thead>
-                          <tr>
-                            <th>Order</th>
-                            <th>Customer</th>
-                            <th>Total</th>
-                            <th>Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {reports.orders.slice(0, 20).map((order) => (
-                            <tr key={order._id}>
-                              <td>{order._id}</td>
-                              <td>{order.user?.name || "Unknown"}</td>
-                              <td>{order.totalAmount}</td>
-                              <td>{order.status}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+        <main className="bs-content">
+          <form onSubmit={handleSave}>
+            {activeTab === "general" && (
+              <section className="bs-section">
+                <h3>General Settings</h3>
+                <div className="bs-grid">
+                  <div className="bs-field">
+                    <label>Store Name</label>
+                    <input name="storeName" value={settings.storeName} onChange={handleChange} placeholder="e.g. My Awesome Store" required />
+                  </div>
+                  <div className="bs-field">
+                    <label>Logo URL</label>
+                    <input name="logoUrl" value={settings.logoUrl} onChange={handleChange} placeholder="https://example.com/logo.png" />
+                  </div>
+                  <div className="bs-field">
+                    <label>Email Address</label>
+                    <input type="email" name="email" value={settings.email} onChange={handleChange} placeholder="contact@store.com" />
+                  </div>
+                  <div className="bs-field">
+                    <label>Phone Number</label>
+                    <input name="phone" value={settings.phone} onChange={handleChange} placeholder="+91 9876543210" />
+                  </div>
+                  <div className="bs-field full-width">
+                    <label>Store Address</label>
+                    <textarea name="address" value={settings.address} onChange={handleChange} placeholder="Full physical address" rows="3" />
+                  </div>
+                  <div className="bs-field">
+                    <label>Currency</label>
+                    <select name="currency" value={settings.currency} onChange={handleChange}>
+                      <option value="INR">INR (₹)</option>
+                      <option value="USD">USD ($)</option>
+                      <option value="EUR">EUR (€)</option>
+                    </select>
+                  </div>
+                  <div className="bs-field">
+                    <label>Timezone</label>
+                    <select name="timezone" value={settings.timezone} onChange={handleChange}>
+                      <option value="UTC">UTC</option>
+                      <option value="Asia/Kolkata">IST (Asia/Kolkata)</option>
+                    </select>
                   </div>
                 </div>
-              </div>
-            </div>
+              </section>
+            )}
 
-            <div className="accordion-item border rounded bs-accordion-item">
-              <h2 className="accordion-header">
-                <button
-                  className={`accordion-button ${openSection === "bill" ? "" : "collapsed"}`}
-                  type="button"
-                  onClick={() => setOpenSection(openSection === "bill" ? "" : "bill")}
-                >
-                  Bill / Invoice
-                </button>
-              </h2>
-              <div className={`accordion-collapse collapse ${openSection === "bill" ? "show" : ""}`}>
-                <div className="accordion-body">
-                  <div className="card p-3 border-0 bs-form-card">
-                    <div className="d-flex justify-content-between align-items-center mb-2">
-                      <h5 className="mb-0">Bill / Invoice</h5>
-                      <div className="d-flex gap-2">
-                        <button className="btn btn-sm btn-outline-primary" onClick={exportBillCsv}>
-                          Export Bill
-                        </button>
-                        <button className="btn btn-sm btn-primary" onClick={printBill}>
-                          Print Bill
-                        </button>
-                      </div>
-                    </div>
-                    <div className="row g-3 mb-3">
-                      <div className="col-md-8">
-                        <label className="form-label">Order ID</label>
-                        <input className="form-control" placeholder="Enter order ID for bill" value={orderId} onChange={(e) => setOrderId(e.target.value)} />
-                      </div>
-                      <div className="col-md-4 d-flex align-items-end">
-                        <button className="btn btn-success w-100" onClick={loadBill}>
-                          Generate Bill
-                        </button>
-                      </div>
-                    </div>
+            {activeTab === "store" && (
+              <section className="bs-section">
+                <h3>Store Information</h3>
+                <div className="bs-grid">
+                  <div className="bs-field">
+                    <label>Legal Business Name</label>
+                    <input name="businessName" value={settings.businessName} onChange={handleChange} placeholder="Registered Business Name" />
+                  </div>
+                  <div className="bs-field">
+                    <label>GST Number</label>
+                    <input name="gstNumber" value={settings.gstNumber} onChange={handleChange} placeholder="22AAAAA0000A1Z5" />
+                  </div>
+                  <div className="bs-field">
+                    <label>Owner/Proprietor Name</label>
+                    <input name="ownerName" value={settings.ownerName} onChange={handleChange} placeholder="Full Legal Name" />
+                  </div>
+                </div>
+              </section>
+            )}
 
-                    {!bill ? (
-                      <p className="text-muted mb-0">Enter order ID and click Generate Bill.</p>
-                    ) : (
-                      <div className="border rounded p-3 bs-bill-card">
-                        <p className="mb-1">
-                          <strong>Invoice:</strong> {bill.invoiceNumber}
-                        </p>
-                        <p className="mb-1">
-                          <strong>Customer:</strong> {bill.customer.name} {bill.customer.email ? `(${bill.customer.email})` : ""}
-                        </p>
-                        <p className="mb-2">
-                          <strong>Order:</strong> {bill.order.id}
-                        </p>
-                        <div className="table-responsive">
-                          <table className="table table-sm">
+            {activeTab === "payment" && (
+              <section className="bs-section">
+                <h3>Payment Settings</h3>
+                <div className="bs-field toggle">
+                  <label>
+                    <input type="checkbox" name="codEnabled" checked={settings.codEnabled} onChange={handleChange} />
+                    Enable Cash on Delivery (COD)
+                  </label>
+                </div>
+                <div className="bs-field toggle">
+                  <label>
+                    <input type="checkbox" name="onlinePaymentEnabled" checked={settings.onlinePaymentEnabled} onChange={handleChange} />
+                    Enable Online Payments (UPI / Razorpay)
+                  </label>
+                </div>
+                {settings.onlinePaymentEnabled && (
+                  <div className="bs-grid mt-4">
+                    <div className="bs-field">
+                      <label>UPI ID</label>
+                      <input name="upiId" value={settings.upiId} onChange={handleChange} placeholder="store@upi" />
+                    </div>
+                    <div className="bs-field">
+                      <label>Razorpay Key ID</label>
+                      <input name="razorpayKeyId" value={settings.razorpayKeyId} onChange={handleChange} placeholder="rzp_live_..." />
+                    </div>
+                    <div className="bs-field">
+                      <label>Razorpay Key Secret</label>
+                      <input type="password" name="razorpayKeySecret" value={settings.razorpayKeySecret} onChange={handleChange} placeholder="••••••••••••" />
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {activeTab === "shipping" && (
+              <section className="bs-section">
+                <h3>Shipping Settings</h3>
+                <div className="bs-field toggle">
+                  <label>
+                    <input type="checkbox" name="freeShippingEnabled" checked={settings.freeShippingEnabled} onChange={handleChange} />
+                    Enable Global Free Shipping
+                  </label>
+                </div>
+                <div className="bs-grid mt-4">
+                  <div className="bs-field">
+                    <label>Delivery Charges ({settings.currency})</label>
+                    <input type="number" name="deliveryCharges" value={settings.deliveryCharges} onChange={handleChange} disabled={settings.freeShippingEnabled} />
+                  </div>
+                  <div className="bs-field">
+                    <label>Minimum Order for Free Shipping ({settings.currency})</label>
+                    <input type="number" name="minOrderAmount" value={settings.minOrderAmount} onChange={handleChange} />
+                  </div>
+                  <div className="bs-field">
+                    <label>Estimated Delivery Time</label>
+                    <input name="deliveryTime" value={settings.deliveryTime} onChange={handleChange} placeholder="e.g. 3-5 Working Days" />
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {activeTab === "tax" && (
+              <section className="bs-section">
+                <h3>Tax Settings</h3>
+                <div className="bs-grid">
+                  <div className="bs-field">
+                    <label>Tax / GST (%)</label>
+                    <input type="number" name="taxPercent" value={settings.taxPercent} onChange={handleChange} min="0" max="100" />
+                  </div>
+                  <div className="bs-field toggle self-end">
+                    <label>
+                      <input type="checkbox" name="isTaxInclusive" checked={settings.isTaxInclusive} onChange={handleChange} />
+                      Prices are Inclusive of Tax
+                    </label>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {activeTab === "order" && (
+              <section className="bs-section">
+                <h3>Order Settings</h3>
+                <div className="bs-field toggle">
+                  <label>
+                    <input type="checkbox" name="autoConfirmOrders" checked={settings.autoConfirmOrders} onChange={handleChange} />
+                    Auto-confirm new orders
+                  </label>
+                </div>
+                <div className="bs-field toggle">
+                  <label>
+                    <input type="checkbox" name="cancelEnabled" checked={settings.cancelEnabled} onChange={handleChange} />
+                    Allow customers to cancel orders
+                  </label>
+                </div>
+                <div className="bs-field toggle">
+                  <label>
+                    <input type="checkbox" name="returnEnabled" checked={settings.returnEnabled} onChange={handleChange} />
+                    Allow customers to return items
+                  </label>
+                </div>
+              </section>
+            )}
+
+            {activeTab === "notification" && (
+              <section className="bs-section">
+                <h3>Notification Settings</h3>
+                <div className="bs-field toggle">
+                  <label>
+                    <input type="checkbox" name="emailNotificationsEnabled" checked={settings.emailNotificationsEnabled} onChange={handleChange} />
+                    Send Email Notifications (Order placed, Shipped)
+                  </label>
+                </div>
+                <div className="bs-field toggle">
+                  <label>
+                    <input type="checkbox" name="orderAlertsEnabled" checked={settings.orderAlertsEnabled} onChange={handleChange} />
+                    Enable Admin Order Alerts
+                  </label>
+                </div>
+              </section>
+            )}
+
+            {activeTab === "seo" && (
+              <section className="bs-section">
+                <h3>SEO Settings</h3>
+                <div className="bs-grid">
+                  <div className="bs-field full-width">
+                    <label>Meta Title</label>
+                    <input name="metaTitle" value={settings.metaTitle} onChange={handleChange} placeholder="Home Page Meta Title" />
+                  </div>
+                  <div className="bs-field full-width">
+                    <label>Meta Description</label>
+                    <textarea name="metaDescription" value={settings.metaDescription} onChange={handleChange} placeholder="Shor description for search engines" rows="3" />
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {activeTab === "policies" && (
+              <section className="bs-section">
+                <h3>Policy Pages</h3>
+                <div className="bs-field full-width">
+                  <label>Privacy Policy</label>
+                  <textarea name="privacyPolicy" value={settings.privacyPolicy} onChange={handleChange} placeholder="Enter your privacy policy text" rows="5" />
+                </div>
+                <div className="bs-field full-width mt-3">
+                  <label>Terms & Conditions</label>
+                  <textarea name="termsAndConditions" value={settings.termsAndConditions} onChange={handleChange} placeholder="Enter your Terms & Conditions" rows="5" />
+                </div>
+                <div className="bs-field full-width mt-3">
+                  <label>Refund Policy</label>
+                  <textarea name="refundPolicy" value={settings.refundPolicy} onChange={handleChange} placeholder="Enter your refund and return policy" rows="5" />
+                </div>
+              </section>
+            )}
+
+            {activeTab === "reports" && (
+              <section className="bs-section">
+                <div className="bs-flex-header">
+                  <h3>Business Reports</h3>
+                  <button type="button" className="btn-secondary" onClick={exportReportCsv}>Export CSV</button>
+                </div>
+                <div className="bs-date-filters mt-3">
+                  <div className="bs-field">
+                    <label>From</label>
+                    <input type="datetime-local" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+                  </div>
+                  <div className="bs-field">
+                    <label>To</label>
+                    <input type="datetime-local" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+                  </div>
+                  <button type="button" className="btn-primary" onClick={fetchReports}>Apply Filter</button>
+                </div>
+                <div className="bs-metrics-grid mt-4">
+                  <div className="bs-metric-card">
+                    <span className="label">Total Orders</span>
+                    <span className="value">{reports.summary?.orders || 0}</span>
+                  </div>
+                  <div className="bs-metric-card">
+                    <span className="label">Gross Revenue</span>
+                    <span className="value">{formatCurrency(reports.summary?.revenue || 0, settings.currency)}</span>
+                  </div>
+                  <div className="bs-metric-card success">
+                    <span className="label">Net Revenue</span>
+                    <span className="value">
+                      {formatCurrency(Number(reports.summary?.revenue || 0) - Number(reports.summary?.discount || 0), settings.currency)}
+                    </span>
+                  </div>
+                </div>
+                <div className="bs-table-container mt-4">
+                  <table className="bs-display-table">
+                    <thead>
+                      <tr>
+                        <th>Order ID</th>
+                        <th>Customer</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {reports.orders.slice(0, 10).map((order) => (
+                        <tr key={order._id}>
+                          <td>{order._id.slice(-8)}</td>
+                          <td>{order.user?.name || "N/A"}</td>
+                          <td>{order.totalAmount}</td>
+                          <td><span className={`status-badge ${order.status}`}>{order.status}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+
+            {activeTab === "invoices" && (
+                <section className="bs-section">
+                  <h3>Generate Invoice</h3>
+                  <div className="bs-invoice-search">
+                    <input placeholder="Enter Order ID" value={orderId} onChange={(e) => setOrderId(e.target.value)} />
+                    <button type="button" className="btn-primary" onClick={loadBill}>Load Bill</button>
+                  </div>
+
+                  {bill && (
+                    <div className="bs-bill-preview mt-4">
+                      <div className="bs-bill-actions">
+                        <button type="button" className="btn-secondary" onClick={printBill}>Print PDF</button>
+                      </div>
+                      <div className="bs-bill-content">
+                        <div className="bill-header">
+                            <h4>Invoice: {bill.invoiceNumber}</h4>
+                            <p>Date: {new Date(bill.generatedAt).toLocaleDateString()}</p>
+                        </div>
+                        <div className="bill-parties">
+                            <div>
+                                <strong>From:</strong>
+                                <p>{bill.business.storeName}<br/>{bill.business.address}</p>
+                            </div>
+                            <div>
+                                <strong>To:</strong>
+                                <p>{bill.customer.name}<br/>{bill.customer.email}</p>
+                            </div>
+                        </div>
+                        <table className="bill-items">
                             <thead>
-                              <tr>
-                                <th>Product</th>
-                                <th>Qty</th>
-                                <th>Unit</th>
-                                <th>Total</th>
-                              </tr>
+                                <tr><th>Product</th><th>Qty</th><th>Total</th></tr>
                             </thead>
                             <tbody>
-                              {bill.order.items.map((item, index) => (
-                                <tr key={`${item.productName}-${index}`}>
-                                  <td>{item.productName}</td>
-                                  <td>{item.quantity}</td>
-                                  <td>{item.unitPrice}</td>
-                                  <td>{item.lineTotal}</td>
-                                </tr>
-                              ))}
+                                {bill.order.items.map((item, i) => (
+                                    <tr key={i}><td>{item.productName}</td><td>{item.quantity}</td><td>{item.lineTotal}</td></tr>
+                                ))}
                             </tbody>
-                          </table>
+                        </table>
+                        <div className="bill-summary">
+                            <p>Subtotal: {formatCurrency(bill.order.subtotalAmount, settings.currency)}</p>
+                            <p>Tax ({bill.order.taxPercent}%): {formatCurrency(bill.order.taxAmount, settings.currency)}</p>
+                            <h5>Total: {formatCurrency(bill.order.grandTotal, settings.currency)}</h5>
                         </div>
-                        <p className="mb-1">Subtotal: {formatCurrency(bill.order.subtotalAmount, settings.currency || "INR")}</p>
-                        <p className="mb-1">Discount: {formatCurrency(bill.order.discountAmount, settings.currency || "INR")}</p>
-                        <p className="mb-1">
-                          Tax ({bill.order.taxPercent}%): {formatCurrency(bill.order.taxAmount, settings.currency || "INR")}
-                        </p>
-                        <h6 className="mb-0">Grand Total: {formatCurrency(bill.order.grandTotal, settings.currency || "INR")}</h6>
                       </div>
-                    )}
-                  </div>
-                </div>
+                    </div>
+                  )}
+                </section>
+            )}
+
+            {activeTab !== "reports" && activeTab !== "invoices" && (
+              <div className="bs-footer-actions">
+                <button type="submit" className="btn-primary" disabled={saving}>
+                  {saving ? "Saving Changes..." : "Save All Settings"}
+                </button>
               </div>
-            </div>
-          </div>
-        </>
-      )}
+            )}
+          </form>
+        </main>
+      </div>
     </div>
   );
 };

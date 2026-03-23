@@ -1,0 +1,67 @@
+.sub-category-bar-wrapper {
+  background-color: var(--surface-1);
+  border-bottom: 1px solid var(--border-color);
+  padding: 8px 0;
+  position: sticky;
+  top: 0;
+  z-index: 1010; /* Just below navbar if navbar is fixed */
+}
+
+.sub-category-bar {
+  background: var(--surface-2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.sub-category-list {
+  display: flex;
+  overflow-x: auto;
+  gap: 8px;
+  padding: 8px 12px;
+  scrollbar-width: none; /* Firefox */
+}
+
+.sub-category-list::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
+}
+
+.sub-category-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid transparent;
+  padding: 6px 16px;
+  border-radius: 20px;
+  white-space: nowrap;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--muted-text);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.sub-category-link {
+  text-decoration: none;
+}
+
+.sub-category-item:hover {
+  color: var(--page-text);
+  background-color: var(--surface-3);
+}
+
+.sub-category-item.active {
+  background: var(--buy-btn-bg);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
+}
+
+/* For light mode high contrast if needed */
+[data-theme="light"] .sub-category-item.active {
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+}
+
+.sub-category-list-secondary {
+  border-top: 1px solid var(--border-color);
+}

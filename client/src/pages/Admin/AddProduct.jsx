@@ -10,37 +10,34 @@ const AddProduct = () => {
     description: "",
     price: "",
     category: "",
+    subCategory: "",
     newCategory: "",
     stock: "",
     supplier: "",
   });
 
-  const [categories, setCategories] = useState([
-    "Electronics",
-    "Clothing",
-    "Books",
-    "Beauty",
-    "Sports"
-  ]); // Default categories
+  const [categories, setCategories] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
 
   const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Load categories from API if available
   useEffect(() => {
     const loadCategories = async () => {
       try {
         const { data } = await API.get("/categories");
         const cats = data.categories || data;
-        console.log("Categories from API:", cats); // Debug
         if (Array.isArray(cats) && cats.length > 0) {
-          // Use correct field, fallback to 'name' or 'title'
-          const apiCategories = cats.map((c) => c.name || c.title || c.category || c);
+          const apiCategories = cats
+            .map((c) => ({
+              name: c.name || c.title || c.category || c,
+              subCategories: Array.isArray(c.subCategories) ? c.subCategories : [],
+            }))
+            .filter((c) => c.name);
           setCategories(apiCategories);
         }
       } catch (err) {
-        console.error("Unable to fetch categories, using default", err);
+        console.error("Unable to fetch categories", err);
       }
     };
     loadCategories();
@@ -74,6 +71,10 @@ const AddProduct = () => {
         formData.append("category", finalCategory);
         return;
       }
+      if (key === "subCategory") {
+        formData.append("subCategory", form.newCategory.trim() ? "" : form.subCategory);
+        return;
+      }
       formData.append(key, form[key]);
     });
     if (image) formData.append("image", image);
@@ -85,7 +86,16 @@ const AddProduct = () => {
       });
 
       toast.success("Product added successfully");
-      setForm({ name: "", description: "", price: "", category: "", newCategory: "", stock: "", supplier: "" });
+      setForm({
+        name: "",
+        description: "",
+        price: "",
+        category: "",
+        subCategory: "",
+        newCategory: "",
+        stock: "",
+        supplier: "",
+      });
       setImage(null);
       window.dispatchEvent(new Event('products-updated'));
     } catch (error) {
@@ -94,6 +104,11 @@ const AddProduct = () => {
       setLoading(false);
     }
   };
+
+  const selectedCategory = categories.find((cat) => cat.name === form.category);
+  const availableSubCategories = form.newCategory.trim()
+    ? []
+    : selectedCategory?.subCategories || [];
 
   return (
     <div className="container mt-4" style={{ maxWidth: "500px" }}>
@@ -128,14 +143,16 @@ const AddProduct = () => {
         <select
           className="form-select mb-2"
           value={form.category}
-          onChange={(e) => setForm({ ...form, category: e.target.value })}
+          onChange={(e) =>
+            setForm({ ...form, category: e.target.value, subCategory: "", newCategory: "" })
+          }
         >
           <option value="">
             Select category (optional)
           </option>
-          {categories.map((cat, index) => (
-            <option key={index} value={cat}>
-              {cat}
+          {categories.map((cat) => (
+            <option key={cat.name} value={cat.name}>
+              {cat.name}
             </option>
           ))}
         </select>
@@ -145,8 +162,25 @@ const AddProduct = () => {
           className="form-control mb-2"
           placeholder="New category (optional)"
           value={form.newCategory}
-          onChange={(e) => setForm({ ...form, newCategory: e.target.value })}
+          onChange={(e) =>
+            setForm({ ...form, newCategory: e.target.value, category: "", subCategory: "" })
+          }
         />
+
+        {availableSubCategories.length > 0 && (
+          <select
+            className="form-select mb-2"
+            value={form.subCategory}
+            onChange={(e) => setForm({ ...form, subCategory: e.target.value })}
+          >
+            <option value="">Select sub category (optional)</option>
+            {availableSubCategories.map((subCategory) => (
+              <option key={subCategory} value={subCategory}>
+                {subCategory}
+              </option>
+            ))}
+          </select>
+        )}
 
         <input
           type="number"

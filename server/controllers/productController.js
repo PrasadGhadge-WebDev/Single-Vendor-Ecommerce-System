@@ -3,7 +3,7 @@ const { logStockHistory } = require("../utils/stockHistoryLogger");
 
 exports.addProduct = async (req, res) => {
   try {
-    const { name, description, price, category, stock, supplier } = req.body;
+    const { name, description, price, category, subCategory, stock, supplier } = req.body;
     const effectiveCategory = String(category || "").trim() || "Uncategorized";
 
     if (!name || price === undefined) {
@@ -15,6 +15,7 @@ exports.addProduct = async (req, res) => {
       description,
       price,
       category: effectiveCategory,
+      subCategory: subCategory || "",
       stock,
       supplier: supplier || undefined,
       image: req.file ? req.file.filename : "",
@@ -51,6 +52,7 @@ exports.getProducts = async (req, res) => {
   try {
     const {
       category,
+      subCategory,
       search,
       minPrice,
       maxPrice,
@@ -66,6 +68,7 @@ exports.getProducts = async (req, res) => {
     const filter = {};
 
     if (category) filter.category = category;
+    if (subCategory) filter.subCategory = subCategory;
     if (search) filter.name = { $regex: search, $options: "i" };
 
     if (minPrice !== undefined || maxPrice !== undefined) {
@@ -128,7 +131,7 @@ exports.getProductById = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, price, category, stock, supplier } = req.body;
+    const { name, description, price, category, subCategory, stock, supplier } = req.body;
 
     const product = await Product.findById(id);
     if (!product) return res.status(404).json({ message: "Product not found" });
@@ -138,6 +141,9 @@ exports.updateProduct = async (req, res) => {
     if (price !== undefined) product.price = price;
     if (category !== undefined) {
       product.category = String(category || "").trim() || "Uncategorized";
+    }
+    if (subCategory !== undefined) {
+      product.subCategory = subCategory;
     }
     const previousStock = Number(product.stock || 0);
     if (stock !== undefined) product.stock = stock;

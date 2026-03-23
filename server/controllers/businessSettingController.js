@@ -21,15 +21,23 @@ exports.getBusinessSettings = async (req, res) => {
 exports.updateBusinessSettings = async (req, res) => {
   try {
     const payload = { ...req.body };
-    if (payload.invoicePrefix !== undefined) {
-      payload.invoicePrefix = String(payload.invoicePrefix || "").trim().toUpperCase();
-    }
-    if (payload.currency !== undefined) {
-      payload.currency = String(payload.currency || "INR").trim().toUpperCase();
-    }
-    if (payload.taxPercent !== undefined) {
-      payload.taxPercent = Number(payload.taxPercent || 0);
-    }
+    
+    // Explicit type conversions if necessary (Mongoose handles most, but let's be safe)
+    if (payload.taxPercent !== undefined) payload.taxPercent = Number(payload.taxPercent || 0);
+    if (payload.deliveryCharges !== undefined) payload.deliveryCharges = Number(payload.deliveryCharges || 0);
+    if (payload.minOrderAmount !== undefined) payload.minOrderAmount = Number(payload.minOrderAmount || 0);
+    
+    // Convert boolean strings if they come as strings
+    const boolFields = [
+      "codEnabled", "onlinePaymentEnabled", "freeShippingEnabled", 
+      "isTaxInclusive", "autoConfirmOrders", "cancelEnabled", 
+      "returnEnabled", "emailNotificationsEnabled", "orderAlertsEnabled"
+    ];
+    boolFields.forEach(field => {
+      if (payload[field] !== undefined && typeof payload[field] === "string") {
+        payload[field] = payload[field] === "true";
+      }
+    });
 
     const settings = await BusinessSetting.findOneAndUpdate({}, payload, {
       new: true,

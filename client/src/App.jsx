@@ -33,8 +33,10 @@ import BusinessSettings from "./pages/Admin/BusinessSettings";
 import AdminProfile from "./pages/Admin/AdminProfile";
 import StockHistory from "./pages/Admin/StockHistory";
 import ManageReviews from "./pages/Admin/ManageReviews";
+import ManagePayments from "./pages/Admin/ManagePayments";
 
 import Navbar from "./components/Navbar";
+import SubCategoryBar from "./components/SubCategoryBar";
 import Footer from "./components/Footer";
 import AdminLayout from "./components/AdminLayout";
 
@@ -59,6 +61,7 @@ const LayoutWrapper = ({ children }) => {
   return (
     <div className="d-flex flex-column min-vh-100">
       {!isAdminRoute && <Navbar />}
+      {!isAdminRoute && <SubCategoryBar />}
       <div className="flex-grow-1">{children}</div>
       {!isAdminRoute && <Footer />}
     </div>
@@ -113,6 +116,7 @@ function App() {
                 <Route path="profile" element={<AdminProfile />} />
                 <Route path="add-product" element={<AddProduct />} />
                 <Route path="orders" element={<Orders />} />
+                <Route path="payments" element={<ManagePayments />} />
               </Route>
 
               <Route

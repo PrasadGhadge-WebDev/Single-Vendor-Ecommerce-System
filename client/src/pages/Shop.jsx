@@ -17,6 +17,7 @@ const Shop = () => {
   const { categoryName } = useParams();
   const [searchParams] = useSearchParams();
   const search = searchParams.get("search") || "";
+  const subCategory = searchParams.get("sub") || "";
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -25,6 +26,7 @@ const Shop = () => {
 
         const params = new URLSearchParams();
         if (categoryName) params.set("category", categoryName);
+        if (subCategory) params.set("subCategory", subCategory);
         if (search.trim()) params.set("search", search.trim());
 
         const url = params.toString() ? `/products?${params.toString()}` : "/products";
@@ -39,7 +41,7 @@ const Shop = () => {
     };
 
     fetchProducts();
-  }, [categoryName, search]);
+  }, [categoryName, search, subCategory]);
 
   const handleBuyNow = (product) => {
     navigate("/checkout", {

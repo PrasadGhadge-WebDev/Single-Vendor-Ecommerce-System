@@ -17,6 +17,7 @@ exports.addCategory = async (req, res) => {
     const category = await Category.create({
       name,
       image: req.file ? req.file.filename : null,
+      subCategories: req.body.subCategories ? (typeof req.body.subCategories === 'string' ? JSON.parse(req.body.subCategories) : req.body.subCategories) : [],
     });
 
     res.status(201).json(category);
@@ -47,6 +48,9 @@ exports.updateCategory = async (req, res) => {
     const oldName = category.name;
     if (name) category.name = name;
     if (req.file) category.image = req.file.filename;
+    if (req.body.subCategories) {
+      category.subCategories = typeof req.body.subCategories === 'string' ? JSON.parse(req.body.subCategories) : req.body.subCategories;
+    }
 
     await category.save();
 

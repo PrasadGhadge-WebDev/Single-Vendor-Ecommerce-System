@@ -34,6 +34,7 @@ const ManageProducts = () => {
     description: "",
     price: "",
     category: "",
+    subCategory: "",
     newCategory: "",
     stock: "",
     supplier: "",
@@ -64,7 +65,16 @@ const ManageProducts = () => {
     try {
       const { data } = await API.get("/categories");
       const list = Array.isArray(data) ? data : data?.categories || [];
-      setCategories(Array.isArray(list) ? list.map((c) => c.name || c.title || c).filter(Boolean) : []);
+      setCategories(
+        Array.isArray(list)
+          ? list
+              .map((c) => ({
+                name: c.name || c.title || c,
+                subCategories: Array.isArray(c.subCategories) ? c.subCategories : [],
+              }))
+              .filter((c) => c.name)
+          : []
+      );
     } catch (error) {
       console.error("Error fetching categories:", error);
       setCategories([]);
@@ -106,6 +116,20 @@ const ManageProducts = () => {
     const { name, value, files } = e.target;
     if (name === "image") {
       setAddForm((prev) => ({ ...prev, image: files[0] || null }));
+    } else if (name === "category") {
+      setAddForm((prev) => ({
+        ...prev,
+        category: value,
+        subCategory: "",
+        newCategory: "",
+      }));
+    } else if (name === "newCategory") {
+      setAddForm((prev) => ({
+        ...prev,
+        newCategory: value,
+        category: "",
+        subCategory: "",
+      }));
     } else {
       setAddForm((prev) => ({ ...prev, [name]: value }));
     }
@@ -117,6 +141,7 @@ const ManageProducts = () => {
       description: "",
       price: "",
       category: "",
+      subCategory: "",
       newCategory: "",
       stock: "",
       supplier: "",
@@ -139,6 +164,7 @@ const ManageProducts = () => {
       payload.append("description", addForm.description);
       payload.append("price", addForm.price);
       payload.append("category", finalCategory);
+      payload.append("subCategory", addForm.newCategory.trim() ? "" : addForm.subCategory);
       payload.append("stock", addForm.stock);
       payload.append("supplier", addForm.supplier);
       if (addForm.image) payload.append("image", addForm.image);
@@ -198,6 +224,15 @@ const ManageProducts = () => {
     () => Array.from(new Set(products.map((product) => product.category).filter(Boolean))).sort(),
     [products]
   );
+
+  const selectedAddCategory = useMemo(
+    () => categories.find((category) => category.name === addForm.category),
+    [categories, addForm.category]
+  );
+
+  const addSubCategoryOptions = addForm.newCategory.trim()
+    ? []
+    : selectedAddCategory?.subCategories || [];
 
   const lowStockCount = useMemo(
     () => products.filter((product) => Number(product.stock || 0) <= LOW_STOCK_THRESHOLD).length,
@@ -461,12 +496,25 @@ const ManageProducts = () => {
                     <select name="category" className="form-select" value={addForm.category} onChange={handleAddInputChange}>
                       <option value="">Select category (optional)</option>
                       {categories.map((category) => (
-                        <option key={category} value={category}>
-                          {category}
+                        <option key={category.name} value={category.name}>
+                          {category.name}
                         </option>
                       ))}
                     </select>
                   </div>
+                  {addSubCategoryOptions.length > 0 && (
+                    <div className="mb-3">
+                      <label>Sub Category</label>
+                      <select name="subCategory" className="form-select" value={addForm.subCategory} onChange={handleAddInputChange}>
+                        <option value="">Select sub category (optional)</option>
+                        {addSubCategoryOptions.map((subCategory) => (
+                          <option key={subCategory} value={subCategory}>
+                            {subCategory}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   <div className="mb-3">
                     <label>New Category (optional)</label>
                     <input

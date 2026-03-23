@@ -1,8 +1,43 @@
-﻿import React from "react";
+import React, { useState } from "react";
 import { FaEnvelope, FaPhoneAlt, FaMapMarkerAlt, FaClock, FaComments, FaHeadset, FaCheckCircle } from "react-icons/fa";
+import { toast } from "react-toastify";
+import API from "../api";
 import "./MarketingPages.css";
 
 const Contact = () => {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    subject: "",
+    message: "",
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.name || !formData.email || !formData.subject || !formData.message) {
+      return toast.error("Please fill in all fields");
+    }
+
+    setLoading(true);
+    try {
+      const { data } = await API.post("/contacts/submit", formData);
+      if (data.success) {
+        toast.success("Message sent successfully!");
+        setFormData({ name: "", email: "", subject: "", message: "" });
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error(error.response?.data?.message || "Failed to send message");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const supportCards = [
     {
       title: "Email Support",
@@ -106,30 +141,58 @@ const Contact = () => {
           <div className="col-lg-7">
             <div className="card border-0 shadow-sm p-4 h-100 marketing-card marketing-fade-up marketing-delay-1">
               <h5 className="mb-3">Send a Message</h5>
-              <form onSubmit={(e) => e.preventDefault()}>
+              <form onSubmit={handleSubmit}>
                 <div className="row g-3">
                   <div className="col-md-6">
                     <label className="form-label">Name</label>
-                    <input className="form-control" placeholder="Your full name" />
+                    <input 
+                      className="form-control" 
+                      placeholder="Your full name" 
+                      name="name" 
+                      value={formData.name} 
+                      onChange={handleChange} 
+                    />
                   </div>
                   <div className="col-md-6">
                     <label className="form-label">Email</label>
-                    <input type="email" className="form-control" placeholder="you@example.com" />
+                    <input 
+                      type="email" 
+                      className="form-control" 
+                      placeholder="you@example.com" 
+                      name="email" 
+                      value={formData.email} 
+                      onChange={handleChange} 
+                    />
                   </div>
                   <div className="col-12">
                     <label className="form-label">Subject</label>
-                    <input className="form-control" placeholder="Order, payment, product or return" />
+                    <input 
+                      className="form-control" 
+                      placeholder="Order, payment, product or return" 
+                      name="subject" 
+                      value={formData.subject} 
+                      onChange={handleChange} 
+                    />
                   </div>
                   <div className="col-12">
                     <label className="form-label">Message</label>
-                    <textarea className="form-control" rows={5} placeholder="Write your message in detail..." />
+                    <textarea 
+                      className="form-control" 
+                      rows={5} 
+                      placeholder="Write your message in detail..." 
+                      name="message" 
+                      value={formData.message} 
+                      onChange={handleChange} 
+                    />
                   </div>
                   <div className="col-12 d-flex align-items-center justify-content-between flex-wrap gap-3">
                     <div className="text-muted small d-flex align-items-center gap-2">
                       <FaCheckCircle className="text-success" />
                       We usually respond within one business day.
                     </div>
-                    <button type="submit" className="btn btn-primary px-4">Submit Request</button>
+                    <button type="submit" className="btn btn-primary px-4" disabled={loading}>
+                      {loading ? "Sending..." : "Submit Request"}
+                    </button>
                   </div>
                 </div>
               </form>
@@ -142,3 +205,4 @@ const Contact = () => {
 };
 
 export default Contact;
+

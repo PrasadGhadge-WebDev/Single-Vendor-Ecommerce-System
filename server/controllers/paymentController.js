@@ -2,10 +2,21 @@ const https = require("https");
 const crypto = require("crypto");
 const Order = require("../models/Order");
 const Payment = require("../models/Payment");
+const BusinessSetting = require("../models/BusinessSetting");
 
-const createRazorpayOrderRequest = ({ amount, receipt, currency = "INR" }) => {
-  const keyId = process.env.RAZORPAY_KEY_ID;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+const getRazorpayKeys = async () => {
+  const settings = await BusinessSetting.findOne();
+  const keyId = settings?.razorpayKeyId || process.env.RAZORPAY_KEY_ID;
+  const keySecret = settings?.razorpayKeySecret || process.env.RAZORPAY_KEY_SECRET;
+  return { keyId, keySecret };
+};
+
+const createRazorpayOrderRequest = async ({ amount, receipt, currency = "INR" }) => {
+  const { keyId, keySecret } = await getRazorpayKeys();
+
+  if (!keyId || !keySecret) {
+    throw new Error("Razorpay keys are not configured");
+  }
 
   return new Promise((resolve, reject) => {
     const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
@@ -83,7 +94,8 @@ exports.createRazorpayOrder = async (req, res) => {
     const { orderId } = req.body;
     if (!orderId) return res.status(400).json({ message: "orderId is required" });
 
-    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+    const { keyId } = await getRazorpayKeys();
+    if (!keyId) {
       return res.status(500).json({ message: "Razorpay keys are not configured" });
     }
 
@@ -119,7 +131,7 @@ exports.createRazorpayOrder = async (req, res) => {
     res.status(201).json({
       payment,
       razorpay: {
-        key: process.env.RAZORPAY_KEY_ID,
+        key: keyId,
         orderId: razorpayOrder.id,
         amount: razorpayOrder.amount,
         currency: razorpayOrder.currency,
@@ -138,11 +150,11 @@ exports.verifyRazorpayPayment = async (req, res) => {
       return res.status(400).json({ message: "Missing payment verification fields" });
     }
 
-    const secret = process.env.RAZORPAY_KEY_SECRET;
-    if (!secret) return res.status(500).json({ message: "Razorpay secret not configured" });
+    const { keySecret } = await getRazorpayKeys();
+    if (!keySecret) return res.status(500).json({ message: "Razorpay secret not configured" });
 
     const generated = crypto
-      .createHmac("sha256", secret)
+      .createHmac("sha256", keySecret)
       .update(`${razorpayOrderId}|${razorpayPaymentId}`)
       .digest("hex");
 
@@ -200,3 +212,31 @@ exports.getPaymentsByOrder = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+exports.getAllPayments = async (req, res) => {
+  try {
+    const { status, method, page = 1, limit = 20 } = req.query;
+    const filter = {};
+    if (status) filter.status = status;
+    if (method) filter.method = method;
+
+    const payments = await Payment.find(filter)
+      .populate("user", "name email")
+      .populate("order", "id totalAmount status")
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    const total = await Payment.countDocuments(filter);
+
+    res.status(200).json({
+      payments,
+      total,
+      page: Number(page),
+      pages: Math.ceil(total / limit),
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+

@@ -4,11 +4,13 @@ const {
   createRazorpayOrder,
   verifyRazorpayPayment,
   getPaymentsByOrder,
+  getAllPayments,
 } = require("../controllers/paymentController");
-const { requireSignIn } = require("../middlewares/authMiddleware");
+const { requireSignIn, isAdmin } = require("../middlewares/authMiddleware");
 
 const router = express.Router();
 
+router.get("/", requireSignIn, isAdmin, getAllPayments);
 router.post("/cod", requireSignIn, createCodPayment);
 router.post("/razorpay/order", requireSignIn, createRazorpayOrder);
 router.post("/razorpay/verify", requireSignIn, verifyRazorpayPayment);
