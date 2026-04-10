@@ -113,6 +113,8 @@ const AdminProfile = () => {
             src={capturedImage || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
             alt="Admin profile"
             style={{ width: "84px", height: "84px", borderRadius: "50%", objectFit: "cover", border: "1px solid #d1d5db" }}
+            loading="eager"
+            decoding="async"
           />
           <div>
             <div className="fw-semibold">{form.name || "Admin User"}</div>
@@ -215,6 +217,8 @@ const AdminProfile = () => {
                 src={capturedImage}
                 alt="Profile preview"
                 style={{ width: "100%", maxWidth: "220px", borderRadius: "10px", border: "1px solid #d1d5db" }}
+                loading="lazy"
+                decoding="async"
               />
             </div>
           )}

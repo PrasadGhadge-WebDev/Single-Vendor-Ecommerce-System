@@ -223,6 +223,8 @@ const REVIEWABLE_STATUSES = new Set(["delivered"]);
         <img
           src={getImageUrl(product?.image)}
           alt={product?.name || "Product"}
+          loading="lazy"
+          decoding="async"
           style={{ width: "72px", height: "72px", objectFit: "cover", borderRadius: "6px" }}
         />
         <div className="flex-grow-1">

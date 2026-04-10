@@ -47,9 +47,9 @@ const Services = () => {
   ];
 
   const serviceStats = [
-    { label: "Orders Managed", value: "10K+", icon: <FaBoxes /> },
-    { label: "Support Cases Resolved", value: "98%", icon: <FaUsers /> },
-    { label: "Service Availability", value: "24/7", icon: <FaGlobe /> },
+    { label: "Store operations", value: "Configured", icon: <FaBoxes /> },
+    { label: "Support workflow", value: "Managed", icon: <FaUsers /> },
+    { label: "Availability", value: "Dashboard driven", icon: <FaGlobe /> },
   ];
 
   return (

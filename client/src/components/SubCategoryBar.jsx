@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams, useLocation } from "react-router-dom";
+import { FaTag } from "react-icons/fa";
 import API from "../api";
 import "./SubCategoryBar.css";
 
@@ -21,6 +22,7 @@ const SubCategoryBar = () => {
       location.pathname.startsWith("/product/"),
     [location.pathname]
   );
+  const categoryColors = ["#2563eb", "#7c3aed", "#ea580c", "#16a34a", "#db2777", "#0f766e"];
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -65,7 +67,7 @@ const SubCategoryBar = () => {
       <div className="container">
         <div className="sub-category-bar shadow-sm">
           <div className="sub-category-list">
-            {categories.map((category) => {
+            {categories.map((category, index) => {
               const name = category.name || "";
               const isActive = categoryName?.toLowerCase() === name.toLowerCase();
               return (
@@ -74,6 +76,10 @@ const SubCategoryBar = () => {
                   to={`/shop/category/${encodeURIComponent(name)}`}
                   className={`sub-category-item sub-category-link ${isActive ? "active" : ""}`}
                 >
+                  <FaTag
+                    className="sub-category-icon"
+                    style={{ color: categoryColors[index % categoryColors.length] }}
+                  />
                   {name}
                 </Link>
               );

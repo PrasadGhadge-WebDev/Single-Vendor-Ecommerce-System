@@ -244,23 +244,23 @@ const BusinessSettings = () => {
                 <div className="bs-grid">
                   <div className="bs-field">
                     <label>Store Name</label>
-                    <input name="storeName" value={settings.storeName} onChange={handleChange} placeholder="e.g. My Awesome Store" required />
+                    <input name="storeName" value={settings.storeName} onChange={handleChange} placeholder="Enter store name" required />
                   </div>
                   <div className="bs-field">
                     <label>Logo URL</label>
-                    <input name="logoUrl" value={settings.logoUrl} onChange={handleChange} placeholder="https://example.com/logo.png" />
+                    <input name="logoUrl" value={settings.logoUrl} onChange={handleChange} placeholder="Enter logo URL" />
                   </div>
                   <div className="bs-field">
                     <label>Email Address</label>
-                    <input type="email" name="email" value={settings.email} onChange={handleChange} placeholder="contact@store.com" />
+                    <input type="email" name="email" value={settings.email} onChange={handleChange} placeholder="Enter business email" />
                   </div>
                   <div className="bs-field">
                     <label>Phone Number</label>
-                    <input name="phone" value={settings.phone} onChange={handleChange} placeholder="+91 9876543210" />
+                    <input name="phone" value={settings.phone} onChange={handleChange} placeholder="Enter business phone" />
                   </div>
                   <div className="bs-field full-width">
                     <label>Store Address</label>
-                    <textarea name="address" value={settings.address} onChange={handleChange} placeholder="Full physical address" rows="3" />
+                    <textarea name="address" value={settings.address} onChange={handleChange} placeholder="Enter store address" rows="3" />
                   </div>
                   <div className="bs-field">
                     <label>Currency</label>
@@ -287,15 +287,15 @@ const BusinessSettings = () => {
                 <div className="bs-grid">
                   <div className="bs-field">
                     <label>Legal Business Name</label>
-                    <input name="businessName" value={settings.businessName} onChange={handleChange} placeholder="Registered Business Name" />
+                    <input name="businessName" value={settings.businessName} onChange={handleChange} placeholder="Enter legal business name" />
                   </div>
                   <div className="bs-field">
                     <label>GST Number</label>
-                    <input name="gstNumber" value={settings.gstNumber} onChange={handleChange} placeholder="22AAAAA0000A1Z5" />
+                    <input name="gstNumber" value={settings.gstNumber} onChange={handleChange} placeholder="Enter GST number" />
                   </div>
                   <div className="bs-field">
                     <label>Owner/Proprietor Name</label>
-                    <input name="ownerName" value={settings.ownerName} onChange={handleChange} placeholder="Full Legal Name" />
+                    <input name="ownerName" value={settings.ownerName} onChange={handleChange} placeholder="Enter owner name" />
                   </div>
                 </div>
               </section>
@@ -320,15 +320,15 @@ const BusinessSettings = () => {
                   <div className="bs-grid mt-4">
                     <div className="bs-field">
                       <label>UPI ID</label>
-                      <input name="upiId" value={settings.upiId} onChange={handleChange} placeholder="store@upi" />
+                      <input name="upiId" value={settings.upiId} onChange={handleChange} placeholder="Enter UPI ID" />
                     </div>
                     <div className="bs-field">
                       <label>Razorpay Key ID</label>
-                      <input name="razorpayKeyId" value={settings.razorpayKeyId} onChange={handleChange} placeholder="rzp_live_..." />
+                      <input name="razorpayKeyId" value={settings.razorpayKeyId} onChange={handleChange} placeholder="Enter Razorpay Key ID" />
                     </div>
                     <div className="bs-field">
                       <label>Razorpay Key Secret</label>
-                      <input type="password" name="razorpayKeySecret" value={settings.razorpayKeySecret} onChange={handleChange} placeholder="••••••••••••" />
+                      <input type="password" name="razorpayKeySecret" value={settings.razorpayKeySecret} onChange={handleChange} placeholder="Enter Razorpay Key Secret" />
                     </div>
                   </div>
                 )}
@@ -355,7 +355,7 @@ const BusinessSettings = () => {
                   </div>
                   <div className="bs-field">
                     <label>Estimated Delivery Time</label>
-                    <input name="deliveryTime" value={settings.deliveryTime} onChange={handleChange} placeholder="e.g. 3-5 Working Days" />
+                    <input name="deliveryTime" value={settings.deliveryTime} onChange={handleChange} placeholder="Enter delivery time" />
                   </div>
                 </div>
               </section>
@@ -427,11 +427,11 @@ const BusinessSettings = () => {
                 <div className="bs-grid">
                   <div className="bs-field full-width">
                     <label>Meta Title</label>
-                    <input name="metaTitle" value={settings.metaTitle} onChange={handleChange} placeholder="Home Page Meta Title" />
+                    <input name="metaTitle" value={settings.metaTitle} onChange={handleChange} placeholder="Enter meta title" />
                   </div>
                   <div className="bs-field full-width">
                     <label>Meta Description</label>
-                    <textarea name="metaDescription" value={settings.metaDescription} onChange={handleChange} placeholder="Shor description for search engines" rows="3" />
+                    <textarea name="metaDescription" value={settings.metaDescription} onChange={handleChange} placeholder="Enter meta description" rows="3" />
                   </div>
                 </div>
               </section>
@@ -442,15 +442,15 @@ const BusinessSettings = () => {
                 <h3>Policy Pages</h3>
                 <div className="bs-field full-width">
                   <label>Privacy Policy</label>
-                  <textarea name="privacyPolicy" value={settings.privacyPolicy} onChange={handleChange} placeholder="Enter your privacy policy text" rows="5" />
+                  <textarea name="privacyPolicy" value={settings.privacyPolicy} onChange={handleChange} placeholder="Enter privacy policy text" rows="5" />
                 </div>
                 <div className="bs-field full-width mt-3">
                   <label>Terms & Conditions</label>
-                  <textarea name="termsAndConditions" value={settings.termsAndConditions} onChange={handleChange} placeholder="Enter your Terms & Conditions" rows="5" />
+                  <textarea name="termsAndConditions" value={settings.termsAndConditions} onChange={handleChange} placeholder="Enter terms and conditions text" rows="5" />
                 </div>
                 <div className="bs-field full-width mt-3">
                   <label>Refund Policy</label>
-                  <textarea name="refundPolicy" value={settings.refundPolicy} onChange={handleChange} placeholder="Enter your refund and return policy" rows="5" />
+                  <textarea name="refundPolicy" value={settings.refundPolicy} onChange={handleChange} placeholder="Enter refund policy text" rows="5" />
                 </div>
               </section>
             )}

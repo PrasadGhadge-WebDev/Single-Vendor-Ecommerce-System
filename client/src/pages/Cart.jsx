@@ -63,7 +63,7 @@ const Cart = () => {
             return (
               <div
                 key={`${product?._id || "item"}-${item.quantity}`}
-                className="d-flex justify-content-between align-items-center mb-3 border-bottom pb-3"
+                className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3 p-3 border rounded-4 shadow-sm bg-body"
               >
                 <div className="d-flex align-items-center" style={{ gap: "14px" }}>
                   <Link to={`/product/${product?._id}`}>
@@ -72,10 +72,12 @@ const Cart = () => {
                       alt={product?.name || "Product"}
                       width="78"
                       height="78"
+                      loading="lazy"
+                      decoding="async"
                       style={{
                         objectFit: "cover",
                         borderRadius: "10px",
-                        border: "1px solid #e2e8f0",
+                        border: "1px solid var(--border-color, #e2e8f0)",
                         background: "#f8fafc",
                       }}
                       onError={(e) => {
@@ -98,8 +100,8 @@ const Cart = () => {
                     type="number"
                     value={item.quantity}
                     min="1"
-                    className="form-control"
-                    style={{ width: "90px" }}
+                    className="form-control border"
+                    style={{ width: "90px", minWidth: "90px" }}
                     onChange={(e) => handleQuantityChange(product?._id, e.target.value)}
                   />
 
@@ -115,7 +117,7 @@ const Cart = () => {
             );
           })}
 
-          <div className="d-flex justify-content-between align-items-center mt-4">
+          <div className="d-flex justify-content-between align-items-center mt-4 p-3 border rounded-4 shadow-sm bg-body">
             <h4 className="mb-0">Total: INR {total}</h4>
             <button className="btn btn-success" onClick={handleBuyTotalOrder} disabled={buyingAll}>
               {buyingAll ? "Processing..." : "Buy Total Order"}

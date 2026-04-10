@@ -394,7 +394,7 @@ const ManageCategories = () => {
               <li key={category._id} className="list-group-item manage-category-item">
                 <div className="manage-category-main">
                   {category.image && (
-                    <img src={getImageUrl(category.image)} alt={category.name} className="manage-category-thumb" />
+                    <img src={getImageUrl(category.image)} alt={category.name} className="manage-category-thumb" loading="lazy" decoding="async" />
                   )}
 
                   {editCategoryId === category._id ? (

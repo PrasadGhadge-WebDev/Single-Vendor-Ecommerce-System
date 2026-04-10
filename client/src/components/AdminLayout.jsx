@@ -78,6 +78,8 @@ const AdminLayout = () => {
                   src={user.profileImage}
                   alt={user?.name || "Admin"}
                   className="sidebar-header-avatar"
+                  loading="eager"
+                  decoding="async"
                 />
               ) : (
                 <FaUserCircle className="sidebar-header-avatar-icon" />

@@ -440,7 +440,7 @@ const ManageReviews = () => {
               <label className="form-label mb-1">Product</label>
               <input
                 className="form-control"
-                placeholder="Google Pixel 8"
+                placeholder="Enter product name"
                 list="review-product-list"
                 value={productSearchTerm}
                 onChange={(e) => handleProductSearchInput(e.target.value)}

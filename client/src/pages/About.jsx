@@ -1,32 +1,26 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import "./MarketingPages.css";
 
-const Counter = ({ target }) => {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    let start = 0;
-    const end = target;
-    const duration = 1800;
-    const increment = end / (duration / 20);
-
-    const timer = setInterval(() => {
-      start += increment;
-      if (start >= end) {
-        setCount(end);
-        clearInterval(timer);
-      } else {
-        setCount(Math.floor(start));
-      }
-    }, 20);
-
-    return () => clearInterval(timer);
-  }, [target]);
-
-  return <h3 className="fw-bold mb-1">{count}+</h3>;
-};
-
 const About = () => {
+  const aboutHighlights = [
+    {
+      title: "Curated catalog",
+      description: "Products are organized for quick discovery and easy comparison.",
+    },
+    {
+      title: "Secure checkout",
+      description: "Orders move through a clear payment and fulfillment flow.",
+    },
+    {
+      title: "Order visibility",
+      description: "Customers can track progress from purchase to delivery.",
+    },
+    {
+      title: "Support ready",
+      description: "Support and policy details can be managed from the admin area.",
+    },
+  ];
+
   return (
     <div className="about-page">
       <section
@@ -63,30 +57,14 @@ const About = () => {
 
       <section className="container py-5">
         <div className="row g-3 text-center mb-5">
-          <div className="col-md-3">
-            <div className="card border-0 shadow-sm h-100 p-3 marketing-card marketing-fade-up">
-              <Counter target={500} />
-              <p className="mb-0 text-muted">Happy Customers</p>
+          {aboutHighlights.map((item, index) => (
+            <div className="col-md-3" key={item.title}>
+              <div className={`card border-0 shadow-sm h-100 p-3 marketing-card marketing-fade-up marketing-delay-${Math.min(index + 1, 3)}`}>
+                <h3 className="fw-bold mb-1">{item.title}</h3>
+                <p className="mb-0 text-muted">{item.description}</p>
+              </div>
             </div>
-          </div>
-          <div className="col-md-3">
-            <div className="card border-0 shadow-sm h-100 p-3 marketing-card marketing-fade-up marketing-delay-1">
-              <Counter target={200} />
-              <p className="mb-0 text-muted">Products Available</p>
-            </div>
-          </div>
-          <div className="col-md-3">
-            <div className="card border-0 shadow-sm h-100 p-3 marketing-card marketing-fade-up marketing-delay-2">
-              <Counter target={150} />
-              <p className="mb-0 text-muted">Orders Delivered</p>
-            </div>
-          </div>
-          <div className="col-md-3">
-            <div className="card border-0 shadow-sm h-100 p-3 marketing-card marketing-fade-up marketing-delay-3">
-              <Counter target={24} />
-              <p className="mb-0 text-muted">Support Availability</p>
-            </div>
-          </div>
+          ))}
         </div>
 
         <div className="card border-0 shadow-sm p-4 p-md-5 marketing-card marketing-fade-up">

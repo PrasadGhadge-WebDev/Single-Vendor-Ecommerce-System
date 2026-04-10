@@ -1,8 +1,14 @@
-import React, { useCallback, useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import API, { getImageUrl } from "../api";
 import { CartContext } from "../context/CartContext";
 import { FaChevronDown, FaChevronUp, FaStar } from "react-icons/fa";
+import ProductCard from "../components/ProductCard";
+import {
+  buildSmartRecommendations,
+  loadRecentlyViewedProducts,
+  recordRecentlyViewedProduct,
+} from "../utils/productInsights";
 import "./ProductDetails.css";
 
 const ProductDetails = () => {
@@ -11,12 +17,14 @@ const ProductDetails = () => {
   const { addToCart } = useContext(CartContext);
 
   const [product, setProduct] = useState(null);
+  const [catalogProducts, setCatalogProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [buyQty, setBuyQty] = useState(1);
   const [reviews, setReviews] = useState([]);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewsExpanded, setReviewsExpanded] = useState(false);
+  const [recentlyViewed, setRecentlyViewed] = useState([]);
 
   const loadProduct = useCallback(async () => {
     try {
@@ -43,6 +51,16 @@ const ProductDetails = () => {
     }
   }, [id]);
 
+  const fetchCatalogProducts = useCallback(async () => {
+    try {
+      const { data } = await API.get("/products");
+      setCatalogProducts(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Failed to load catalog products", err);
+      setCatalogProducts([]);
+    }
+  }, []);
+
   useEffect(() => {
     loadProduct();
   }, [loadProduct]);
@@ -50,6 +68,39 @@ const ProductDetails = () => {
   useEffect(() => {
     fetchReviews();
   }, [fetchReviews]);
+
+  useEffect(() => {
+    fetchCatalogProducts();
+  }, [fetchCatalogProducts]);
+
+  useEffect(() => {
+    const syncRecentlyViewed = () => {
+      setRecentlyViewed(loadRecentlyViewedProducts());
+    };
+
+    syncRecentlyViewed();
+    window.addEventListener("recently-viewed-updated", syncRecentlyViewed);
+    window.addEventListener("storage", syncRecentlyViewed);
+
+    return () => {
+      window.removeEventListener("recently-viewed-updated", syncRecentlyViewed);
+      window.removeEventListener("storage", syncRecentlyViewed);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!product) return;
+    setRecentlyViewed(recordRecentlyViewedProduct(product));
+  }, [product]);
+
+  const recommendationProducts = useMemo(
+    () => buildSmartRecommendations(catalogProducts, product, recentlyViewed).slice(0, 8),
+    [catalogProducts, product, recentlyViewed]
+  );
+  const recentlyViewedProducts = useMemo(
+    () => recentlyViewed.filter((item) => item?._id !== product?._id).slice(0, 8),
+    [recentlyViewed, product]
+  );
 
   const updateBuyQty = (next) => {
     const maxStock = Math.max(1, Number(product?.stock || 1));
@@ -105,13 +156,15 @@ const ProductDetails = () => {
 
       <div className="row g-4 align-items-start">
         <div className="col-md-5">
-          <div className="card border-0 shadow-sm">
+          <div className="card border border-2 shadow-sm">
             {product.image ? (
               <img
                 src={getImageUrl(product.image)}
                 alt={product.name}
                 className="card-img-top"
                 style={{ maxHeight: "460px", objectFit: "cover" }}
+                loading="eager"
+                decoding="async"
               />
             ) : (
               <div className="p-5 text-center text-muted">No image available</div>
@@ -200,11 +253,17 @@ const ProductDetails = () => {
                 <div className="text-muted small">{reviews.length} review{reviews.length === 1 ? "" : "s"}</div>
               </div>
               <div className="d-flex align-items-center gap-3 flex-wrap">
-                <span className="fw-semibold">Rating {averageRating.toFixed(1)} / 5</span>
-                <span className="text-muted small">({reviewCount} review{reviewCount === 1 ? "" : "s"})</span>
-                <div className="d-flex align-items-center">
-                  {renderStars(averageRating)}
-                </div>
+                {reviewCount > 0 ? (
+                  <>
+                    <span className="fw-semibold">Rating {averageRating.toFixed(1)} / 5</span>
+                    <span className="text-muted small">({reviewCount} review{reviewCount === 1 ? "" : "s"})</span>
+                    <div className="d-flex align-items-center">
+                      {renderStars(averageRating)}
+                    </div>
+                  </>
+                ) : (
+                  <span className="text-muted fw-semibold">No reviews yet</span>
+                )}
                 <button
                   type="button"
                   className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
@@ -253,6 +312,52 @@ const ProductDetails = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="product-details-shelves mt-5">
+        <section className="product-details-shelf">
+          <div className="product-details-shelf-head">
+            <div>
+              <span className="product-details-kicker">AI Recommendations</span>
+              <h3>Products matched to this one</h3>
+              <p>These suggestions use category, rating, price, and browsing history signals.</p>
+            </div>
+          </div>
+
+          {recommendationProducts.length === 0 ? (
+            <p className="text-muted mb-0">No recommendations available yet.</p>
+          ) : (
+            <div className="row g-4">
+              {recommendationProducts.slice(0, 4).map((item) => (
+                <div className="col-sm-6 col-xl-3" key={`ai-${item._id}`}>
+                  <ProductCard product={item} />
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="product-details-shelf mt-5">
+          <div className="product-details-shelf-head">
+            <div>
+              <span className="product-details-kicker">Recently Viewed</span>
+              <h3>Continue from your last session</h3>
+              <p>The last products you checked stay close by, so discovery feels seamless.</p>
+            </div>
+          </div>
+
+          {recentlyViewedProducts.length === 0 ? (
+            <p className="text-muted mb-0">Your recently viewed products will appear here.</p>
+          ) : (
+            <div className="row g-4">
+              {recentlyViewedProducts.slice(0, 4).map((item) => (
+                <div className="col-sm-6 col-xl-3" key={`recent-${item._id}`}>
+                  <ProductCard product={item} />
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

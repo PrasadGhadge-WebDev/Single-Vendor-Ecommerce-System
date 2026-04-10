@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from "react";
-import API from "../api";
+import API, { getImageUrl } from "../api";
 import { FaTags, FaBolt, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
 import "./MarketingPages.css";
+import offerHeroImage from "../assets/hero_banner_1.png";
+import offerCardImageOne from "../assets/hero_banner_2.png";
+import offerCardImageTwo from "../assets/hero_banner_3.png";
+
+const fallbackOfferImages = [offerCardImageOne, offerCardImageTwo, offerHeroImage];
 
 const Offers = () => {
   const [offers, setOffers] = useState([]);
@@ -25,6 +30,11 @@ const Offers = () => {
   const formatDiscount = (offer) =>
     offer.discountType === "PERCENT" ? `${offer.discountValue}% OFF` : `INR ${offer.discountValue} OFF`;
 
+  const getOfferImage = (offer, index) => {
+    const rawImage = offer?.image || offer?.bannerImage || offer?.coverImage || offer?.thumbnail;
+    return getImageUrl(rawImage) || fallbackOfferImages[index % fallbackOfferImages.length];
+  };
+
   return (
     <div className="offers-page">
       <section
@@ -43,14 +53,16 @@ const Offers = () => {
               </p>
             </div>
             <div className="col-lg-5 marketing-fade-up marketing-delay-1">
-              <div className="p-4 rounded-4 border border-light border-opacity-25 bg-light bg-opacity-10 marketing-chip">
-                <h5 className="mb-3">How to use offers</h5>
-                <ul className="mb-0 ps-3">
-                  <li className="mb-2">Copy the active coupon code</li>
-                  <li className="mb-2">Meet minimum order value if required</li>
-                  <li className="mb-2">Apply the code at checkout</li>
-                  <li>Discount applies instantly on valid cart</li>
-                </ul>
+              <div className="offers-hero-media">
+                <img src={offerHeroImage} alt="Special offers showcase" className="offers-hero-image" loading="eager" decoding="async" />
+                <div className="offers-hero-chip offers-hero-chip-one">
+                  <span className="offers-hero-chip-value">Up to 60% off</span>
+                  <span className="offers-hero-chip-label">Trending now</span>
+                </div>
+                <div className="offers-hero-chip offers-hero-chip-two">
+                  <span className="offers-hero-chip-value">Coupon ready</span>
+                  <span className="offers-hero-chip-label">At checkout</span>
+                </div>
               </div>
             </div>
           </div>
@@ -80,6 +92,18 @@ const Offers = () => {
             {offers.map((offer, index) => (
               <div className="col-md-6" key={offer._id}>
                 <div className={`card border-0 shadow-sm h-100 p-3 marketing-card marketing-fade-up marketing-delay-${Math.min(index % 4, 3)}`}>
+                  <div className="offer-card-image-wrap mb-3">
+                    <img
+                      src={getOfferImage(offer, index)}
+                      alt={offer.title}
+                      className="offer-card-image"
+                      loading="lazy"
+                      decoding="async"
+                      onError={(e) => {
+                        e.currentTarget.src = fallbackOfferImages[index % fallbackOfferImages.length];
+                      }}
+                    />
+                  </div>
                   <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
                     <h5 className="mb-0">{offer.title}</h5>
                     <span className={`badge ${offer.isCurrentlyValid ? "text-bg-success" : "text-bg-warning"}`}>

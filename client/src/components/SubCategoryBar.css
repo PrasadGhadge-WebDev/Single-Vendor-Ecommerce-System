@@ -29,6 +29,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.5rem;
   background: none;
   border: 1px solid transparent;
   padding: 6px 16px;
@@ -55,6 +56,14 @@
   color: #fff;
   border-color: transparent;
   box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
+}
+
+.sub-category-icon {
+  font-size: 0.75rem;
+}
+
+.sub-category-item.active .sub-category-icon {
+  color: #ffffff !important;
 }
 
 /* For light mode high contrast if needed */

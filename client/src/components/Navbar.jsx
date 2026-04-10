@@ -1,9 +1,29 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useState, useEffect, useRef } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import { CartContext } from "../context/CartContext";
-import { FaShoppingCart, FaUserCircle, FaBars, FaSearch, FaMoon, FaSun } from "react-icons/fa";
-import API from "../api";
+import {
+  FaShoppingCart,
+  FaUserCircle,
+  FaBars,
+  FaSearch,
+  FaFilter,
+  FaClock,
+  FaMoon,
+  FaSun,
+  FaChevronDown,
+  FaHistory,
+  FaSignOutAlt,
+  FaHome,
+  FaStore,
+  FaInfoCircle,
+  FaConciergeBell,
+  FaPhoneAlt,
+  FaTags,
+  FaLayerGroup,
+  FaUserShield,
+} from "react-icons/fa";
+import API, { getImageUrl } from "../api";
 import "./Navbar.css";
 
 const getInitialTheme = () => {
@@ -18,12 +38,22 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const [scrolled, setScrolled] = useState(false);
+  const [cartPreviewOpen, setCartPreviewOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [categories, setCategories] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [recentSearches, setRecentSearches] = useState([]);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [theme, setTheme] = useState(getInitialTheme);
   const [profileName, setProfileName] = useState(user?.name || "");
   const [profileAvatar, setProfileAvatar] = useState(user?.profileImage || "");
+  const searchWrapRef = useRef(null);
+  const cartRef = useRef(null);
+
+  const RECENT_SEARCHES_KEY = "myshop_recent_searches";
 
   const handleLogout = () => {
     logout();
@@ -48,6 +78,58 @@ const Navbar = () => {
     const params = new URLSearchParams(location.search);
     setSearchTerm(params.get("search") || "");
   }, [location.search]);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || "[]");
+      setRecentSearches(Array.isArray(saved) ? saved.slice(0, 5) : []);
+    } catch {
+      setRecentSearches([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!searchWrapRef.current) return;
+      if (!searchWrapRef.current.contains(event.target)) {
+        setSuggestionsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const query = searchTerm.trim();
+    if (!searchFocused || query.length < 2) {
+      setSuggestions([]);
+      return undefined;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const { data } = await API.get(`/products?search=${encodeURIComponent(query)}&limit=6`);
+        const products = Array.isArray(data) ? data : [];
+        setSuggestions(products.slice(0, 5));
+        setSuggestionsOpen(true);
+      } catch (err) {
+        console.error("Failed to load search suggestions", err);
+        setSuggestions([]);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [searchFocused, searchTerm]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -82,6 +164,17 @@ const Navbar = () => {
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
   };
 
+  const saveRecentSearch = (query) => {
+    const normalized = query.trim();
+    if (!normalized) return;
+
+    setRecentSearches((prev) => {
+      const next = [normalized, ...prev.filter((item) => item.toLowerCase() !== normalized.toLowerCase())].slice(0, 5);
+      localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
   const handleSearch = (e) => {
     e.preventDefault();
     const query = searchTerm.trim();
@@ -89,18 +182,37 @@ const Navbar = () => {
       navigate("/shop");
       return;
     }
+    saveRecentSearch(query);
     navigate(`/shop?search=${encodeURIComponent(query)}`);
     setMenuOpen(false);
+    setSuggestionsOpen(false);
+  };
+
+  const handleSuggestionClick = (value) => {
+    saveRecentSearch(value);
+    setSearchTerm(value);
+    navigate(`/shop?search=${encodeURIComponent(value)}`);
+    setMenuOpen(false);
+    setSuggestionsOpen(false);
+    setSearchFocused(false);
+  };
+
+  const handleRecentClick = (value) => {
+    handleSuggestionClick(value);
   };
 
   const navLinkClass = ({ isActive }) =>
     `nav-link fw-semibold px-2 ${isActive ? "active nav-active" : ""}`;
 
+  const navIconClass = "nav-link-icon me-2";
+  const cartBadgeLabel = `${totalCartItems} item${totalCartItems === 1 ? "" : "s"} in cart`;
+
   return (
-    <nav className="navbar navbar-expand-lg ecommerce-navbar shadow-sm sticky-top py-2">
-      <div className="container">
-        <Link className="navbar-brand fw-bold fs-4 brand-text" to="/">
-          MyShop
+    <nav className={`navbar navbar-expand-xl ecommerce-navbar shadow-sm sticky-top py-2 ${scrolled ? "navbar-scrolled" : ""}`}>
+      <div className="container-fluid px-3 px-xl-4">
+        <Link className="navbar-brand fw-bold fs-4 brand-text d-flex align-items-center gap-2" to="/">
+          <FaShoppingCart className="brand-icon" />
+          Online Store
         </Link>
 
         <button
@@ -115,36 +227,42 @@ const Navbar = () => {
           <ul className="navbar-nav me-auto ms-4 align-items-lg-center gap-lg-2">
             <li className="nav-item">
               <NavLink className={navLinkClass} to="/">
+                <FaHome className={navIconClass} />
                 Home
               </NavLink>
             </li>
 
             <li className="nav-item">
               <NavLink className={navLinkClass} to="/shop">
+                <FaStore className={navIconClass} />
                 Products
               </NavLink>
             </li>
 
             <li className="nav-item">
               <NavLink className={navLinkClass} to="/about">
+                <FaInfoCircle className={navIconClass} />
                 About
               </NavLink>
             </li>
 
             <li className="nav-item">
               <NavLink className={navLinkClass} to="/services">
+                <FaConciergeBell className={navIconClass} />
                 Services
               </NavLink>
             </li>
 
             <li className="nav-item">
               <NavLink className={navLinkClass} to="/contact">
+                <FaPhoneAlt className={navIconClass} />
                 Contact
               </NavLink>
             </li>
 
             <li className="nav-item">
               <NavLink className={navLinkClass} to="/offers">
+                <FaTags className={navIconClass} />
                 Offers
               </NavLink>
             </li>
@@ -156,6 +274,7 @@ const Navbar = () => {
                   type="button"
                   data-bs-toggle="dropdown"
                 >
+                  <FaLayerGroup className="nav-link-icon me-2" />
                   Categories
                 </button>
 
@@ -166,7 +285,8 @@ const Navbar = () => {
 
                     return (
                       <li key={key}>
-                        <Link className="dropdown-item py-2" to={`/shop/category/${encodeURIComponent(name)}`}>
+                        <Link className="dropdown-item py-2 d-flex align-items-center gap-2" to={`/shop/category/${encodeURIComponent(name)}`}>
+                          <FaLayerGroup className="dropdown-item-icon" />
                           {name}
                         </Link>
                       </li>
@@ -179,47 +299,152 @@ const Navbar = () => {
             {user?.isAdmin && (
               <li className="nav-item">
                 <Link className="btn btn-warning btn-sm fw-bold ms-lg-2" to="/admin/dashboard">
+                  <FaUserShield className="me-2" />
                   Admin Panel
                 </Link>
               </li>
             )}
           </ul>
 
-          <form className="d-flex navbar-search me-lg-3 my-2 my-lg-0" onSubmit={handleSearch}>
-            <input
-              type="text"
-              className="form-control form-control-sm"
-              placeholder="Search products..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <button type="submit" className="btn btn-sm search-btn ms-2" aria-label="Search products">
-              <FaSearch />
-            </button>
-          </form>
+          <div className="navbar-search-shell me-lg-3 my-2 my-lg-0" ref={searchWrapRef}>
+            <form className="d-flex navbar-search" onSubmit={handleSearch}>
+              <button type="button" className="btn btn-sm search-filter-btn" aria-label="Filter options">
+                <FaFilter />
+              </button>
+              <input
+                type="text"
+                className="form-control form-control-sm"
+                placeholder="Search products..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setSuggestionsOpen(true);
+                }}
+                onFocus={() => {
+                  setSearchFocused(true);
+                  setSuggestionsOpen(true);
+                }}
+                onBlur={() => {
+                  setSearchFocused(false);
+                }}
+              />
+              <button type="submit" className="btn btn-sm search-btn" aria-label="Search products">
+                <FaSearch />
+              </button>
+            </form>
+
+            {suggestionsOpen && (searchTerm.trim().length >= 2 || recentSearches.length > 0) && (
+              <div className="search-suggestions-panel shadow-lg">
+                {searchTerm.trim().length >= 2 && suggestions.length > 0 && (
+                  <div className="search-suggestions-group">
+                    <div className="search-suggestions-header">Suggestions</div>
+                    <ul className="list-unstyled mb-0">
+                      {suggestions.map((item) => (
+                        <li key={item._id}>
+                          <button
+                            type="button"
+                            className="search-suggestion-item"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => {
+                              navigate(`/product/${item._id}`);
+                              setSuggestionsOpen(false);
+                            }}
+                          >
+                            <img 
+                              src={getImageUrl(item.image)} 
+                              alt="" 
+                              className="search-suggestion-thumb" 
+                            />
+                            <div className="flex-grow-1 min-w-0">
+                              <div className="text-truncate fw-bold">{item.name}</div>
+                              <small className="text-muted d-block">{item.category}</small>
+                            </div>
+                            <div className="text-success fw-bold small ms-2">₹{item.price}</div>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {recentSearches.length > 0 && (
+                  <div className="search-suggestions-group">
+                    <div className="search-suggestions-header">Recent</div>
+                    <ul className="list-unstyled mb-0">
+                      {recentSearches.map((item) => (
+                        <li key={item}>
+                          <button
+                            type="button"
+                            className="search-suggestion-item"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => handleRecentClick(item)}
+                          >
+                            <FaClock className="me-2 search-suggestion-icon recent" />
+                            <span className="text-truncate">{item}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           <ul className="navbar-nav ms-auto align-items-center gap-lg-3">
             <li className="nav-item">
-              <button type="button" className="btn btn-sm theme-btn" onClick={toggleTheme} aria-label="Toggle theme">
+              <button type="button" className="btn theme-btn shadow-sm" onClick={toggleTheme} aria-label="Toggle theme">
                 {theme === "light" ? <FaMoon /> : <FaSun />}
               </button>
             </li>
 
-            <li className="nav-item">
-              <Link className="nav-link position-relative" to="/cart">
-                <FaShoppingCart size={20} />
-                {totalCartItems > 0 && (
-                  <span className="position-absolute top-0 start-100 translate-middle badge bg-danger rounded-pill">
-                    {totalCartItems}
-                  </span>
-                )}
+            <li 
+              className="nav-item position-relative"
+              onMouseEnter={() => setCartPreviewOpen(true)}
+              onMouseLeave={() => setCartPreviewOpen(false)}
+              ref={cartRef}
+            >
+              <Link className="nav-link position-relative cart-icon-wrapper d-inline-flex align-items-center gap-2" to="/cart" aria-label={cartBadgeLabel}>
+                <FaShoppingCart size={22} />
+                <span className="cart-link-text d-none d-lg-inline">Cart</span>
+                <span className="cart-badge" aria-hidden="true">
+                  {totalCartItems}
+                </span>
               </Link>
+
+              {cartPreviewOpen && cart.length > 0 && (
+                <div className="cart-preview-dropdown shadow-lg animate-slide-up">
+                  <div className="cart-preview-header">
+                    <span className="fw-bold">Cart Preview</span>
+                    <span className="text-muted small">{totalCartItems} items</span>
+                  </div>
+                  <div className="cart-preview-body">
+                    {cart.slice(0, 3).map((item) => (
+                      <div className="cart-preview-item" key={item._id}>
+                        <img src={getImageUrl(item.image)} alt="" className="cart-preview-thumb" />
+                        <div className="flex-grow-1 min-w-0">
+                          <p className="mb-0 text-truncate fw-medium">{item.name}</p>
+                          <small className="text-muted">{item.quantity} x ₹{item.price}</small>
+                        </div>
+                      </div>
+                    ))}
+                    {cart.length > 3 && (
+                      <div className="text-center py-1">
+                        <small className="text-muted">+{cart.length - 3} more items</small>
+                      </div>
+                    )}
+                  </div>
+                  <div className="cart-preview-footer">
+                    <Link to="/cart" className="btn btn-primary btn-sm w-100 fw-bold">View Full Cart</Link>
+                  </div>
+                </div>
+              )}
             </li>
 
-            {user ? (
+            {user && (
               <li className="nav-item dropdown">
                 <button
-                  className="nav-link dropdown-toggle btn btn-link d-flex align-items-center text-decoration-none"
+                  className="nav-link dropdown-toggle btn btn-link d-flex align-items-center text-decoration-none profile-dropdown-btn"
                   type="button"
                   data-bs-toggle="dropdown"
                 >
@@ -227,46 +452,64 @@ const Navbar = () => {
                     <img
                       src={profileAvatar}
                       alt={profileName || user?.name || "User profile"}
-                      className="navbar-profile-avatar me-2"
+                      className="navbar-profile-avatar me-2 shadow-sm"
+                      loading="eager"
+                      decoding="async"
                     />
                   ) : (
-                    <FaUserCircle size={22} className="me-2" />
+                    <FaUserCircle size={24} className="me-2" />
                   )}
-                  <span className="navbar-profile-name">{profileName || user?.name}</span>
+                  <span className="navbar-profile-copy">
+                    <span className="navbar-profile-label">Profile</span>
+                    <span className="navbar-profile-name fw-medium">{profileName || user?.name}</span>
+                  </span>
+                  <FaChevronDown className="ms-2 navbar-profile-caret" />
                 </button>
 
-                <ul className="dropdown-menu dropdown-menu-end shadow border-0 rounded-3">
+                <ul className="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-4 py-3">
+                  <li className="px-3 pb-2 mb-2 border-bottom">
+                    <div className="d-flex align-items-center gap-3">
+                      {profileAvatar ? (
+                        <img
+                          src={profileAvatar}
+                          alt={profileName || user?.name || "User profile"}
+                          className="navbar-profile-avatar navbar-profile-avatar-lg shadow-sm"
+                          loading="eager"
+                          decoding="async"
+                        />
+                      ) : (
+                        <div className="navbar-profile-avatar navbar-profile-avatar-lg navbar-profile-fallback">
+                          <FaUserCircle size={24} />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="small text-muted mb-0">Signed in as</p>
+                        <p className="fw-bold mb-0 text-truncate">{profileName || user?.name}</p>
+                      </div>
+                    </div>
+                  </li>
                   <li>
-                    <Link className="dropdown-item py-2" to="/orders">
-                      My Orders
+                    <Link className="dropdown-item py-2 px-3 rounded-2" to="/cart">
+                      <FaShoppingCart className="me-2" /> Cart
+                    </Link>
+                  </li>
+                  <li>
+                    <Link className="dropdown-item py-2 px-3 rounded-2" to="/orders">
+                      <FaHistory className="me-2" /> My Orders
                     </Link>
                   </li>
 
                   <li>
-                    <hr className="dropdown-divider" />
+                    <hr className="dropdown-divider mx-3" />
                   </li>
 
                   <li>
-                    <button className="dropdown-item text-danger fw-semibold" onClick={handleLogout}>
-                      Logout
+                    <button className="dropdown-item text-danger fw-semibold py-2 px-3 rounded-2" onClick={handleLogout}>
+                      <FaSignOutAlt className="me-2" /> Logout
                     </button>
                   </li>
                 </ul>
               </li>
-            ) : (
-              <>
-                <li className="nav-item">
-                  <Link className="nav-link fw-semibold" to="/login">
-                    Login
-                  </Link>
-                </li>
-
-                <li className="nav-item">
-                  <Link className="btn btn-outline-light btn-sm register-btn" to="/register">
-                    Register
-                  </Link>
-                </li>
-              </>
             )}
           </ul>
         </div>

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FaEnvelope, FaPhoneAlt, FaMapMarkerAlt, FaClock, FaComments, FaHeadset, FaCheckCircle } from "react-icons/fa";
+import { FaEnvelope, FaPhoneAlt, FaMapMarkerAlt, FaClock, FaComments, FaHeadset, FaCheckCircle, FaWhatsapp } from "react-icons/fa";
 import { toast } from "react-toastify";
 import API from "../api";
 import "./MarketingPages.css";
@@ -40,22 +40,24 @@ const Contact = () => {
 
   const supportCards = [
     {
-      title: "Email Support",
-      value: "support@myshop.com",
+      title: "Support Channel",
+      value: "Use the contact form below",
       note: "Best for order and account help",
       icon: <FaEnvelope />,
     },
     {
-      title: "Phone Support",
-      value: "+91 90000 00000",
-      note: "Mon to Sat, 9:00 AM to 8:00 PM",
+      title: "Call Us",
+      value: "+91 9766875355",
+      note: "Click to open dialer",
       icon: <FaPhoneAlt />,
+      link: "tel:+919766875355"
     },
     {
-      title: "Office Location",
-      value: "Pune, Maharashtra, India",
-      note: "Operational and support center",
-      icon: <FaMapMarkerAlt />,
+      title: "WhatsApp",
+      value: "+91 9766875355",
+      note: "Click to open WhatsApp",
+      icon: <FaWhatsapp />,
+      link: "https://wa.me/919766875355"
     },
   ];
 
@@ -132,7 +134,7 @@ const Contact = () => {
                 <FaClock className="mt-1 text-primary" />
                 <div>
                   <div className="fw-semibold">Support Hours</div>
-                  <div className="text-muted">Monday to Saturday, 9:00 AM to 8:00 PM.</div>
+                  <div className="text-muted">Support hours are configured in admin settings.</div>
                 </div>
               </div>
             </div>
@@ -158,7 +160,7 @@ const Contact = () => {
                     <input 
                       type="email" 
                       className="form-control" 
-                      placeholder="you@example.com" 
+                      placeholder="Enter your email" 
                       name="email" 
                       value={formData.email} 
                       onChange={handleChange} 
@@ -188,7 +190,7 @@ const Contact = () => {
                   <div className="col-12 d-flex align-items-center justify-content-between flex-wrap gap-3">
                     <div className="text-muted small d-flex align-items-center gap-2">
                       <FaCheckCircle className="text-success" />
-                      We usually respond within one business day.
+                      Response timing is managed from store settings.
                     </div>
                     <button type="submit" className="btn btn-primary px-4" disabled={loading}>
                       {loading ? "Sending..." : "Submit Request"}

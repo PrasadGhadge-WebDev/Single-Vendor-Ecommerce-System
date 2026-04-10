@@ -94,7 +94,7 @@ const Register = () => {
         </form>
 
         <div className="register-footer">
-          <small>(c) 2026 Your Company</small>
+          <small>© {new Date().getFullYear()} Online Store</small>
         </div>
       </div>
     </div>

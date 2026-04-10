@@ -392,7 +392,7 @@ const ManageProducts = () => {
           const isLowStock = !isOutOfStock && stockValue <= LOW_STOCK_THRESHOLD;
           return (
                 <tr key={product._id} className={isLowStock ? "table-danger" : undefined}>
-                  <td>{product.image ? <img src={getImageUrl(product.image)} width="60" alt={product.name} /> : "-"}</td>
+                  <td>{product.image ? <img src={getImageUrl(product.image)} width="60" alt={product.name} loading="lazy" decoding="async" /> : "-"}</td>
                   <td>{product.name}</td>
                   <td>{product.category}</td>
                   <td>INR {product.price}</td>

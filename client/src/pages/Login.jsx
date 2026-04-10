@@ -94,7 +94,7 @@ const submitHandler = async (e) => {
         </form>
 
         <div className="login-footer">
-          <small>© 2026 Your Company</small>
+          <small>© {new Date().getFullYear()} Online Store</small>
         </div>
       </div>
     </div>

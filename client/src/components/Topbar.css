@@ -1,0 +1,200 @@
+/* ═══════════════════════════════════════════
+   SITE TOPBAR
+   ═══════════════════════════════════════════ */
+
+.site-topbar {
+  background: linear-gradient(90deg, #0f172a 0%, #1e293b 100%);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.78rem;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  position: relative;
+  z-index: 1050;
+}
+
+[data-theme="dark"] .site-topbar {
+  background: linear-gradient(90deg, #020617 0%, #0f172a 100%);
+  border-bottom-color: rgba(255, 255, 255, 0.04);
+}
+
+/* ─── Topbar Items ──────────────────────── */
+.topbar-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  transition: color 0.25s ease, transform 0.25s ease;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.topbar-item:hover {
+  color: #ffffff;
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+
+/* ─── Icon Styling ──────────────────────── */
+.topbar-icon {
+  font-size: 0.82rem;
+  flex-shrink: 0;
+}
+
+/* WhatsApp green */
+.topbar-whatsapp .topbar-icon {
+  color: #25d366;
+}
+
+.topbar-whatsapp:hover {
+  color: #25d366;
+}
+
+/* Mail blue */
+.topbar-mail .topbar-icon {
+  color: #60a5fa;
+}
+
+.topbar-mail:hover {
+  color: #60a5fa;
+}
+
+/* Call cyan */
+.topbar-call .topbar-icon {
+  color: #22d3ee;
+}
+
+.topbar-call:hover {
+  color: #22d3ee;
+}
+
+/* Location red */
+.topbar-location .topbar-icon {
+  color: #f87171;
+}
+
+.topbar-location:hover {
+  color: #f87171;
+}
+
+/* ─── Divider ───────────────────────────── */
+.topbar-divider {
+  display: inline-block;
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+}
+
+/* ─── Text ──────────────────────────────── */
+.topbar-text {
+  letter-spacing: 0.01em;
+}
+
+.topbar-auth-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.topbar-auth-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.42rem 0.8rem;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 700;
+  transition: transform 0.25s ease, background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+  white-space: nowrap;
+}
+
+.topbar-auth-link .topbar-icon {
+  font-size: 0.76rem;
+}
+
+.topbar-auth-link-ghost {
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.topbar-auth-link-ghost:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+
+.topbar-auth-link-solid {
+  color: #0f172a;
+  background: linear-gradient(135deg, #f8fafc, #cbd5e1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.topbar-auth-link-solid:hover {
+  color: #0f172a;
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════ */
+@media (max-width: 767.98px) {
+  .site-topbar {
+    font-size: 0.72rem;
+    padding: 5px 0;
+  }
+
+  .topbar-left {
+    gap: 8px !important;
+  }
+
+  .topbar-icon {
+    font-size: 0.75rem;
+  }
+
+  .topbar-text {
+    font-size: 0.7rem;
+  }
+
+  .topbar-auth-link {
+    padding: 0.36rem 0.65rem;
+    font-size: 0.72rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .topbar-text {
+    display: none;
+  }
+
+  .topbar-item {
+    padding: 4px 6px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .topbar-icon {
+    font-size: 0.9rem;
+  }
+
+  .topbar-divider {
+    display: none;
+  }
+
+  .topbar-left {
+    gap: 6px !important;
+  }
+
+  .topbar-auth-links {
+    gap: 0.4rem;
+  }
+
+  .topbar-auth-link-solid,
+  .topbar-auth-link-ghost {
+    padding: 0.34rem 0.55rem;
+  }
+}
