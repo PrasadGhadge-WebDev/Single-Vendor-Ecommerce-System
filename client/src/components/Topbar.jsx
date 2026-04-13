@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   FaWhatsapp,
@@ -6,12 +6,29 @@ import {
   FaPhoneAlt,
   FaUser,
   FaUserPlus,
+  FaMoon,
+  FaSun,
 } from "react-icons/fa";
-import { AuthContext } from "../context/AuthContext";
 import "./Topbar.css";
 
+const getInitialTheme = () => {
+  const saved = localStorage.getItem("theme");
+  if (saved === "light" || saved === "dark") return saved;
+  return "light";
+};
+
 const Topbar = () => {
-  const { user } = useContext(AuthContext);
+  const [theme, setTheme] = useState(getInitialTheme);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    document.body.setAttribute("data-bs-theme", theme);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  };
 
   return (
     <div className="site-topbar">
@@ -19,7 +36,7 @@ const Topbar = () => {
         <div className="topbar-left d-flex align-items-center gap-3 flex-wrap">
           <a href="tel:+919766875355" className="topbar-item topbar-call" title="Call us">
             <FaPhoneAlt className="topbar-icon" />
-            <span className="topbar-text">Call: +91 9766875355</span>
+            <span className="topbar-text">Call Us</span>
           </a>
 
           <span className="topbar-divider d-none d-md-inline" />
@@ -31,27 +48,33 @@ const Topbar = () => {
         </div>
 
         <div className="topbar-right d-flex align-items-center gap-3">
+          <label className="theme-switch topbar-theme-switch d-none d-md-inline-flex" title="Toggle theme">
+            <input
+              type="checkbox"
+              className="theme-switch-input"
+              checked={theme === "dark"}
+              onChange={toggleTheme}
+              aria-label="Toggle dark mode"
+            />
+            <span className="theme-switch-track" aria-hidden="true">
+              <span className="theme-switch-icon theme-switch-icon-moon">
+                <FaMoon />
+              </span>
+              <span className="theme-switch-icon theme-switch-icon-sun">
+                <FaSun />
+              </span>
+              <span className="theme-switch-thumb" />
+            </span>
+          </label>
+
           <Link
             to="/about"
             className="topbar-item topbar-location d-none d-lg-inline-flex"
-            title="About the store"
+            title="Store Location"
           >
             <FaMapMarkerAlt className="topbar-icon" />
-            <span className="topbar-text">About the store</span>
+            <span className="topbar-text">Store Location</span>
           </Link>
-
-          {!user && (
-            <div className="topbar-auth-links">
-              <Link to="/login" className="topbar-auth-link topbar-auth-link-ghost">
-                <FaUser className="topbar-icon" />
-                <span>Login</span>
-              </Link>
-              <Link to="/register" className="topbar-auth-link topbar-auth-link-solid">
-                <FaUserPlus className="topbar-icon" />
-                <span>Register</span>
-              </Link>
-            </div>
-          )}
         </div>
       </div>
     </div>

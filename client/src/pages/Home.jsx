@@ -1,7 +1,8 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import API, { getImageUrl } from "../api";
 import { CartContext } from "../context/CartContext";
+import { AuthContext } from "../context/AuthContext";
 import ProductCard from "../components/ProductCard";
 import { buildSmartRecommendations, loadRecentlyViewedProducts } from "../utils/productInsights";
 import AOS from "aos";
@@ -24,6 +25,7 @@ import {
   FaStar,
 } from "react-icons/fa";
 import "./Home.css";
+import { ensureLoggedIn } from "../utils/authGuards";
 
 const HERO_PILLS = [
   { label: "Secure checkout", icon: FaShieldAlt },
@@ -232,6 +234,9 @@ const sortByPopularity = (items) =>
 
 const Home = () => {
   const { addToCart } = useContext(CartContext);
+  const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const location = useLocation();
   const [allProducts, setAllProducts] = useState([]);
   const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -356,40 +361,42 @@ const Home = () => {
         <div className="container position-relative">
           <div className="row align-items-center g-4">
             <div className="col-lg-6" data-aos="fade-up">
-              <span className="home-hero-kicker">
-                <FaBolt className="me-2" />
-                Premium electronics storefront
-              </span>
-              <h1>
-                Shop Smarter
-                <span className="d-block">With a Curated</span>
-                <span className="d-block home-hero-heading-accent">Premium Experience</span>
-              </h1>
-              <p className="home-hero-copy">
-                We reorganized the landing page around discovery. A striking hero, quick categories, and purpose-built product sections make browsing feel effortless and fast.
-              </p>
+              <div className="home-hero-text-content">
+                <span className="home-hero-kicker">
+                  <FaBolt className="me-2" />
+                  Premium electronics storefront
+                </span>
+                <h1>
+                  Shop Smarter
+                  <span className="d-block">With a Curated</span>
+                  <span className="d-block home-hero-heading-accent">Premium Experience</span>
+                </h1>
+                <p className="home-hero-copy">
+                  We reorganized the landing page around discovery. A striking hero, quick categories, and purpose-built product sections make browsing feel effortless and fast.
+                </p>
 
-              <div className="home-hero-actions">
-                <Link to="/shop" className="home-primary-btn">
-                  <FaSearch />
-                  Start Shopping
-                </Link>
-                <Link to="/offers" className="home-secondary-btn">
-                  <FaFireAlt />
-                  View Offers
-                </Link>
-              </div>
+                <div className="home-hero-actions">
+                  <Link to="/shop" className="home-primary-btn">
+                    <FaSearch />
+                    Start Shopping
+                  </Link>
+                  <Link to="/offers" className="home-secondary-btn">
+                    <FaFireAlt />
+                    View Offers
+                  </Link>
+                </div>
 
-              <div className="home-hero-pills">
-                {HERO_PILLS.map((pill) => {
-                  const Icon = pill.icon;
-                  return (
-                    <span key={pill.label} className="home-hero-pill">
-                      <Icon />
-                      {pill.label}
-                    </span>
-                  );
-                })}
+                <div className="home-hero-pills">
+                  {HERO_PILLS.map((pill) => {
+                    const Icon = pill.icon;
+                    return (
+                      <span key={pill.label} className="home-hero-pill">
+                        <Icon />
+                        {pill.label}
+                      </span>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
@@ -461,7 +468,11 @@ const Home = () => {
                   <button
                     type="button"
                     className="home-hero-cart-btn"
-                    onClick={() => heroPreview && addToCart(heroPreview)}
+                    onClick={() => {
+                      if (!heroPreview) return;
+                      if (!ensureLoggedIn({ user, navigate, location, message: "Please login to add to cart" })) return;
+                      addToCart(heroPreview);
+                    }}
                     disabled={!heroPreview}
                   >
                     <FaShoppingCart className="me-2" />

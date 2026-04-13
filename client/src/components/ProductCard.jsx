@@ -1,16 +1,20 @@
 import React, { useContext, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { CartContext } from "../context/CartContext";
+import { AuthContext } from "../context/AuthContext";
 import { getImageUrl } from "../api";
 import { FaHeart, FaRegHeart, FaEye, FaStar, FaRegStar, FaShoppingCart, FaBolt } from "react-icons/fa";
 import "./ProductCard.css";
+import { ensureLoggedIn } from "../utils/authGuards";
 
 const FALLBACK_IMAGE =
   "https://via.placeholder.com/320x220/f1f5f9/64748b?text=No+Image";
 
 const ProductCard = ({ product, showBuyNow = true, onBuyNow }) => {
   const { addToCart } = useContext(CartContext);
+  const { user } = useContext(AuthContext);
   const navigate = useNavigate();
+  const location = useLocation();
   const [isWishlisted, setIsWishlisted] = useState(false);
 
   const rating = Number(product?.averageRating || 0);
@@ -62,6 +66,7 @@ const ProductCard = ({ product, showBuyNow = true, onBuyNow }) => {
   };
 
   const handleBuyNow = () => {
+    if (!ensureLoggedIn({ user, navigate, location, message: "Please login to buy now" })) return;
     if (typeof onBuyNow === "function") {
       onBuyNow(product);
       return;
@@ -181,7 +186,13 @@ const ProductCard = ({ product, showBuyNow = true, onBuyNow }) => {
           </p>
 
           <div className="product-card-actions">
-            <button className="btn btn-cart-action product-card-cart-btn" onClick={() => addToCart(product)}>
+            <button
+              className="btn btn-cart-action product-card-cart-btn"
+              onClick={() => {
+                if (!ensureLoggedIn({ user, navigate, location, message: "Please login to add to cart" })) return;
+                addToCart(product);
+              }}
+            >
               <FaShoppingCart className="me-2" />
               Add to Cart
             </button>

@@ -933,12 +933,19 @@ section h3 {
 .home-hero {
   position: relative;
   overflow: hidden;
-  padding: 4rem 0 3rem;
+  min-height: calc(100vh - 110px);
+  display: flex;
+  align-items: center;
+  padding: 1.25rem 0 2.5rem;
   background:
     radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 28%),
     radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.1), transparent 30%),
     linear-gradient(135deg, #0f172a 0%, #111827 55%, #1e293b 100%);
   color: #f8fafc;
+}
+
+.home-hero-text-content {
+  margin-top: -3rem;
 }
 
 .home-hero-glow {
@@ -991,7 +998,7 @@ section h3 {
 .home-hero h1 {
   margin-bottom: 1.25rem;
   font-family: 'Outfit', sans-serif;
-  font-size: clamp(2.6rem, 5.5vw, 4.6rem);
+  font-size: clamp(2.25rem, 5vw, 3.9rem);
   line-height: 1.02;
   letter-spacing: -0.05em;
   font-weight: 900;
@@ -1111,7 +1118,7 @@ section h3 {
 
 .home-hero-panel {
   position: relative;
-  padding: 1.25rem;
+  padding: 0.95rem;
   border-radius: 1.8rem;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1172,7 +1179,7 @@ section h3 {
 .home-hero-panel h2 {
   margin-bottom: 0.45rem;
   font-family: 'Outfit', sans-serif;
-  font-size: clamp(1.5rem, 2.4vw, 2.35rem);
+  font-size: clamp(1.4rem, 2.2vw, 2rem);
   font-weight: 800;
   letter-spacing: -0.03em;
 }
@@ -1191,7 +1198,7 @@ section h3 {
 
 .home-hero-image-frame {
   position: relative;
-  min-height: 28rem;
+  min-height: 19rem;
   display: block;
   border-radius: 1.6rem;
   background:
@@ -1465,7 +1472,9 @@ section h3 {
 
 @media (max-width: 991.98px) {
   .home-hero {
-    padding-top: 3rem;
+    padding-top: 2.5rem;
+    min-height: auto;
+    padding-bottom: 2.5rem;
   }
 
   .home-hero h1 {
@@ -1488,11 +1497,11 @@ section h3 {
 
 @media (max-width: 767.98px) {
   .home-hero {
-    padding: 2.5rem 0 2rem;
+    padding: 2.1rem 0 1.6rem;
   }
 
   .home-hero h1 {
-    font-size: clamp(1.65rem, 7vw, 2.2rem);
+    font-size: clamp(1.5rem, 6.4vw, 2.25rem);
     max-width: 100%;
   }
 
@@ -1505,7 +1514,7 @@ section h3 {
   }
 
   .home-hero-image-frame {
-    min-height: 20rem;
+    min-height: 16.5rem;
   }
 
   .home-hero-image-frame img {

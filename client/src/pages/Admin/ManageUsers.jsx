@@ -162,6 +162,7 @@ const ManageUsers = () => {
               placeholder="Name"
               value={newUser.name}
               onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+              autoComplete="off"
               required
             />
           </div>
@@ -172,6 +173,7 @@ const ManageUsers = () => {
               placeholder="Email"
               value={newUser.email}
               onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+              autoComplete="off"
               required
             />
           </div>
@@ -182,6 +184,7 @@ const ManageUsers = () => {
               placeholder="Password"
               value={newUser.password}
               onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+              autoComplete="off"
               required
             />
           </div>

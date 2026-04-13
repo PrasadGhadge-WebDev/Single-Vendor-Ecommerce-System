@@ -3,8 +3,9 @@
    ═══════════════════════════════════════════ */
 
 .site-topbar {
-  background: linear-gradient(90deg, #0f172a 0%, #1e293b 100%);
-  color: rgba(255, 255, 255, 0.75);
+  /* Slightly lighter gradient for clearer contrast */
+  background: linear-gradient(90deg, #111c33 0%, #24324a 100%);
+  color: rgba(255, 255, 255, 0.82);
   font-size: 0.78rem;
   padding: 7px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -13,7 +14,7 @@
 }
 
 [data-theme="dark"] .site-topbar {
-  background: linear-gradient(90deg, #020617 0%, #0f172a 100%);
+  background: linear-gradient(90deg, #0b1224 0%, #111c33 100%);
   border-bottom-color: rgba(255, 255, 255, 0.04);
 }
 
@@ -21,7 +22,8 @@
 .topbar-item {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px; /* more breathing room between icon + text */
+  padding: 2px 6px;
   color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
   transition: color 0.25s ease, transform 0.25s ease;
@@ -42,39 +44,50 @@
 }
 
 /* WhatsApp green */
+.topbar-whatsapp {
+  /* CTA feel */
+  padding: 0.32rem 0.72rem;
+  border-radius: 999px;
+  background: rgba(var(--color-accent-rgb), 0.14);
+  border: 1px solid rgba(var(--color-accent-rgb), 0.28);
+  color: rgba(255, 255, 255, 0.92);
+}
+
 .topbar-whatsapp .topbar-icon {
-  color: #25d366;
+  color: var(--color-accent);
 }
 
 .topbar-whatsapp:hover {
-  color: #25d366;
+  color: #ffffff;
+  background: rgba(var(--color-accent-rgb), 0.22);
+  border-color: rgba(var(--color-accent-rgb), 0.4);
 }
 
 /* Mail blue */
 .topbar-mail .topbar-icon {
-  color: #60a5fa;
+  color: var(--color-primary);
 }
 
 .topbar-mail:hover {
-  color: #60a5fa;
+  color: var(--color-primary);
 }
 
 /* Call cyan */
 .topbar-call .topbar-icon {
-  color: #22d3ee;
+  color: var(--color-primary);
 }
 
 .topbar-call:hover {
-  color: #22d3ee;
+  color: var(--color-primary);
 }
 
 /* Location red */
 .topbar-location .topbar-icon {
-  color: #f87171;
+  color: var(--color-primary);
 }
 
 .topbar-location:hover {
-  color: #f87171;
+  color: var(--color-primary);
 }
 
 /* ─── Divider ───────────────────────────── */
@@ -91,6 +104,7 @@
   letter-spacing: 0.01em;
 }
 
+/* Auth links (Login / Register) */
 .topbar-auth-links {
   display: inline-flex;
   align-items: center;
@@ -106,7 +120,7 @@
   border-radius: 999px;
   text-decoration: none;
   font-weight: 700;
-  transition: transform 0.25s ease, background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+  transition: transform 0.3s ease, background 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
   white-space: nowrap;
 }
 
@@ -115,7 +129,7 @@
 }
 
 .topbar-auth-link-ghost {
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.04);
 }
@@ -127,16 +141,128 @@
   text-decoration: none;
 }
 
+/* Register button (premium) */
 .topbar-auth-link-solid {
-  color: #0f172a;
-  background: linear-gradient(135deg, #f8fafc, #cbd5e1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--color-primary) 0%, #93c5fd 100%);
+  border: 1px solid rgba(147, 197, 253, 0.45);
 }
 
 .topbar-auth-link-solid:hover {
-  color: #0f172a;
+  color: #ffffff;
   transform: translateY(-1px);
+  box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
   text-decoration: none;
+}
+
+
+
+/* Theme Switch (Topbar) */
+.topbar-theme-switch {
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.topbar-theme-switch .theme-switch-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.topbar-theme-switch .theme-switch-track {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  border-radius: 999px;
+  /* iOS-like track */
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08));
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 10px 20px rgba(2, 6, 23, 0.22);
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.topbar-theme-switch:hover .theme-switch-track {
+  transform: translateY(-1px);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.1));
+  border-color: rgba(255, 255, 255, 0.26);
+}
+
+.topbar-theme-switch:active .theme-switch-track {
+  transform: translateY(0) scale(0.98);
+}
+
+.topbar-theme-switch .theme-switch-icon {
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+  color: rgba(255, 255, 255, 0.85);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Light mode: track is light, so use dark icons for contrast */
+:root:not([data-theme="dark"]) .topbar-theme-switch .theme-switch-icon {
+  color: rgba(15, 23, 42, 0.78);
+  opacity: 0.92;
+}
+
+.topbar-theme-switch .theme-switch-icon svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.topbar-theme-switch .theme-switch-thumb {
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.9));
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 10px 14px rgba(2, 6, 23, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  transition:
+    transform 0.32s cubic-bezier(0.2, 0.9, 0.2, 1),
+    background 0.3s ease,
+    box-shadow 0.3s ease;
+  will-change: transform;
+}
+
+.topbar-theme-switch .theme-switch-input:focus-visible + .theme-switch-track {
+  box-shadow: 0 0 0 4px rgba(var(--color-accent-rgb), 0.18), 0 10px 20px rgba(2, 6, 23, 0.22);
+  border-color: rgba(var(--color-accent-rgb), 0.35);
+}
+
+/* Checked = dark mode */
+.topbar-theme-switch .theme-switch-input:checked + .theme-switch-track {
+  background: linear-gradient(180deg, rgba(var(--color-accent-rgb), 0.22), rgba(var(--color-accent-rgb), 0.12));
+  border-color: rgba(var(--color-accent-rgb), 0.28);
+}
+
+.topbar-theme-switch .theme-switch-input:checked + .theme-switch-track .theme-switch-thumb {
+  transform: translateX(20px);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.86));
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.topbar-theme-switch .theme-switch-input:checked + .theme-switch-track .theme-switch-icon {
+  opacity: 0.95;
+  color: rgba(255, 255, 255, 0.92);
 }
 
 /* ═══════════════════════════════════════════

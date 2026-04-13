@@ -32,6 +32,16 @@ const orderSchema = new mongoose.Schema(
       type: [orderItemSchema],
       default: [],
     },
+    shippingAddress: {
+      fullName: { type: String, default: "", trim: true },
+      phone: { type: String, default: "", trim: true },
+      addressLine1: { type: String, default: "", trim: true },
+      addressLine2: { type: String, default: "", trim: true },
+      city: { type: String, default: "", trim: true },
+      state: { type: String, default: "", trim: true },
+      pincode: { type: String, default: "", trim: true },
+      country: { type: String, default: "", trim: true },
+    },
     totalAmount: {
       type: Number,
       required: true,

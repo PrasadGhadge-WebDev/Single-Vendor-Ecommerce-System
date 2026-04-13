@@ -1,16 +1,19 @@
-import { useContext, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useContext } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { CartContext } from "../context/CartContext";
+import { AuthContext } from "../context/AuthContext";
 import { getImageUrl } from "../api";
 import { toast } from "react-toastify";
+import { ensureLoggedIn } from "../utils/authGuards";
 
 const FALLBACK_IMAGE =
   "https://via.placeholder.com/120x120/f1f5f9/64748b?text=No+Image";
 
 const Cart = () => {
-  const { cart, updateQuantity, removeItem, buyTotalOrder } = useContext(CartContext);
+  const { cart, updateQuantity, removeItem } = useContext(CartContext);
+  const { user } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [buyingAll, setBuyingAll] = useState(false);
+  const location = useLocation();
 
   const total = cart.reduce((sum, item) => sum + (item.productId?.price || 0) * item.quantity, 0);
 
@@ -20,6 +23,7 @@ const Cart = () => {
   };
 
   const handleBuyNow = (item) => {
+    if (!ensureLoggedIn({ user, navigate, location, message: "Please login to checkout" })) return;
     navigate("/checkout", {
       state: {
         buyNowItem: {
@@ -31,21 +35,12 @@ const Cart = () => {
   };
 
   const handleBuyTotalOrder = async () => {
+    if (!ensureLoggedIn({ user, navigate, location, message: "Please login to checkout" })) return;
     if (cart.length === 0) {
       toast.warning("Cart is empty");
       return;
     }
-
-    setBuyingAll(true);
-    try {
-      await buyTotalOrder();
-      toast.success("Total order placed successfully");
-      navigate("/orders");
-    } catch (error) {
-      toast.error("Order failed: " + (error.response?.data?.message || error.message));
-    } finally {
-      setBuyingAll(false);
-    }
+    navigate("/checkout");
   };
 
   return (
@@ -119,8 +114,8 @@ const Cart = () => {
 
           <div className="d-flex justify-content-between align-items-center mt-4 p-3 border rounded-4 shadow-sm bg-body">
             <h4 className="mb-0">Total: INR {total}</h4>
-            <button className="btn btn-success" onClick={handleBuyTotalOrder} disabled={buyingAll}>
-              {buyingAll ? "Processing..." : "Buy Total Order"}
+            <button className="btn btn-success" onClick={handleBuyTotalOrder}>
+              Buy Total Order
             </button>
           </div>
         </>

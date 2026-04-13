@@ -1,6 +1,6 @@
 import React, { useState, useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import API from "../api";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "./Login.css";
@@ -8,6 +8,7 @@ import "./Login.css";
 const Login = () => {
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,7 +35,8 @@ const submitHandler = async (e) => {
     if (data.isAdmin) {
       navigate("/admin/dashboard");
     } else {
-      navigate("/");
+      const redirectTo = location.state?.from || "/";
+      navigate(redirectTo);
     }
 
   } catch (err) {
@@ -65,6 +67,7 @@ const submitHandler = async (e) => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              autoComplete="username"
               required
               placeholder=" "
             />
@@ -76,6 +79,7 @@ const submitHandler = async (e) => {
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
               required
               placeholder=" "
             />

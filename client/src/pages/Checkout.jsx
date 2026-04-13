@@ -4,6 +4,7 @@ import API from "../api";
 import { CartContext } from "../context/CartContext";
 import { AuthContext } from "../context/AuthContext";
 import { toast } from "react-toastify";
+import "./Checkout.css";
 
 const Checkout = () => {
   const { cart, clearCart } = useContext(CartContext);
@@ -15,6 +16,16 @@ const Checkout = () => {
   const [offers, setOffers] = useState([]);
   const [appliedOffer, setAppliedOffer] = useState(null);
   const [buyNowQty, setBuyNowQty] = useState(() => Math.max(1, Number(location.state?.buyNowItem?.quantity) || 1));
+  const [address, setAddress] = useState({
+    fullName: "",
+    phone: "",
+    addressLine1: "",
+    addressLine2: "",
+    city: "",
+    state: "",
+    pincode: "",
+    country: "India",
+  });
 
   const buyNowItem = location.state?.buyNowItem;
 
@@ -95,6 +106,30 @@ const Checkout = () => {
       return;
     }
 
+    const trimmedAddress = {
+      fullName: address.fullName.trim(),
+      phone: address.phone.trim(),
+      addressLine1: address.addressLine1.trim(),
+      addressLine2: address.addressLine2.trim(),
+      city: address.city.trim(),
+      state: address.state.trim(),
+      pincode: address.pincode.trim(),
+      country: address.country.trim(),
+    };
+
+    if (
+      !trimmedAddress.fullName ||
+      !trimmedAddress.phone ||
+      !trimmedAddress.addressLine1 ||
+      !trimmedAddress.city ||
+      !trimmedAddress.state ||
+      !trimmedAddress.pincode ||
+      !trimmedAddress.country
+    ) {
+      toast.warning("Please fill your address details");
+      return;
+    }
+
     setLoading(true);
     try {
       await API.post("/orders", {
@@ -103,6 +138,7 @@ const Checkout = () => {
           quantity: item.quantity,
         })),
         offerCode: appliedOffer?.code || "",
+        shippingAddress: trimmedAddress,
       });
 
       toast.success("Order placed successfully");
@@ -126,78 +162,241 @@ const Checkout = () => {
   };
 
   return (
-    <div className="container mt-5" style={{ maxWidth: "500px" }}>
-      <h2>{buyNowItem ? "Buy Now Checkout" : "Checkout"}</h2>
+    <div className="checkout-page">
+      <div className="container py-5">
+        <div className="d-flex flex-wrap align-items-end justify-content-between gap-2 mb-4">
+          <div>
+            <h2 className="checkout-title fw-bold mb-1">{buyNowItem ? "Buy Now Checkout" : "Checkout"}</h2>
+            <div className="text-muted">Fill delivery details and confirm your order.</div>
+          </div>
+        </div>
 
-      <div className="card p-4">
-        <h5>Order Summary</h5>
-        {buyNowItem?.product?._id && (
-          <div className="mb-3">
-            <label className="form-label mb-1">Quantity</label>
-            <div className="d-flex align-items-center gap-2" style={{ maxWidth: "180px" }}>
-              <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => adjustBuyNowQty(buyNowQty - 1)}>
-                -
-              </button>
-              <input
-                type="number"
-                min="1"
-                className="form-control form-control-sm"
-                value={buyNowQty}
-                onChange={(e) => adjustBuyNowQty(e.target.value)}
-              />
-              <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => adjustBuyNowQty(buyNowQty + 1)}>
-                +
-              </button>
+        <div className="row g-4 align-items-start">
+          <div className="col-lg-7">
+            <form
+              className="card checkout-card shadow-sm"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleOrder();
+              }}
+            >
+              <div className="card-header py-3 px-4">
+                <h5 className="mb-0">Delivery Address</h5>
+              </div>
+
+              <div className="card-body p-4">
+                <div className="row g-3">
+                  <div className="col-12">
+                    <label className="form-label">
+                      Full Name <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      className="form-control"
+                      value={address.fullName}
+                      onChange={(e) => setAddress((prev) => ({ ...prev, fullName: e.target.value }))}
+                      placeholder="Enter full name"
+                      autoComplete="name"
+                      required
+                    />
+                  </div>
+
+                  <div className="col-12 col-md-6">
+                    <label className="form-label">
+                      Phone <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      className="form-control"
+                      value={address.phone}
+                      onChange={(e) => setAddress((prev) => ({ ...prev, phone: e.target.value }))}
+                      placeholder="Enter phone number"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      required
+                    />
+                  </div>
+
+                  <div className="col-12 col-md-6">
+                    <label className="form-label">
+                      Pincode <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      className="form-control"
+                      value={address.pincode}
+                      onChange={(e) => setAddress((prev) => ({ ...prev, pincode: e.target.value }))}
+                      placeholder="Pincode"
+                      inputMode="numeric"
+                      autoComplete="postal-code"
+                      required
+                    />
+                  </div>
+
+                  <div className="col-12">
+                    <label className="form-label">
+                      Address Line 1 <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      className="form-control"
+                      value={address.addressLine1}
+                      onChange={(e) => setAddress((prev) => ({ ...prev, addressLine1: e.target.value }))}
+                      placeholder="House no, street, area"
+                      autoComplete="address-line1"
+                      required
+                    />
+                  </div>
+
+                  <div className="col-12">
+                    <label className="form-label">Address Line 2 (Optional)</label>
+                    <input
+                      className="form-control"
+                      value={address.addressLine2}
+                      onChange={(e) => setAddress((prev) => ({ ...prev, addressLine2: e.target.value }))}
+                      placeholder="Landmark, apartment, etc."
+                      autoComplete="address-line2"
+                    />
+                  </div>
+
+                  <div className="col-12 col-md-6">
+                    <label className="form-label">
+                      City <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      className="form-control"
+                      value={address.city}
+                      onChange={(e) => setAddress((prev) => ({ ...prev, city: e.target.value }))}
+                      placeholder="City"
+                      autoComplete="address-level2"
+                      required
+                    />
+                  </div>
+
+                  <div className="col-12 col-md-6">
+                    <label className="form-label">
+                      State <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      className="form-control"
+                      value={address.state}
+                      onChange={(e) => setAddress((prev) => ({ ...prev, state: e.target.value }))}
+                      placeholder="State"
+                      autoComplete="address-level1"
+                      required
+                    />
+                  </div>
+
+                  <div className="col-12 col-md-6">
+                    <label className="form-label">
+                      Country <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      className="form-control"
+                      value={address.country}
+                      onChange={(e) => setAddress((prev) => ({ ...prev, country: e.target.value }))}
+                      placeholder="Country"
+                      autoComplete="country-name"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="d-flex flex-wrap gap-2 mt-4">
+                  <button type="button" className="btn btn-outline-secondary" onClick={() => navigate(-1)} disabled={loading}>
+                    Back
+                  </button>
+                  <button type="submit" className="btn btn-success ms-auto" disabled={loading}>
+                    {loading ? "Processing..." : "Place Order"}
+                  </button>
+                </div>
+
+                <div className="text-muted small mt-3">
+                  <span className="text-danger">*</span> Required fields
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <div className="col-lg-5">
+            <div className="card checkout-card shadow-sm checkout-sticky">
+              <div className="card-header py-3 px-4 d-flex align-items-center justify-content-between">
+                <h5 className="mb-0">Order Summary</h5>
+                <span className="badge text-bg-light">{checkoutItems.length} item{checkoutItems.length === 1 ? "" : "s"}</span>
+              </div>
+
+              <div className="card-body p-4">
+                {buyNowItem?.product?._id && (
+                  <div className="mb-3">
+                    <label className="form-label mb-1">Quantity</label>
+                    <div className="d-flex align-items-center gap-2" style={{ maxWidth: "220px" }}>
+                      <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => adjustBuyNowQty(buyNowQty - 1)}>
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        min="1"
+                        className="form-control form-control-sm"
+                        value={buyNowQty}
+                        onChange={(e) => adjustBuyNowQty(e.target.value)}
+                      />
+                      <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => adjustBuyNowQty(buyNowQty + 1)}>
+                        +
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="d-grid gap-2 mb-3">
+                  {checkoutItems.map((item) => (
+                    <div key={item.productId?._id} className="d-flex justify-content-between align-items-start gap-3">
+                      <div className="text-truncate" title={item.productId?.name || ""}>
+                        <div className="fw-semibold text-truncate">{item.productId?.name}</div>
+                        <div className="text-muted small">Qty {item.quantity}</div>
+                      </div>
+                      <div className="fw-semibold">INR {((item.productId?.price || 0) * item.quantity).toFixed(2)}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <hr className="my-3" />
+
+                <div className="mb-3">
+                  <label className="form-label">Offer Code</label>
+                  <div className="d-flex gap-2">
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={offerCode}
+                      onChange={(e) => setOfferCode(e.target.value.toUpperCase())}
+                      placeholder="Enter coupon code"
+                    />
+                    <button type="button" className="btn btn-outline-primary" onClick={applyOffer}>
+                      Apply
+                    </button>
+                  </div>
+                  {appliedOffer && (
+                    <small className="text-success d-block mt-2">
+                      Offer applied: {appliedOffer.code} (Discount INR {discountAmount.toFixed(2)})
+                    </small>
+                  )}
+                </div>
+
+                <div className="d-flex justify-content-between">
+                  <span className="text-muted">Subtotal</span>
+                  <span className="fw-semibold">INR {totalAmount.toFixed(2)}</span>
+                </div>
+                <div className="d-flex justify-content-between">
+                  <span className="text-muted">Discount</span>
+                  <span className="fw-semibold">- INR {discountAmount.toFixed(2)}</span>
+                </div>
+
+                <hr className="my-3" />
+
+                <div className="d-flex justify-content-between align-items-baseline">
+                  <span className="fw-bold">Final Total</span>
+                  <span className="fw-bold fs-5">INR {finalPayable.toFixed(2)}</span>
+                </div>
+              </div>
             </div>
           </div>
-        )}
-        {checkoutItems.map((item) => (
-          <div key={item.productId?._id} className="d-flex justify-content-between mb-2">
-            <span>
-              {item.productId?.name} x {item.quantity}
-            </span>
-            <span>INR {(item.productId?.price || 0) * item.quantity}</span>
-          </div>
-        ))}
-
-        <hr />
-        <div className="mb-3">
-          <label className="form-label">Offer Code</label>
-          <div className="d-flex gap-2">
-            <input
-              type="text"
-              className="form-control"
-              value={offerCode}
-              onChange={(e) => setOfferCode(e.target.value.toUpperCase())}
-              placeholder="Enter coupon code"
-            />
-            <button type="button" className="btn btn-outline-primary" onClick={applyOffer}>
-              Apply
-            </button>
-          </div>
-          {appliedOffer && (
-            <small className="text-success d-block mt-2">
-              Offer applied: {appliedOffer.code} (Discount INR {discountAmount.toFixed(2)})
-            </small>
-          )}
         </div>
-
-        <div className="d-flex justify-content-between">
-          <span>Subtotal:</span>
-          <span>INR {totalAmount.toFixed(2)}</span>
-        </div>
-        <div className="d-flex justify-content-between">
-          <span>Discount:</span>
-          <span>- INR {discountAmount.toFixed(2)}</span>
-        </div>
-        <h5 className="d-flex justify-content-between">
-          <span>Final Total:</span>
-          <span>INR {finalPayable.toFixed(2)}</span>
-        </h5>
-
-        <button className="btn btn-success w-100 mt-3" onClick={handleOrder} disabled={loading}>
-          {loading ? "Processing..." : "Place Order"}
-        </button>
       </div>
     </div>
   );

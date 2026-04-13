@@ -67,7 +67,7 @@ const calculateDiscount = (offer, amount) => {
 
 exports.createOrder = async (req, res) => {
   try {
-    const { products = [], paymentMethod = "COD", offerCode = "" } = req.body;
+    const { products = [], paymentMethod = "COD", offerCode = "", shippingAddress = null } = req.body;
 
     if (!Array.isArray(products) || products.length === 0) {
       return res.status(400).json({ message: "products are required" });
@@ -111,6 +111,7 @@ exports.createOrder = async (req, res) => {
     const order = await Order.create({
       user: req.user._id,
       products: normalizedItems,
+      shippingAddress: shippingAddress || undefined,
       totalAmount,
       subtotalAmount,
       discountAmount,
@@ -126,7 +127,7 @@ exports.createOrder = async (req, res) => {
 
 exports.createOrderFromCart = async (req, res) => {
   try {
-    const { paymentMethod = "COD", offerCode = "" } = req.body;
+    const { paymentMethod = "COD", offerCode = "", shippingAddress = null } = req.body;
 
     const cart = await Cart.findOne({ userId: req.user._id }).populate("items.productId");
     if (!cart || cart.items.length === 0) {
@@ -171,6 +172,7 @@ exports.createOrderFromCart = async (req, res) => {
     const order = await Order.create({
       user: req.user._id,
       products: normalizedItems,
+      shippingAddress: shippingAddress || undefined,
       totalAmount,
       subtotalAmount,
       discountAmount,

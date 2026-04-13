@@ -1,7 +1,8 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import API, { getImageUrl } from "../api";
 import { CartContext } from "../context/CartContext";
+import { AuthContext } from "../context/AuthContext";
 import { FaChevronDown, FaChevronUp, FaStar } from "react-icons/fa";
 import ProductCard from "../components/ProductCard";
 import {
@@ -10,11 +11,14 @@ import {
   recordRecentlyViewedProduct,
 } from "../utils/productInsights";
 import "./ProductDetails.css";
+import { ensureLoggedIn } from "../utils/authGuards";
 
 const ProductDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { addToCart } = useContext(CartContext);
+  const { user } = useContext(AuthContext);
 
   const [product, setProduct] = useState(null);
   const [catalogProducts, setCatalogProducts] = useState([]);
@@ -202,7 +206,13 @@ const ProductDetails = () => {
           </div>
 
           <div className="d-flex flex-wrap gap-2">
-            <button className="btn btn-cart-action" onClick={() => addToCart(product)}>
+            <button
+              className="btn btn-cart-action"
+              onClick={() => {
+                if (!ensureLoggedIn({ user, navigate, location, message: "Please login to add to cart" })) return;
+                addToCart(product);
+              }}
+            >
               Add to Cart
             </button>
             <button className="btn btn-outline-primary" onClick={() => navigate("/shop")}>
@@ -211,7 +221,8 @@ const ProductDetails = () => {
             <button
               className="btn btn-buy-action"
               disabled={Number(product.stock || 0) <= 0}
-              onClick={() =>
+              onClick={() => {
+                if (!ensureLoggedIn({ user, navigate, location, message: "Please login to buy now" })) return;
                 navigate("/checkout", {
                   state: {
                     buyNowItem: {
@@ -219,8 +230,8 @@ const ProductDetails = () => {
                       quantity: buyQty,
                     },
                   },
-                })
-              }
+                });
+              }}
             >
               Buy Now
             </button>

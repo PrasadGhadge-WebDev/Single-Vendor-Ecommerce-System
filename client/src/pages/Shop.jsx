@@ -1,10 +1,12 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { FaHeart, FaList, FaRegHeart, FaRegStar, FaSearch, FaShoppingCart, FaSortAmountDown, FaStar, FaThLarge } from "react-icons/fa";
 import API, { getImageUrl } from "../api";
 import { CartContext } from "../context/CartContext";
+import { AuthContext } from "../context/AuthContext";
 import { buildSearchSuggestions } from "../utils/productInsights";
 import "./Shop.css";
+import { ensureLoggedIn } from "../utils/authGuards";
 
 const FALLBACK_IMAGE = "https://via.placeholder.com/420x320/f1f5f9/64748b?text=No+Image";
 
@@ -101,7 +103,6 @@ const StarRow = ({ value }) => {
 const Shop = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("recommended");
   const [viewMode, setViewMode] = useState("list");
   const [wishlist, setWishlist] = useState([]);
@@ -114,7 +115,9 @@ const Shop = () => {
   const searchBlurTimeout = useRef(null);
 
   const { addToCart } = useContext(CartContext);
+  const { user } = useContext(AuthContext);
   const navigate = useNavigate();
+  const location = useLocation();
   const { categoryName } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const search = searchParams.get("search") || "";
@@ -138,7 +141,6 @@ const Shop = () => {
         setProducts(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Error fetching products:", err);
-        setError("Failed to load products. Please try again later.");
       } finally {
         setLoading(false);
       }
@@ -298,16 +300,6 @@ const Shop = () => {
             <span className="visually-hidden">Loading...</span>
           </div>
           <p className="mt-3 mb-0">Loading products...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="shop-page">
-        <div className="container py-5">
-          <div className="alert alert-danger">{error}</div>
         </div>
       </div>
     );
@@ -648,7 +640,13 @@ const Shop = () => {
                           {getPriceMeta(product).hasDiscount && <del>{toCurrency(getPriceMeta(product).compareAtPrice)}</del>}
                         </div>
                         <div className="shop-grid-actions">
-                          <button className="btn btn-cart-action" onClick={() => addToCart(product)}>
+                          <button
+                            className="btn btn-cart-action"
+                            onClick={() => {
+                              if (!ensureLoggedIn({ user, navigate, location, message: "Please login to add to cart" })) return;
+                              addToCart(product);
+                            }}
+                          >
                             <FaShoppingCart className="me-2" />
                             Add to Cart
                           </button>
@@ -722,7 +720,13 @@ const Shop = () => {
                           <strong>{toCurrency(priceMeta.salePrice)}</strong>
                           {priceMeta.hasDiscount && <del>{toCurrency(priceMeta.compareAtPrice)}</del>}
                         </div>
-                        <button className="btn btn-cart-action shop-list-cart-btn" onClick={() => addToCart(product)}>
+                        <button
+                          className="btn btn-cart-action shop-list-cart-btn"
+                          onClick={() => {
+                            if (!ensureLoggedIn({ user, navigate, location, message: "Please login to add to cart" })) return;
+                            addToCart(product);
+                          }}
+                        >
                           <FaShoppingCart className="me-2" />
                           Add to Cart
                         </button>

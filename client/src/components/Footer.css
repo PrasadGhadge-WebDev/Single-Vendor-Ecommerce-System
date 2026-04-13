@@ -7,18 +7,17 @@
 }
 
 .footer-top {
-  background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  color: #f8fafc;
+  background: linear-gradient(90deg, #111c33 0%, #24324a 100%);
+  color: rgba(255, 255, 255, 0.86);
   padding: 30px 0 15px;
   border-radius: 20px 20px 0 0;
   margin-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-[data-theme="light"] .footer-top {
-  background: rgba(248, 250, 252, 0.98);
-  color: #0f172a;
+[data-theme="dark"] .footer-top {
+  background: linear-gradient(90deg, #0b1224 0%, #111c33 100%);
+  border-top-color: rgba(255, 255, 255, 0.04);
 }
 
 .footer-title {
@@ -67,7 +66,7 @@
 
 .footer-links a:hover {
   opacity: 1;
-  color: var(--accent-color);
+  color: #ffffff;
   transform: translateX(4px);
 }
 
@@ -130,8 +129,9 @@
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  background: rgba(var(--accent-color-rgb, 37, 99, 235), 0.1);
-  color: var(--accent-color);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -140,36 +140,37 @@
 }
 
 .footer-social a:hover {
-  background: var(--accent-color);
-  color: white;
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
   transform: translateY(-3px) rotate(8deg);
 }
 
 .footer-bottom {
-  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   padding-top: 15px;
   margin-top: 25px;
-  opacity: 0.5;
+  opacity: 0.7;
   font-size: 0.75rem;
 }
 
 .newsletter-footer {
-  background: rgba(var(--accent-color-rgb, 37, 99, 235), 0.05);
+  background: rgba(255, 255, 255, 0.06);
   padding: 16px;
   border-radius: 12px;
   margin-top: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .newsletter-footer input {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   color: inherit;
   border-radius: 10px;
 }
 
-[data-theme="light"] .newsletter-footer input {
-  background: white;
-  border-color: rgba(0, 0, 0, 0.1);
+.newsletter-footer input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
 }
 
 @media (max-width: 991px) {

@@ -9,8 +9,6 @@ import {
   FaSearch,
   FaFilter,
   FaClock,
-  FaMoon,
-  FaSun,
   FaChevronDown,
   FaHistory,
   FaSignOutAlt,
@@ -19,18 +17,14 @@ import {
   FaInfoCircle,
   FaConciergeBell,
   FaPhoneAlt,
-  FaTags,
   FaLayerGroup,
   FaUserShield,
+  FaUser,
+  FaUserPlus,
+  FaFireAlt,
 } from "react-icons/fa";
 import API, { getImageUrl } from "../api";
 import "./Navbar.css";
-
-const getInitialTheme = () => {
-  const saved = localStorage.getItem("theme");
-  if (saved === "light" || saved === "dark") return saved;
-  return "light";
-};
 
 const Navbar = () => {
   const { user, logout } = useContext(AuthContext);
@@ -47,7 +41,6 @@ const Navbar = () => {
   const [recentSearches, setRecentSearches] = useState([]);
   const [searchFocused, setSearchFocused] = useState(false);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
-  const [theme, setTheme] = useState(getInitialTheme);
   const [profileName, setProfileName] = useState(user?.name || "");
   const [profileAvatar, setProfileAvatar] = useState(user?.profileImage || "");
   const searchWrapRef = useRef(null);
@@ -132,12 +125,6 @@ const Navbar = () => {
   }, []);
 
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    document.body.setAttribute("data-bs-theme", theme);
-    localStorage.setItem("theme", theme);
-  }, [theme]);
-
-  useEffect(() => {
     setProfileName(user?.name || "");
     setProfileAvatar(user?.profileImage || "");
   }, [user?.name, user?.profileImage]);
@@ -159,10 +146,6 @@ const Navbar = () => {
     window.addEventListener("user-profile-updated", handleProfileUpdate);
     return () => window.removeEventListener("user-profile-updated", handleProfileUpdate);
   }, []);
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
-  };
 
   const saveRecentSearch = (query) => {
     const normalized = query.trim();
@@ -208,23 +191,60 @@ const Navbar = () => {
   const cartBadgeLabel = `${totalCartItems} item${totalCartItems === 1 ? "" : "s"} in cart`;
 
   return (
-    <nav className={`navbar navbar-expand-xl ecommerce-navbar shadow-sm sticky-top py-2 ${scrolled ? "navbar-scrolled" : ""}`}>
+    <nav className={`navbar navbar-expand-xl ecommerce-navbar shadow-sm sticky-top py-0 ${scrolled ? "navbar-scrolled" : ""}`}>
       <div className="container-fluid px-3 px-xl-4">
-        <Link className="navbar-brand fw-bold fs-4 brand-text d-flex align-items-center gap-2" to="/">
-          <FaShoppingCart className="brand-icon" />
-          Online Store
+        <Link className="navbar-brand d-flex align-items-center" to="/" aria-label="Home">
+          <img
+            src="/logo-removebg-preview.png"
+            alt="Store logo"
+            className="navbar-brand-logo"
+            loading="eager"
+            decoding="async"
+          />
         </Link>
 
         <button
-          className="navbar-toggler border-0"
+          className={`navbar-toggler border-0 hamburger-btn ms-auto ${menuOpen ? "is-open" : ""}`}
           type="button"
           onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="Toggle navigation menu"
+          aria-expanded={menuOpen ? "true" : "false"}
         >
-          <FaBars />
+          <span className="hamburger-lines" aria-hidden="true">
+            <span className="hamburger-line" />
+            <span className="hamburger-line" />
+            <span className="hamburger-line" />
+          </span>
         </button>
 
+        {/* Mobile quick actions: keep Cart + Login visible even when menu is collapsed */}
+        <div className="navbar-mobile-actions d-xl-none d-flex align-items-center gap-2 ms-2">
+          {!user && (
+            <Link
+              to="/login"
+              className="nav-link d-inline-flex align-items-center justify-content-center mobile-action-btn"
+              aria-label="Login"
+              onClick={() => setMenuOpen(false)}
+            >
+              <FaUserCircle />
+            </Link>
+          )}
+
+          <Link
+            className="nav-link position-relative cart-icon-wrapper d-inline-flex align-items-center justify-content-center mobile-action-btn"
+            to="/cart"
+            aria-label={cartBadgeLabel}
+            onClick={() => setMenuOpen(false)}
+          >
+            <FaShoppingCart />
+            <span className="cart-badge" aria-hidden="true">
+              {totalCartItems}
+            </span>
+          </Link>
+        </div>
+
         <div className={`collapse navbar-collapse ${menuOpen ? "show" : ""}`}>
-          <ul className="navbar-nav me-auto ms-4 align-items-lg-center gap-lg-2">
+          <ul className="navbar-nav me-auto ms-4 ms-xl-5 align-items-lg-center gap-lg-3 navbar-nav-primary">
             <li className="nav-item">
               <NavLink className={navLinkClass} to="/">
                 <FaHome className={navIconClass} />
@@ -232,10 +252,63 @@ const Navbar = () => {
               </NavLink>
             </li>
 
-            <li className="nav-item">
-              <NavLink className={navLinkClass} to="/shop">
+            {/* Shop dropdown: Product + Category */}
+            <li className="nav-item dropdown">
+              <button
+                className="nav-link dropdown-toggle btn btn-link text-decoration-none fw-semibold"
+                type="button"
+                data-bs-toggle="dropdown"
+              >
                 <FaStore className={navIconClass} />
-                Products
+                Shop
+              </button>
+
+              <ul className="dropdown-menu shadow border-0 rounded-3">
+                <li>
+                  <NavLink
+                    className="dropdown-item py-2 d-flex align-items-center gap-2"
+                    to="/shop"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <FaStore className="dropdown-item-icon" />
+                    Product
+                  </NavLink>
+                </li>
+                <li><hr className="dropdown-divider" /></li>
+                <li className="dropdown-item py-2 text-muted fw-semibold">Category</li>
+                {categories.length > 0 ? (
+                  categories.map((cat) => {
+                    const key = typeof cat === "object" ? cat._id || cat.name : cat;
+                    const name = typeof cat === "object" ? cat.name : cat;
+
+                    return (
+                      <li key={key}>
+                        <Link
+                          className="dropdown-item py-2 d-flex align-items-center gap-2"
+                          to={`/shop/category/${encodeURIComponent(name)}`}
+                          onClick={() => setMenuOpen(false)}
+                        >
+                          <FaLayerGroup className="dropdown-item-icon" />
+                          {name}
+                        </Link>
+                      </li>
+                    );
+                  })
+                ) : (
+                  <li className="dropdown-item py-2 text-muted">No categories</li>
+                )}
+              </ul>
+            </li>
+
+            <li className="nav-item">
+              <NavLink
+                className={({ isActive }) =>
+                  `nav-link fw-semibold px-2 nav-offers-link ${isActive ? "active nav-active" : ""}`
+                }
+                to="/offers"
+              >
+                <FaFireAlt className={navIconClass} />
+                Offers
               </NavLink>
             </li>
 
@@ -247,54 +320,37 @@ const Navbar = () => {
             </li>
 
             <li className="nav-item">
-              <NavLink className={navLinkClass} to="/services">
-                <FaConciergeBell className={navIconClass} />
-                Services
-              </NavLink>
-            </li>
-
-            <li className="nav-item">
               <NavLink className={navLinkClass} to="/contact">
                 <FaPhoneAlt className={navIconClass} />
                 Contact
               </NavLink>
             </li>
 
-            <li className="nav-item">
-              <NavLink className={navLinkClass} to="/offers">
-                <FaTags className={navIconClass} />
-                Offers
-              </NavLink>
+            {/* More dropdown: Services + Replacement Policy */}
+            <li className="nav-item dropdown">
+              <button
+                className="nav-link dropdown-toggle btn btn-link text-decoration-none fw-semibold"
+                type="button"
+                data-bs-toggle="dropdown"
+              >
+                <FaBars className={navIconClass} />
+                More
+              </button>
+              <ul className="dropdown-menu shadow border-0 rounded-3">
+                <li>
+                  <NavLink className="dropdown-item py-2 d-flex align-items-center gap-2" to="/services" onClick={() => setMenuOpen(false)}>
+                    <FaConciergeBell className="dropdown-item-icon" />
+                    Services
+                  </NavLink>
+                </li>
+                <li>
+                  <Link className="dropdown-item py-2 d-flex align-items-center gap-2" to="/replacement-policy" onClick={() => setMenuOpen(false)}>
+                    <FaHistory className="dropdown-item-icon" />
+                    Replacement Policy
+                  </Link>
+                </li>
+              </ul>
             </li>
-
-            {categories.length > 0 && (
-              <li className="nav-item dropdown">
-                <button
-                  className="nav-link dropdown-toggle btn btn-link text-decoration-none fw-semibold"
-                  type="button"
-                  data-bs-toggle="dropdown"
-                >
-                  <FaLayerGroup className="nav-link-icon me-2" />
-                  Categories
-                </button>
-
-                <ul className="dropdown-menu shadow border-0 rounded-3">
-                  {categories.map((cat) => {
-                    const key = typeof cat === "object" ? cat._id || cat.name : cat;
-                    const name = typeof cat === "object" ? cat.name : cat;
-
-                    return (
-                      <li key={key}>
-                        <Link className="dropdown-item py-2 d-flex align-items-center gap-2" to={`/shop/category/${encodeURIComponent(name)}`}>
-                          <FaLayerGroup className="dropdown-item-icon" />
-                          {name}
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </li>
-            )}
 
             {user?.isAdmin && (
               <li className="nav-item">
@@ -306,11 +362,21 @@ const Navbar = () => {
             )}
           </ul>
 
-          <div className="navbar-search-shell me-lg-3 my-2 my-lg-0" ref={searchWrapRef}>
-            <form className="d-flex navbar-search" onSubmit={handleSearch}>
-              <button type="button" className="btn btn-sm search-filter-btn" aria-label="Filter options">
-                <FaFilter />
+            <div className="navbar-search-shell me-xl-3 my-2 my-xl-0 w-100 w-xl-auto" ref={searchWrapRef}>
+              <form className="d-flex navbar-search" onSubmit={handleSearch}>
+              <button
+                type="button"
+                className="search-filter-btn"
+                aria-label="Filter products"
+                title="Filters (coming soon)"
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                <FaFilter aria-hidden="true" />
+                <span className="search-filter-label">Filter</span>
+                <FaChevronDown className="search-filter-caret" aria-hidden="true" />
               </button>
+
+              <span className="navbar-search-divider" aria-hidden="true" />
               <input
                 type="text"
                 className="form-control form-control-sm"
@@ -391,13 +457,19 @@ const Navbar = () => {
             )}
           </div>
 
-          <ul className="navbar-nav ms-auto align-items-center gap-lg-3">
-            <li className="nav-item">
-              <button type="button" className="btn theme-btn shadow-sm" onClick={toggleTheme} aria-label="Toggle theme">
-                {theme === "light" ? <FaMoon /> : <FaSun />}
-              </button>
-            </li>
-
+          <ul className="navbar-nav ms-auto align-items-center gap-lg-4 navbar-actions">
+            {!user && (
+              <li className="nav-item d-flex align-items-center gap-2 me-lg-2">
+                <Link to="/login" className="nav-link nav-cta-link nav-cta-login">
+                  <FaUser className="me-1" />
+                  Login
+                </Link>
+                <Link to="/register" className="nav-link nav-cta-link nav-cta-register">
+                  <FaUserPlus className="me-1" />
+                  Register
+                </Link>
+              </li>
+            )}
             <li 
               className="nav-item position-relative"
               onMouseEnter={() => setCartPreviewOpen(true)}
@@ -405,7 +477,7 @@ const Navbar = () => {
               ref={cartRef}
             >
               <Link className="nav-link position-relative cart-icon-wrapper d-inline-flex align-items-center gap-2" to="/cart" aria-label={cartBadgeLabel}>
-                <FaShoppingCart size={22} />
+                <FaShoppingCart size={20} />
                 <span className="cart-link-text d-none d-lg-inline">Cart</span>
                 <span className="cart-badge" aria-hidden="true">
                   {totalCartItems}
@@ -457,7 +529,7 @@ const Navbar = () => {
                       decoding="async"
                     />
                   ) : (
-                    <FaUserCircle size={24} className="me-2" />
+                    <FaUserCircle size={20} className="me-2" />
                   )}
                   <span className="navbar-profile-copy">
                     <span className="navbar-profile-label">Profile</span>
@@ -479,7 +551,7 @@ const Navbar = () => {
                         />
                       ) : (
                         <div className="navbar-profile-avatar navbar-profile-avatar-lg navbar-profile-fallback">
-                          <FaUserCircle size={24} />
+                          <FaUserCircle size={20} />
                         </div>
                       )}
                       <div className="min-w-0">

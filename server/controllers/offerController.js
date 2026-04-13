@@ -1,10 +1,26 @@
 const Offer = require("../models/Offer");
 
+const startOfDay = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+
+const endOfDay = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  date.setHours(23, 59, 59, 999);
+  return date;
+};
+
 const isOfferCurrentlyValid = (offer) => {
   const now = new Date();
   if (!offer.isActive) return false;
-  if (offer.startsAt && now < offer.startsAt) return false;
-  if (offer.expiresAt && now > offer.expiresAt) return false;
+  const startsAt = offer.startsAt ? startOfDay(offer.startsAt) : null;
+  const expiresAt = offer.expiresAt ? endOfDay(offer.expiresAt) : null;
+  if (startsAt && now < startsAt) return false;
+  if (expiresAt && now > expiresAt) return false;
   return true;
 };
 

@@ -19,8 +19,16 @@
   --navbar-btn-hover-bg: #0f172a;
   --navbar-btn-hover-text: #f8fafc;
 
-  --accent-color: #2563eb;
-  --accent-color-rgb: 37, 99, 235;
+  /* Brand palette (keep to 2-3 main colors) */
+  --color-primary: #2563eb;
+  --color-primary-rgb: 37, 99, 235;
+  --color-secondary: #334155;
+  --color-accent: #22c55e;
+  --color-accent-rgb: 34, 197, 94;
+
+  /* Backwards compatible alias */
+  --accent-color: var(--color-primary);
+  --accent-color-rgb: var(--color-primary-rgb);
   --cart-btn-bg: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   --cart-btn-hover: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
   --cart-btn-text: #ffffff;
@@ -64,8 +72,16 @@
   --navbar-btn-hover-bg: #e2e8f0;
   --navbar-btn-hover-text: #0b1220;
 
-  --accent-color: #3b82f6;
-  --accent-color-rgb: 59, 130, 246;
+  /* Brand palette (dark theme tuned) */
+  --color-primary: #3b82f6;
+  --color-primary-rgb: 59, 130, 246;
+  --color-secondary: #94a3b8;
+  --color-accent: #22c55e;
+  --color-accent-rgb: 34, 197, 94;
+
+  /* Backwards compatible alias */
+  --accent-color: var(--color-primary);
+  --accent-color-rgb: var(--color-primary-rgb);
   --cart-btn-bg: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   --cart-btn-hover: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   --cart-btn-text: #ffffff;

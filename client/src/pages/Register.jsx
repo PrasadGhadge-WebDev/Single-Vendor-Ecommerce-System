@@ -52,6 +52,7 @@ const Register = () => {
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
+              autoComplete="name"
               required
               placeholder=" "
             />
@@ -63,6 +64,7 @@ const Register = () => {
               type="email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
+              autoComplete="username"
               required
               placeholder=" "
             />
@@ -76,6 +78,7 @@ const Register = () => {
               onChange={(e) =>
                 setForm({ ...form, password: e.target.value })
               }
+              autoComplete="new-password"
               required
               placeholder=" "
             />
