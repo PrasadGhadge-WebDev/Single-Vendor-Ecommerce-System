@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import API from "../../api";
+import API, { getImageUrl } from "../../api";
 import { downloadCsv } from "../../utils/adminHelpers";
 import "./BusinessSettings.css";
 import { toast } from "react-toastify";
@@ -49,10 +49,6 @@ const defaultSettings = {
   // Notification Settings
   emailNotificationsEnabled: true,
   orderAlertsEnabled: true,
-
-  // SEO Settings
-  metaTitle: "",
-  metaDescription: "",
 
   // Policy Pages
   privacyPolicy: "",
@@ -120,11 +116,45 @@ const BusinessSettings = () => {
     }));
   };
 
+  const handleLogoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.warning("Please select a valid image file");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.warning("File size should be less than 2MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setSettings((prev) => ({
+        ...prev,
+        logoUrl: String(reader.result || ""),
+      }));
+      toast.info("Logo captured. Save settings to apply.");
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSave = async (e) => {
     if (e) e.preventDefault();
     setSaving(true);
     try {
-      const { data } = await API.put("/business-settings", settings);
+      const codOnlyPayload = {
+        ...settings,
+        codEnabled: true,
+        onlinePaymentEnabled: false,
+        upiId: "",
+        razorpayKeyId: "",
+        razorpayKeySecret: "",
+      };
+
+      const { data } = await API.put("/business-settings", codOnlyPayload);
       setSettings((prev) => ({ ...prev, ...data }));
       toast.success("Settings saved successfully!");
     } catch (error) {
@@ -205,7 +235,6 @@ const BusinessSettings = () => {
     { id: "tax", label: "Tax", icon: <FaFileInvoiceDollar /> },
     { id: "order", label: "Orders", icon: <FaCog /> },
     { id: "notification", label: "Notifications", icon: <FaBell /> },
-    { id: "seo", label: "SEO", icon: <FaSearch /> },
     { id: "policies", label: "Policies", icon: <FaShieldAlt /> },
     { id: "reports", label: "Reports", icon: <FaChartLine /> },
     { id: "invoices", label: "Invoices", icon: <FaReceipt /> },
@@ -246,9 +275,29 @@ const BusinessSettings = () => {
                     <label>Store Name</label>
                     <input name="storeName" value={settings.storeName} onChange={handleChange} placeholder="Enter store name" required />
                   </div>
-                  <div className="bs-field">
-                    <label>Logo URL</label>
-                    <input name="logoUrl" value={settings.logoUrl} onChange={handleChange} placeholder="Enter logo URL" />
+                  <div className="bs-field full-width bs-logo-section">
+                    <label>Store Logo</label>
+                    <div className="bs-logo-wrapper">
+                      <div className="bs-logo-preview">
+                        {settings.logoUrl ? (
+                          <img src={getImageUrl(settings.logoUrl)} alt="Store Logo Preview" />
+                        ) : (
+                          <div className="bs-logo-placeholder">No Logo</div>
+                        )}
+                      </div>
+                      <div className="bs-logo-inputs">
+                        <div className="mb-2">
+                          <small className="text-muted d-block mb-1">Upload Logo</small>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="form-control form-control-sm" 
+                            onChange={handleLogoUpload} 
+                          />
+                        </div>
+
+                      </div>
+                    </div>
                   </div>
                   <div className="bs-field">
                     <label>Email Address</label>
@@ -304,34 +353,15 @@ const BusinessSettings = () => {
             {activeTab === "payment" && (
               <section className="bs-section">
                 <h3>Payment Settings</h3>
+                <p className="text-muted mb-3">
+                  Payment system is set to <strong>Cash on Delivery (COD) only</strong>.
+                </p>
                 <div className="bs-field toggle">
                   <label>
-                    <input type="checkbox" name="codEnabled" checked={settings.codEnabled} onChange={handleChange} />
+                    <input type="checkbox" name="codEnabled" checked={settings.codEnabled} onChange={handleChange} disabled />
                     Enable Cash on Delivery (COD)
                   </label>
                 </div>
-                <div className="bs-field toggle">
-                  <label>
-                    <input type="checkbox" name="onlinePaymentEnabled" checked={settings.onlinePaymentEnabled} onChange={handleChange} />
-                    Enable Online Payments (UPI / Razorpay)
-                  </label>
-                </div>
-                {settings.onlinePaymentEnabled && (
-                  <div className="bs-grid mt-4">
-                    <div className="bs-field">
-                      <label>UPI ID</label>
-                      <input name="upiId" value={settings.upiId} onChange={handleChange} placeholder="Enter UPI ID" />
-                    </div>
-                    <div className="bs-field">
-                      <label>Razorpay Key ID</label>
-                      <input name="razorpayKeyId" value={settings.razorpayKeyId} onChange={handleChange} placeholder="Enter Razorpay Key ID" />
-                    </div>
-                    <div className="bs-field">
-                      <label>Razorpay Key Secret</label>
-                      <input type="password" name="razorpayKeySecret" value={settings.razorpayKeySecret} onChange={handleChange} placeholder="Enter Razorpay Key Secret" />
-                    </div>
-                  </div>
-                )}
               </section>
             )}
 
@@ -421,21 +451,7 @@ const BusinessSettings = () => {
               </section>
             )}
 
-            {activeTab === "seo" && (
-              <section className="bs-section">
-                <h3>SEO Settings</h3>
-                <div className="bs-grid">
-                  <div className="bs-field full-width">
-                    <label>Meta Title</label>
-                    <input name="metaTitle" value={settings.metaTitle} onChange={handleChange} placeholder="Enter meta title" />
-                  </div>
-                  <div className="bs-field full-width">
-                    <label>Meta Description</label>
-                    <textarea name="metaDescription" value={settings.metaDescription} onChange={handleChange} placeholder="Enter meta description" rows="3" />
-                  </div>
-                </div>
-              </section>
-            )}
+
 
             {activeTab === "policies" && (
               <section className="bs-section">

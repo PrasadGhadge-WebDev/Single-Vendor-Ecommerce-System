@@ -1,17 +1,25 @@
 import React, { useState } from "react";
-import { FaEnvelope, FaPhoneAlt, FaMapMarkerAlt, FaClock, FaComments, FaHeadset, FaCheckCircle, FaWhatsapp } from "react-icons/fa";
+import { FaEnvelope, FaPhoneAlt, FaMapMarkerAlt, FaClock, FaCheckCircle, FaWhatsapp, FaChevronDown, FaPaperclip } from "react-icons/fa";
 import { toast } from "react-toastify";
 import API from "../api";
-import "./MarketingPages.css";
 
 const Contact = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    subject: "",
+    phone: "",
+    subject: "Order Issue",
     message: "",
   });
   const [loading, setLoading] = useState(false);
+  const [openFaq, setOpenFaq] = useState(null);
+
+  const faqs = [
+    { q: "How to track my order?", a: "Once your order is shipped, you will receive a tracking ID via SMS and Email. You can use it in our 'Track Order' section." },
+    { q: "Is COD available?", a: "Yes! Cash on Delivery is available for orders up to ₹20,000 across most pin codes in India." },
+    { q: "What is the return policy?", a: "We offer a 7-day easy return policy for defective or damaged products. Please ensure the tags and packaging are intact." },
+    { q: "What is the average delivery time?", a: "Standard delivery takes 3-5 business days depending on your location." },
+  ];
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -19,8 +27,8 @@ const Contact = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.subject || !formData.message) {
-      return toast.error("Please fill in all fields");
+    if (!formData.name || !formData.email || !formData.message) {
+      return toast.error("Please fill in required fields");
     }
 
     setLoading(true);
@@ -28,7 +36,7 @@ const Contact = () => {
       const { data } = await API.post("/contacts/submit", formData);
       if (data.success) {
         toast.success("Message sent successfully!");
-        setFormData({ name: "", email: "", subject: "", message: "" });
+        setFormData({ name: "", email: "", phone: "", subject: "Order Issue", message: "" });
       }
     } catch (error) {
       console.error(error);
@@ -38,173 +46,211 @@ const Contact = () => {
     }
   };
 
-  const supportCards = [
-    {
-      title: "Support Channel",
-      value: "Use the contact form below",
-      note: "Best for order and account help",
-      icon: <FaEnvelope />,
-    },
-    {
-      title: "Call Us",
-      value: "+91 9766875355",
-      note: "Click to open dialer",
-      icon: <FaPhoneAlt />,
-      link: "tel:+919766875355"
-    },
-    {
-      title: "WhatsApp",
-      value: "+91 9766875355",
-      note: "Click to open WhatsApp",
-      icon: <FaWhatsapp />,
-      link: "https://wa.me/919766875355"
-    },
-  ];
-
   return (
-    <div className="contact-page">
-      <section
-        className="text-white marketing-hero"
-        style={{
-          background: "linear-gradient(120deg, #0f172a 0%, #0f766e 52%, #0ea5a4 100%)",
-        }}
-      >
-        <div className="container py-5">
-          <div className="row align-items-center g-4">
-            <div className="col-lg-7 marketing-fade-up">
-              <p className="text-uppercase mb-2" style={{ letterSpacing: "0.08em", opacity: 0.85 }}>
-                Contact Us
-              </p>
-              <h1 className="fw-bold mb-3">Talk to our team for quick and clear support.</h1>
-              <p className="lead mb-0" style={{ opacity: 0.92 }}>
-                Share your query and our support team will assist you with orders, products, returns and account help.
-              </p>
+    <div className="bg-white min-h-screen">
+      {/* Hero Section */}
+      <section className="bg-primary text-white py-20 relative overflow-hidden">
+        <div className="absolute inset-0 bg-black/10" />
+        <div className="container mx-auto px-4 relative z-10 text-center">
+            <h1 className="text-4xl md:text-6xl font-black mb-4 italic uppercase tracking-tighter">Get in Touch</h1>
+            <p className="text-white/80 font-bold max-w-xl mx-auto">
+                Have a question or feedback? We'd love to hear from you. Our team is here to help!
+            </p>
+        </div>
+      </section>
+
+      <section className="container mx-auto px-4 py-20">
+        <div className="grid lg:grid-cols-2 gap-16">
+          {/* Left Side: Contact Form */}
+          <div className="space-y-8">
+            <div className="bg-white p-8 md:p-12 rounded-[40px] shadow-2xl border border-gray-100">
+                <h3 className="text-2xl font-black text-gray-900 mb-8 flex items-center gap-3">
+                    <span className="w-2 h-8 bg-primary rounded-full" />
+                    Send a Message
+                </h3>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="grid md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Full Name *</label>
+                            <input 
+                                className="w-full bg-gray-50 border-2 border-transparent focus:border-primary focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all font-bold text-sm" 
+                                placeholder="Prasad Ghadge" 
+                                name="name" 
+                                value={formData.name} 
+                                onChange={handleChange} 
+                                required
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Email Address *</label>
+                            <input 
+                                type="email" 
+                                className="w-full bg-gray-50 border-2 border-transparent focus:border-primary focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all font-bold text-sm" 
+                                placeholder="prasad@example.com" 
+                                name="email" 
+                                value={formData.email} 
+                                onChange={handleChange} 
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Phone Number</label>
+                            <input 
+                                type="tel"
+                                className="w-full bg-gray-50 border-2 border-transparent focus:border-primary focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all font-bold text-sm" 
+                                placeholder="+91 9123456789" 
+                                name="phone" 
+                                value={formData.phone} 
+                                onChange={handleChange} 
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Subject</label>
+                            <select 
+                                className="w-full bg-gray-50 border-2 border-transparent focus:border-primary focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all font-bold text-sm appearance-none"
+                                name="subject"
+                                value={formData.subject}
+                                onChange={handleChange}
+                            >
+                                <option>Order Issue</option>
+                                <option>Product Query</option>
+                                <option>Return Request</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Your Message *</label>
+                        <textarea 
+                            className="w-full bg-gray-50 border-2 border-transparent focus:border-primary focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all font-bold text-sm min-h-[150px]" 
+                            placeholder="Write your message here..." 
+                            name="message" 
+                            value={formData.message} 
+                            onChange={handleChange} 
+                            required
+                        />
+                    </div>
+
+                    <div className="flex items-center justify-between gap-4 pt-4">
+                        <div className="hidden sm:flex items-center gap-2 text-primary cursor-pointer hover:opacity-70 transition-opacity">
+                            <FaPaperclip />
+                            <span className="text-xs font-bold uppercase tracking-widest">Attach Image</span>
+                        </div>
+                        <button type="submit" className="w-full sm:w-auto bg-primary hover:bg-primary-dark text-white font-black px-12 py-4 rounded-2xl shadow-xl transition-all active:scale-95 disabled:opacity-50" disabled={loading}>
+                            {loading ? "SENDING..." : "SEND MESSAGE"}
+                        </button>
+                    </div>
+                </form>
             </div>
-            <div className="col-lg-5 marketing-fade-up marketing-delay-1">
-              <div className="p-4 rounded-4 border border-light border-opacity-25 bg-light bg-opacity-10 marketing-chip">
-                <h5 className="mb-3">Support Commitments</h5>
-                <ul className="mb-0 ps-3">
-                  <li className="mb-2">Response within business hours</li>
-                  <li className="mb-2">Transparent issue tracking</li>
-                  <li className="mb-2">Practical and clear resolution steps</li>
-                  <li>Consistent follow-up until closure</li>
-                </ul>
-              </div>
+          </div>
+
+          {/* Right Side: Info & Map */}
+          <div className="space-y-12">
+            <div className="grid sm:grid-cols-2 gap-8">
+                <div className="space-y-6">
+                    <h4 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Contact Details</h4>
+                    <div className="space-y-4">
+                        <div className="flex items-start gap-4">
+                            <div className="text-primary mt-1"><FaMapMarkerAlt /></div>
+                            <div>
+                                <p className="font-bold text-gray-900">Address</p>
+                                <p className="text-sm text-gray-500">Shop No. 123, ABC Mall, Mumbai - 400001</p>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-4">
+                            <div className="text-primary mt-1"><FaPhoneAlt /></div>
+                            <div>
+                                <p className="font-bold text-gray-900">Phone</p>
+                                <p className="text-sm text-gray-500">+91 98658 57545<br/><span className="text-success font-bold">(Call/WhatsApp Available)</span></p>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-4">
+                            <div className="text-primary mt-1"><FaEnvelope /></div>
+                            <div>
+                                <p className="font-bold text-gray-900">Email</p>
+                                <p className="text-sm text-gray-500">support@shopvendor.com</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="space-y-6">
+                    <h4 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Support Hours</h4>
+                    <div className="bg-gray-50 p-6 rounded-[30px] border border-gray-100">
+                        <div className="flex items-center gap-3 mb-4">
+                            <FaClock className="text-primary text-xl" />
+                            <span className="font-black text-gray-900">Mon - Sat</span>
+                        </div>
+                        <p className="text-2xl font-black italic text-gray-900">10:00 AM - 07:00 PM</p>
+                        <p className="text-xs text-gray-400 mt-2 font-bold uppercase tracking-widest italic">Closed on Sundays & Public Holidays</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Map Embed */}
+            <div className="rounded-[40px] overflow-hidden shadow-2xl border-4 border-gray-50 h-[300px]">
+                <iframe 
+                    title="Store Location"
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d120663.45330356024!2d72.846875!3d19.076090!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3be7c6306644edc1%3A0x5da4ed8f8d648c69!2sMumbai%2C%20Maharashtra!5e0!3m2!1sen!2sin!4v1622549210000!5m2!1sen!2sin" 
+                    width="100%" 
+                    height="100%" 
+                    style={{ border: 0 }} 
+                    allowFullScreen="" 
+                    loading="lazy"
+                />
             </div>
           </div>
         </div>
       </section>
 
-      <section className="container py-5" style={{ maxWidth: "1150px" }}>
-        <div className="row g-4 mb-4">
-          {supportCards.map((card, index) => (
-            <div className="col-md-4" key={card.title}>
-              <div className={`card border-0 shadow-sm h-100 p-3 marketing-card marketing-fade-up marketing-delay-${Math.min(index + 1, 3)}`}>
-                <div className="contact-mini-icon mb-3">{card.icon}</div>
-                <h6 className="mb-1">{card.title}</h6>
-                <p className="mb-1 fw-semibold">{card.value}</p>
-                <p className="text-muted mb-0 small">{card.note}</p>
-              </div>
+      {/* FAQ Accordion Section */}
+      <section className="bg-gray-50 py-20">
+        <div className="container mx-auto px-4 max-w-4xl">
+            <div className="text-center mb-16">
+                <div className="inline-block bg-primary/10 text-primary px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-4">FAQs</div>
+                <h2 className="text-3xl md:text-5xl font-black text-gray-900">Frequently Asked Questions</h2>
             </div>
-          ))}
-        </div>
-
-        <div className="row g-4">
-          <div className="col-lg-5">
-            <div className="card border-0 shadow-sm p-4 h-100 marketing-card marketing-fade-up">
-              <h5 className="mb-3">Direct Support</h5>
-
-              <div className="d-flex gap-3 mb-3">
-                <FaComments className="mt-1 text-primary" />
-                <div>
-                  <div className="fw-semibold">Live Assistance</div>
-                  <div className="text-muted">Chat and email support for active order queries.</div>
-                </div>
-              </div>
-
-              <div className="d-flex gap-3 mb-3">
-                <FaHeadset className="mt-1 text-primary" />
-                <div>
-                  <div className="fw-semibold">Priority Handling</div>
-                  <div className="text-muted">Urgent delivery and payment issues are escalated quickly.</div>
-                </div>
-              </div>
-
-              <div className="d-flex gap-3">
-                <FaClock className="mt-1 text-primary" />
-                <div>
-                  <div className="fw-semibold">Support Hours</div>
-                  <div className="text-muted">Support hours are configured in admin settings.</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="col-lg-7">
-            <div className="card border-0 shadow-sm p-4 h-100 marketing-card marketing-fade-up marketing-delay-1">
-              <h5 className="mb-3">Send a Message</h5>
-              <form onSubmit={handleSubmit}>
-                <div className="row g-3">
-                  <div className="col-md-6">
-                    <label className="form-label">Name</label>
-                    <input 
-                      className="form-control" 
-                      placeholder="Your full name" 
-                      name="name" 
-                      value={formData.name} 
-                      onChange={handleChange} 
-                    />
-                  </div>
-                  <div className="col-md-6">
-                    <label className="form-label">Email</label>
-                    <input 
-                      type="email" 
-                      className="form-control" 
-                      placeholder="Enter your email" 
-                      name="email" 
-                      value={formData.email} 
-                      onChange={handleChange} 
-                    />
-                  </div>
-                  <div className="col-12">
-                    <label className="form-label">Subject</label>
-                    <input 
-                      className="form-control" 
-                      placeholder="Order, payment, product or return" 
-                      name="subject" 
-                      value={formData.subject} 
-                      onChange={handleChange} 
-                    />
-                  </div>
-                  <div className="col-12">
-                    <label className="form-label">Message</label>
-                    <textarea 
-                      className="form-control" 
-                      rows={5} 
-                      placeholder="Write your message in detail..." 
-                      name="message" 
-                      value={formData.message} 
-                      onChange={handleChange} 
-                    />
-                  </div>
-                  <div className="col-12 d-flex align-items-center justify-content-between flex-wrap gap-3">
-                    <div className="text-muted small d-flex align-items-center gap-2">
-                      <FaCheckCircle className="text-success" />
-                      Response timing is managed from store settings.
+            <div className="space-y-4">
+                {faqs.map((faq, idx) => (
+                    <div key={idx} className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
+                        <button 
+                            className="w-full px-8 py-6 text-left flex justify-between items-center hover:bg-gray-50 transition-colors focus:outline-none group"
+                            onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
+                        >
+                            <span className="font-bold text-gray-900 group-hover:text-primary transition-colors">{faq.q}</span>
+                            <FaChevronDown className={`transition-transform duration-300 ${openFaq === idx ? 'rotate-180 text-primary' : 'text-gray-300'}`} />
+                        </button>
+                        <div className={`transition-all duration-300 ease-in-out ${openFaq === idx ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                            <div className="px-8 pb-6 text-gray-500 text-sm leading-relaxed border-t border-gray-50 pt-4">
+                                {faq.a}
+                            </div>
+                        </div>
                     </div>
-                    <button type="submit" className="btn btn-primary px-4" disabled={loading}>
-                      {loading ? "Sending..." : "Submit Request"}
-                    </button>
-                  </div>
-                </div>
-              </form>
+                ))}
             </div>
-          </div>
         </div>
+      </section>
+
+      {/* Help Banner */}
+      <section className="container mx-auto px-4 pb-20 pt-10">
+          <div className="bg-dark rounded-[40px] p-12 text-center text-white relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-32 h-32 bg-primary/20 rounded-full blur-3xl -ml-16 -mt-16" />
+                <h3 className="text-2xl font-black mb-4 flex items-center justify-center gap-3">
+                    <FaWhatsapp className="text-success text-3xl animate-bounce" />
+                    Need Immediate Help?
+                </h3>
+                <p className="text-gray-400 font-bold mb-8">Order status, refunds, or technical issues - Chat with us on WhatsApp for faster resolution.</p>
+                <a href="https://wa.me/919865857545" className="inline-block bg-white text-dark font-black px-12 py-4 rounded-2xl shadow-xl hover:bg-gray-100 transition-all transition-duration-300 no-underline">
+                    START WHATSAPP CHAT
+                </a>
+          </div>
       </section>
     </div>
   );
 };
 
 export default Contact;
-

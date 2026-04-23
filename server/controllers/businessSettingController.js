@@ -18,9 +18,47 @@ exports.getBusinessSettings = async (req, res) => {
   }
 };
 
+exports.getPublicBusinessSettings = async (req, res) => {
+  try {
+    const settings = await getOrCreateSettings();
+
+    res.status(200).json({
+      storeName: settings.storeName,
+      logoUrl: settings.logoUrl,
+      email: settings.email,
+      phone: settings.phone,
+      address: settings.address,
+      currency: settings.currency,
+      timezone: settings.timezone,
+      businessName: settings.businessName,
+      gstNumber: settings.gstNumber,
+      ownerName: settings.ownerName,
+      codEnabled: true,
+      onlinePaymentEnabled: false,
+      freeShippingEnabled: settings.freeShippingEnabled,
+      deliveryCharges: settings.deliveryCharges,
+      minOrderAmount: settings.minOrderAmount,
+      deliveryTime: settings.deliveryTime,
+      taxPercent: settings.taxPercent,
+      isTaxInclusive: settings.isTaxInclusive,
+      metaTitle: settings.metaTitle,
+      metaDescription: settings.metaDescription,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 exports.updateBusinessSettings = async (req, res) => {
   try {
     const payload = { ...req.body };
+
+    // COD-only storefront: keep online payments disabled even if payload includes it.
+    payload.codEnabled = true;
+    payload.onlinePaymentEnabled = false;
+    payload.upiId = "";
+    payload.razorpayKeyId = "";
+    payload.razorpayKeySecret = "";
     
     // Explicit type conversions if necessary (Mongoose handles most, but let's be safe)
     if (payload.taxPercent !== undefined) payload.taxPercent = Number(payload.taxPercent || 0);

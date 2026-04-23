@@ -94,6 +94,11 @@ exports.createRazorpayOrder = async (req, res) => {
     const { orderId } = req.body;
     if (!orderId) return res.status(400).json({ message: "orderId is required" });
 
+    const settings = await BusinessSetting.findOne();
+    if (!settings?.onlinePaymentEnabled) {
+      return res.status(400).json({ message: "Online payments are disabled. Only Cash on Delivery is available." });
+    }
+
     const { keyId } = await getRazorpayKeys();
     if (!keyId) {
       return res.status(500).json({ message: "Razorpay keys are not configured" });

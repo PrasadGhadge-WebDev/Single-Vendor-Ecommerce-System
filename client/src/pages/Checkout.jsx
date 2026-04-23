@@ -6,6 +6,44 @@ import { AuthContext } from "../context/AuthContext";
 import { toast } from "react-toastify";
 import "./Checkout.css";
 
+const normalizeDigits = (value) => String(value || "").replace(/\D/g, "");
+
+const validateAddress = (address) => {
+  const errors = {};
+
+  const fullName = String(address?.fullName || "").trim();
+  const phoneRaw = String(address?.phone || "").trim();
+  const phoneDigits = normalizeDigits(phoneRaw);
+  const addressLine1 = String(address?.addressLine1 || "").trim();
+  const city = String(address?.city || "").trim();
+  const state = String(address?.state || "").trim();
+  const pincode = normalizeDigits(address?.pincode || "");
+  const country = String(address?.country || "").trim();
+
+  if (fullName.length < 3) errors.fullName = "Enter a valid full name (min 3 characters).";
+
+  if (!phoneDigits) {
+    errors.phone = "Phone number is required.";
+  } else if (phoneDigits.length < 10 || phoneDigits.length > 13) {
+    errors.phone = "Enter a valid phone number (10–13 digits).";
+  }
+
+  if (addressLine1.length < 5) errors.addressLine1 = "Enter a valid address (min 5 characters).";
+
+  if (city.length < 2) errors.city = "Enter a valid city.";
+  if (state.length < 2) errors.state = "Enter a valid state.";
+
+  if (!pincode) {
+    errors.pincode = "Pincode is required.";
+  } else if (!/^\d{6}$/.test(pincode)) {
+    errors.pincode = "Enter a valid 6-digit pincode.";
+  }
+
+  if (country.length < 2) errors.country = "Enter a valid country.";
+
+  return errors;
+};
+
 const Checkout = () => {
   const { cart, clearCart } = useContext(CartContext);
   const { user } = useContext(AuthContext);
@@ -16,6 +54,8 @@ const Checkout = () => {
   const [offers, setOffers] = useState([]);
   const [appliedOffer, setAppliedOffer] = useState(null);
   const [buyNowQty, setBuyNowQty] = useState(() => Math.max(1, Number(location.state?.buyNowItem?.quantity) || 1));
+  const [wasValidated, setWasValidated] = useState(false);
+  const [addressErrors, setAddressErrors] = useState({});
   const [address, setAddress] = useState({
     fullName: "",
     phone: "",
@@ -113,20 +153,16 @@ const Checkout = () => {
       addressLine2: address.addressLine2.trim(),
       city: address.city.trim(),
       state: address.state.trim(),
-      pincode: address.pincode.trim(),
+      pincode: normalizeDigits(address.pincode),
       country: address.country.trim(),
     };
 
-    if (
-      !trimmedAddress.fullName ||
-      !trimmedAddress.phone ||
-      !trimmedAddress.addressLine1 ||
-      !trimmedAddress.city ||
-      !trimmedAddress.state ||
-      !trimmedAddress.pincode ||
-      !trimmedAddress.country
-    ) {
-      toast.warning("Please fill your address details");
+    const errors = validateAddress(trimmedAddress);
+    setWasValidated(true);
+    setAddressErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      toast.warning("Please fix delivery address errors");
       return;
     }
 
@@ -175,6 +211,7 @@ const Checkout = () => {
           <div className="col-lg-7">
             <form
               className="card checkout-card shadow-sm"
+              noValidate
               onSubmit={(e) => {
                 e.preventDefault();
                 handleOrder();
@@ -191,13 +228,14 @@ const Checkout = () => {
                       Full Name <span className="text-danger">*</span>
                     </label>
                     <input
-                      className="form-control"
+                      className={`form-control ${wasValidated && addressErrors.fullName ? "is-invalid" : ""}`}
                       value={address.fullName}
                       onChange={(e) => setAddress((prev) => ({ ...prev, fullName: e.target.value }))}
                       placeholder="Enter full name"
                       autoComplete="name"
                       required
                     />
+                    {wasValidated && addressErrors.fullName && <div className="invalid-feedback">{addressErrors.fullName}</div>}
                   </div>
 
                   <div className="col-12 col-md-6">
@@ -205,14 +243,16 @@ const Checkout = () => {
                       Phone <span className="text-danger">*</span>
                     </label>
                     <input
-                      className="form-control"
+                      className={`form-control ${wasValidated && addressErrors.phone ? "is-invalid" : ""}`}
                       value={address.phone}
                       onChange={(e) => setAddress((prev) => ({ ...prev, phone: e.target.value }))}
                       placeholder="Enter phone number"
                       inputMode="tel"
                       autoComplete="tel"
+                      maxLength={15}
                       required
                     />
+                    {wasValidated && addressErrors.phone && <div className="invalid-feedback">{addressErrors.phone}</div>}
                   </div>
 
                   <div className="col-12 col-md-6">
@@ -220,14 +260,16 @@ const Checkout = () => {
                       Pincode <span className="text-danger">*</span>
                     </label>
                     <input
-                      className="form-control"
+                      className={`form-control ${wasValidated && addressErrors.pincode ? "is-invalid" : ""}`}
                       value={address.pincode}
                       onChange={(e) => setAddress((prev) => ({ ...prev, pincode: e.target.value }))}
                       placeholder="Pincode"
                       inputMode="numeric"
                       autoComplete="postal-code"
+                      maxLength={6}
                       required
                     />
+                    {wasValidated && addressErrors.pincode && <div className="invalid-feedback">{addressErrors.pincode}</div>}
                   </div>
 
                   <div className="col-12">
@@ -235,13 +277,14 @@ const Checkout = () => {
                       Address Line 1 <span className="text-danger">*</span>
                     </label>
                     <input
-                      className="form-control"
+                      className={`form-control ${wasValidated && addressErrors.addressLine1 ? "is-invalid" : ""}`}
                       value={address.addressLine1}
                       onChange={(e) => setAddress((prev) => ({ ...prev, addressLine1: e.target.value }))}
                       placeholder="House no, street, area"
                       autoComplete="address-line1"
                       required
                     />
+                    {wasValidated && addressErrors.addressLine1 && <div className="invalid-feedback">{addressErrors.addressLine1}</div>}
                   </div>
 
                   <div className="col-12">
@@ -260,13 +303,14 @@ const Checkout = () => {
                       City <span className="text-danger">*</span>
                     </label>
                     <input
-                      className="form-control"
+                      className={`form-control ${wasValidated && addressErrors.city ? "is-invalid" : ""}`}
                       value={address.city}
                       onChange={(e) => setAddress((prev) => ({ ...prev, city: e.target.value }))}
                       placeholder="City"
                       autoComplete="address-level2"
                       required
                     />
+                    {wasValidated && addressErrors.city && <div className="invalid-feedback">{addressErrors.city}</div>}
                   </div>
 
                   <div className="col-12 col-md-6">
@@ -274,13 +318,14 @@ const Checkout = () => {
                       State <span className="text-danger">*</span>
                     </label>
                     <input
-                      className="form-control"
+                      className={`form-control ${wasValidated && addressErrors.state ? "is-invalid" : ""}`}
                       value={address.state}
                       onChange={(e) => setAddress((prev) => ({ ...prev, state: e.target.value }))}
                       placeholder="State"
                       autoComplete="address-level1"
                       required
                     />
+                    {wasValidated && addressErrors.state && <div className="invalid-feedback">{addressErrors.state}</div>}
                   </div>
 
                   <div className="col-12 col-md-6">
@@ -288,13 +333,14 @@ const Checkout = () => {
                       Country <span className="text-danger">*</span>
                     </label>
                     <input
-                      className="form-control"
+                      className={`form-control ${wasValidated && addressErrors.country ? "is-invalid" : ""}`}
                       value={address.country}
                       onChange={(e) => setAddress((prev) => ({ ...prev, country: e.target.value }))}
                       placeholder="Country"
                       autoComplete="country-name"
                       required
                     />
+                    {wasValidated && addressErrors.country && <div className="invalid-feedback">{addressErrors.country}</div>}
                   </div>
                 </div>
 

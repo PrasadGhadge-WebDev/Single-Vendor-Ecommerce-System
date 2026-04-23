@@ -20,6 +20,8 @@ export const uploadURL = `${apiOrigin}/uploads`;
 export const getImageUrl = (value) => {
   if (!value) return "";
   if (/^https?:\/\//i.test(value)) return value;
+  if (/^data:/i.test(value)) return value;
+  if (/^blob:/i.test(value)) return value;
 
   let normalized = String(value).trim();
   normalized = normalized.replace(/\\/g, "/");

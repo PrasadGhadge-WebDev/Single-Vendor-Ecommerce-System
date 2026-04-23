@@ -4,6 +4,7 @@ import { AuthContext } from "../../context/AuthContext";
 import { downloadCsv, inDateRange } from "../../utils/adminHelpers";
 import { toast } from "react-toastify";
 import Pagination from "../../components/Pagination";
+import { FaFileInvoice } from "react-icons/fa";
 import "./Orders.css";
 
 const ORDERS_PER_PAGE = 12;
@@ -106,6 +107,81 @@ const Orders = () => {
     const startIndex = (orderPage - 1) * ORDERS_PER_PAGE;
     return filteredOrders.slice(startIndex, startIndex + ORDERS_PER_PAGE);
   }, [filteredOrders, orderPage]);
+
+  const handlePrintInvoice = async (orderId) => {
+    try {
+      const { data: bill } = await API.get(`/business-settings/bills/${orderId}`);
+      
+      const popup = window.open("", "_blank", "width=900,height=700");
+      if (!popup) {
+        toast.error("Popup blocked! Please allow popups to print invoices.");
+        return;
+      }
+      
+      const rows = bill.order.items
+        .map((item, index) =>
+            `<tr><td>${index + 1}</td><td>${item.productName}</td><td>${item.quantity}</td><td>${item.unitPrice}</td><td>${item.lineTotal}</td></tr>`
+        ).join("");
+
+      const printable = `
+        <html><head><title>Invoice ${bill.invoiceNumber}</title>
+        <style>
+          body{font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;padding:40px;color:#333;line-height:1.6}
+          .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;border-bottom:2px solid #eee;padding-bottom:20px}
+          .logo{font-size:24px;font-weight:bold;color:#1a73e8}
+          .invoice-info{text-align:right}
+          table{width:100%;border-collapse:collapse;margin:25px 0}
+          th{background:#f8f9fa;color:#666;text-transform:uppercase;font-size:12px;letter-spacing:1px}
+          td,th{border:1px solid #eee;padding:12px;text-align:left}
+          .totals{margin-left:auto;width:300px}
+          .total-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee}
+          .grand-total{font-size:18px;font-weight:bold;color:#000;border-bottom:2px solid #333;margin-top:10px}
+          .footer{margin-top:50px;font-size:12px;color:#999;text-align:center}
+          @media print { .no-print { display: none; } }
+        </style>
+        </head><body>
+        <div class="header">
+          <div class="logo">${bill.business.businessName || bill.business.storeName}</div>
+          <div class="invoice-info">
+            <h2>INVOICE</h2>
+            <p>#${bill.invoiceNumber}</p>
+            <p>Date: ${new Date(bill.order.createdAt).toLocaleDateString()}</p>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:30px">
+          <div>
+            <strong>Billing To:</strong>
+            <p>${bill.customer.name}<br>${bill.customer.email || ""}</p>
+          </div>
+          <div style="text-align:right">
+            <strong>From:</strong>
+            <p>${bill.business.businessName}<br>${bill.business.address || ""}<br>${bill.business.phone || ""}</p>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>#</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div class="totals">
+          <div class="total-row"><span>Subtotal</span><span>INR ${bill.order.subtotalAmount}</span></div>
+          <div class="total-row"><span>Discount</span><span>- INR ${bill.order.discountAmount}</span></div>
+          <div class="total-row"><span>Tax (${bill.order.taxPercent}%)</span><span>INR ${bill.order.taxAmount}</span></div>
+          <div class="total-row grand-total"><span>Grand Total</span><span>INR ${bill.order.grandTotal}</span></div>
+        </div>
+        <div class="footer">${bill.footerNote || "Thank you for your business!"}</div>
+        </body></html>`;
+
+      popup.document.write(printable);
+      popup.document.close();
+      popup.focus();
+      setTimeout(() => {
+        popup.print();
+        // popup.close(); // Optional: close automatically after printing
+      }, 500);
+    } catch (error) {
+      toast.error("Error generating invoice: " + (error.response?.data?.message || error.message));
+    }
+  };
 
   const exportOrders = () => {
     downloadCsv(
@@ -247,14 +323,23 @@ const Orders = () => {
                       />
                     </td>
                     <td>{new Date(order.createdAt).toLocaleString()}</td>
-                    <td>
+                    <td className="d-flex gap-2">
                       <button
                         type="button"
                         className="btn btn-sm btn-primary"
                         disabled={statusSaving[order._id]}
                         onClick={() => handleApplyStatus(order)}
+                        title="Update Status"
                       >
                         {statusSaving[order._id] ? "Updating..." : "Update"}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-success"
+                        onClick={() => handlePrintInvoice(order._id)}
+                        title="Print Invoice"
+                      >
+                        <FaFileInvoice />
                       </button>
                     </td>
                   </tr>

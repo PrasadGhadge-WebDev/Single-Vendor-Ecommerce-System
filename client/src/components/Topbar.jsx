@@ -1,80 +1,41 @@
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import {
-  FaWhatsapp,
-  FaMapMarkerAlt,
-  FaPhoneAlt,
-  FaUser,
-  FaUserPlus,
-  FaMoon,
-  FaSun,
-} from "react-icons/fa";
-import "./Topbar.css";
-
-const getInitialTheme = () => {
-  const saved = localStorage.getItem("theme");
-  if (saved === "light" || saved === "dark") return saved;
-  return "light";
-};
+import React from "react";
+import { FaPhoneAlt, FaEnvelope, FaTruck, FaQuestionCircle, FaGift, FaGlobe } from "react-icons/fa";
 
 const Topbar = () => {
-  const [theme, setTheme] = useState(getInitialTheme);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    document.body.setAttribute("data-bs-theme", theme);
-    localStorage.setItem("theme", theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
-  };
-
   return (
-    <div className="site-topbar">
-      <div className="container-fluid px-3 px-xl-4 d-flex align-items-center justify-content-between">
-        <div className="topbar-left d-flex align-items-center gap-3 flex-wrap">
-          <a href="tel:+919766875355" className="topbar-item topbar-call" title="Call us">
-            <FaPhoneAlt className="topbar-icon" />
-            <span className="topbar-text">Call Us</span>
-          </a>
-
-          <span className="topbar-divider d-none d-md-inline" />
-
-          <a href="https://wa.me/919766875355" target="_blank" rel="noopener noreferrer" className="topbar-item topbar-whatsapp d-none d-md-flex" title="WhatsApp us">
-            <FaWhatsapp className="topbar-icon" />
-            <span className="topbar-text">WhatsApp Us</span>
-          </a>
+    <div className="hidden md:block bg-dark text-white py-2">
+      <div className="container mx-auto px-4 flex justify-between items-center text-xs font-medium">
+        {/* Left Side: Contact Info */}
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2 hover:text-secondary transition-colors cursor-default">
+            <FaPhoneAlt className="text-[10px]" />
+            <span>24/7 Support: +91 98658 57545</span>
+          </div>
+          <div className="flex items-center gap-2 hover:text-secondary transition-colors cursor-default">
+            <FaEnvelope className="text-[10px]" />
+            <span>support@shop.com</span>
+          </div>
         </div>
 
-        <div className="topbar-right d-flex align-items-center gap-3">
-          <label className="theme-switch topbar-theme-switch d-none d-md-inline-flex" title="Toggle theme">
-            <input
-              type="checkbox"
-              className="theme-switch-input"
-              checked={theme === "dark"}
-              onChange={toggleTheme}
-              aria-label="Toggle dark mode"
-            />
-            <span className="theme-switch-track" aria-hidden="true">
-              <span className="theme-switch-icon theme-switch-icon-moon">
-                <FaMoon />
-              </span>
-              <span className="theme-switch-icon theme-switch-icon-sun">
-                <FaSun />
-              </span>
-              <span className="theme-switch-thumb" />
-            </span>
-          </label>
-
-          <Link
-            to="/about"
-            className="topbar-item topbar-location d-none d-lg-inline-flex"
-            title="Store Location"
-          >
-            <FaMapMarkerAlt className="topbar-icon" />
-            <span className="topbar-text">Store Location</span>
-          </Link>
+        {/* Right Side: Navigation Links */}
+        <div className="flex items-center gap-6">
+          <a href="/track" className="flex items-center gap-1.5 hover:text-secondary transition-all transform hover:scale-105">
+            <FaTruck /> Track Order
+          </a>
+          <a href="/help" className="flex items-center gap-1.5 hover:text-secondary transition-all transform hover:scale-105">
+            <FaQuestionCircle /> Help
+          </a>
+          <a href="/offers" className="flex items-center gap-1.5 hover:text-secondary transition-all transform hover:scale-105">
+            <FaGift /> Offers
+          </a>
+          <div className="flex items-center gap-1.5 cursor-pointer hover:text-secondary transition-all transform hover:scale-105 group">
+            <FaGlobe />
+            <span>Language (EN)</span>
+            <div className="hidden group-hover:block absolute top-full right-0 bg-white text-dark shadow-xl rounded-md p-2 min-w-[100px] z-50">
+               <div className="hover:bg-gray-100 p-1 px-2 rounded">English</div>
+               <div className="hover:bg-gray-100 p-1 px-2 rounded">Hindi</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -2,52 +2,43 @@ import React, { useContext, useState, useEffect, useRef } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import { CartContext } from "../context/CartContext";
+import { useWishlist } from "../context/WishlistContext";
 import {
   FaShoppingCart,
   FaUserCircle,
-  FaBars,
   FaSearch,
-  FaFilter,
-  FaClock,
-  FaChevronDown,
-  FaHistory,
   FaSignOutAlt,
-  FaHome,
-  FaStore,
-  FaInfoCircle,
-  FaConciergeBell,
-  FaPhoneAlt,
-  FaLayerGroup,
-  FaUserShield,
-  FaUser,
-  FaUserPlus,
-  FaFireAlt,
+  FaMoon,
+  FaSun,
+  FaHeart,
+  FaMicrophone,
+  FaBars,
+  FaTimes,
 } from "react-icons/fa";
 import API, { getImageUrl } from "../api";
-import "./Navbar.css";
+import { useBusinessSettings } from "../context/BusinessSettingsContext";
+import MegaMenu from "./MegaMenu";
 
 const Navbar = () => {
   const { user, logout } = useContext(AuthContext);
   const { cart } = useContext(CartContext);
+  const { wishlist } = useWishlist();
+  const { settings } = useBusinessSettings();
   const navigate = useNavigate();
   const location = useLocation();
 
   const [scrolled, setScrolled] = useState(false);
-  const [cartPreviewOpen, setCartPreviewOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [categories, setCategories] = useState([]);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [suggestions, setSuggestions] = useState([]);
-  const [recentSearches, setRecentSearches] = useState([]);
-  const [searchFocused, setSearchFocused] = useState(false);
-  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
-  const [profileName, setProfileName] = useState(user?.name || "");
-  const [profileAvatar, setProfileAvatar] = useState(user?.profileImage || "");
+  const [showRecent, setShowRecent] = useState(false);
+  const [recentSearches, setRecentSearches] = useState(() => {
+    const saved = localStorage.getItem("recent_searches");
+    return saved ? JSON.parse(saved) : ["Laptop", "Headphones", "Mobile"];
+  });
+
   const searchWrapRef = useRef(null);
-  const cartRef = useRef(null);
-
-  const RECENT_SEARCHES_KEY = "myshop_recent_searches";
-
+  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
+  
   const handleLogout = () => {
     logout();
     navigate("/login");
@@ -56,16 +47,11 @@ const Navbar = () => {
   const totalCartItems = cart.reduce((total, item) => total + item.quantity, 0);
 
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const { data } = await API.get("/categories");
-        setCategories(data.categories || data);
-      } catch (err) {
-        console.error("Failed to load categories", err);
-      }
-    };
-    fetchCategories();
-  }, []);
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(t => t === "light" ? "dark" : "light");
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -73,517 +59,215 @@ const Navbar = () => {
   }, [location.search]);
 
   useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || "[]");
-      setRecentSearches(Array.isArray(saved) ? saved.slice(0, 5) : []);
-    } catch {
-      setRecentSearches([]);
-    }
-  }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (!searchWrapRef.current) return;
-      if (!searchWrapRef.current.contains(event.target)) {
-        setSuggestionsOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    const query = searchTerm.trim();
-    if (!searchFocused || query.length < 2) {
-      setSuggestions([]);
-      return undefined;
-    }
-
-    const timer = setTimeout(async () => {
-      try {
-        const { data } = await API.get(`/products?search=${encodeURIComponent(query)}&limit=6`);
-        const products = Array.isArray(data) ? data : [];
-        setSuggestions(products.slice(0, 5));
-        setSuggestionsOpen(true);
-      } catch (err) {
-        console.error("Failed to load search suggestions", err);
-        setSuggestions([]);
-      }
-    }, 250);
-
-    return () => clearTimeout(timer);
-  }, [searchFocused, searchTerm]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-
+    const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  useEffect(() => {
-    setProfileName(user?.name || "");
-    setProfileAvatar(user?.profileImage || "");
-  }, [user?.name, user?.profileImage]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return undefined;
-
-    const handleProfileUpdate = (event) => {
-      const detail = event?.detail;
-      if (!detail) return;
-      if (typeof detail.name === "string") {
-        setProfileName(detail.name);
-      }
-      if (detail.profileImage !== undefined) {
-        setProfileAvatar(detail.profileImage || "");
-      }
-    };
-
-    window.addEventListener("user-profile-updated", handleProfileUpdate);
-    return () => window.removeEventListener("user-profile-updated", handleProfileUpdate);
-  }, []);
-
-  const saveRecentSearch = (query) => {
-    const normalized = query.trim();
-    if (!normalized) return;
-
-    setRecentSearches((prev) => {
-      const next = [normalized, ...prev.filter((item) => item.toLowerCase() !== normalized.toLowerCase())].slice(0, 5);
-      localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(next));
-      return next;
-    });
-  };
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    const query = searchTerm.trim();
+  const handleSearch = (e, q) => {
+    if (e) e.preventDefault();
+    const query = (q || searchTerm).trim();
     if (!query) {
       navigate("/shop");
       return;
     }
-    saveRecentSearch(query);
+    const updatedRecent = [query, ...recentSearches.filter(s => s !== query)].slice(0, 5);
+    setRecentSearches(updatedRecent);
+    localStorage.setItem("recent_searches", JSON.stringify(updatedRecent));
+    setShowRecent(false);
     navigate(`/shop?search=${encodeURIComponent(query)}`);
-    setMenuOpen(false);
-    setSuggestionsOpen(false);
   };
 
-  const handleSuggestionClick = (value) => {
-    saveRecentSearch(value);
-    setSearchTerm(value);
-    navigate(`/shop?search=${encodeURIComponent(value)}`);
-    setMenuOpen(false);
-    setSuggestionsOpen(false);
-    setSearchFocused(false);
+  const menuData = {
+    laptops: [
+      { label: "Laptop Brands", links: [{ text: "Apple" }, { text: "Dell" }, { text: "HP" }, { text: "Lenovo" }, { text: "ASUS" }] },
+      { label: "Gaming Laptops", links: [{ text: "High Performance" }, { text: "RTX Series" }, { text: "AMD Ryzen" }] },
+      { label: "Business Laptops", links: [{ text: "Thin & Light" }, { text: "Workstation" }, { text: "Budget-Friendly" }] }
+    ],
+    audio: [
+      { label: "Headphones", links: [{ text: "Over-Ear" }, { text: "On-Ear" }, { text: "Wireless" }, { text: "Noise Cancelling" }] },
+      { label: "Speakers", links: [{ text: "Bluetooth Speakers" }, { text: "Home Theater" }, { text: "Soundbars" }] },
+      { label: "Earphones", links: [{ text: "TWS Earbuds" }, { text: "Wired Earphones" }, { text: "Neckbands" }] }
+    ],
+    mobiles: [
+      { label: "Smartphones", links: [{ text: "iPhone" }, { text: "Samsung" }, { text: "OnePlus" }, { text: "Xiaomi" }] },
+      { label: "Accessories", links: [{ text: "Chargers" }, { text: "Power Banks" }, { text: "Cables" }] },
+      { label: "Protection", links: [{ text: "Cases & Covers" }, { text: "Screen Protectors" }] }
+    ]
   };
-
-  const handleRecentClick = (value) => {
-    handleSuggestionClick(value);
-  };
-
-  const navLinkClass = ({ isActive }) =>
-    `nav-link fw-semibold px-2 ${isActive ? "active nav-active" : ""}`;
-
-  const navIconClass = "nav-link-icon me-2";
-  const cartBadgeLabel = `${totalCartItems} item${totalCartItems === 1 ? "" : "s"} in cart`;
 
   return (
-    <nav className={`navbar navbar-expand-xl ecommerce-navbar shadow-sm sticky-top py-0 ${scrolled ? "navbar-scrolled" : ""}`}>
-      <div className="container-fluid px-3 px-xl-4">
-        <Link className="navbar-brand d-flex align-items-center" to="/" aria-label="Home">
-          <img
-            src="/logo-removebg-preview.png"
-            alt="Store logo"
-            className="navbar-brand-logo"
-            loading="eager"
-            decoding="async"
-          />
-        </Link>
-
-        <button
-          className={`navbar-toggler border-0 hamburger-btn ms-auto ${menuOpen ? "is-open" : ""}`}
-          type="button"
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Toggle navigation menu"
-          aria-expanded={menuOpen ? "true" : "false"}
-        >
-          <span className="hamburger-lines" aria-hidden="true">
-            <span className="hamburger-line" />
-            <span className="hamburger-line" />
-            <span className="hamburger-line" />
-          </span>
-        </button>
-
-        {/* Mobile quick actions: keep Cart + Login visible even when menu is collapsed */}
-        <div className="navbar-mobile-actions d-xl-none d-flex align-items-center gap-2 ms-2">
-          {!user && (
-            <Link
-              to="/login"
-              className="nav-link d-inline-flex align-items-center justify-content-center mobile-action-btn"
-              aria-label="Login"
-              onClick={() => setMenuOpen(false)}
+    <nav className={`sticky top-0 w-full z-[1001] transition-all duration-300 ${scrolled ? "bg-white/90 backdrop-blur-md shadow-lg py-1" : "bg-white py-3 border-b border-gray-100"}`}>
+      {/* Upper Header */}
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between gap-4 h-16">
+          
+          {/* Logo & Mobile Menu Toggle */}
+          <div className="flex items-center gap-4">
+            <button 
+              className="md:hidden text-2xl text-gray-700 hover:text-primary transition-colors"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
-              <FaUserCircle />
+              {isMobileMenuOpen ? <FaTimes /> : <FaBars />}
+            </button>
+            <Link to="/" className="flex items-center gap-2 no-underline group">
+              <span className="text-3xl filter drop-shadow-sm transition-transform group-hover:scale-110">🛍️</span>
+              <span className="text-2xl font-black tracking-tighter bg-gradient-to-r from-primary to-pink-500 bg-clip-text text-transparent italic">
+                ShopVendor
+              </span>
             </Link>
-          )}
+          </div>
 
-          <Link
-            className="nav-link position-relative cart-icon-wrapper d-inline-flex align-items-center justify-content-center mobile-action-btn"
-            to="/cart"
-            aria-label={cartBadgeLabel}
-            onClick={() => setMenuOpen(false)}
-          >
-            <FaShoppingCart />
-            <span className="cart-badge" aria-hidden="true">
-              {totalCartItems}
-            </span>
-          </Link>
-        </div>
-
-        <div className={`collapse navbar-collapse ${menuOpen ? "show" : ""}`}>
-          <ul className="navbar-nav me-auto ms-4 ms-xl-5 align-items-lg-center gap-lg-3 navbar-nav-primary">
-            <li className="nav-item">
-              <NavLink className={navLinkClass} to="/">
-                <FaHome className={navIconClass} />
-                Home
-              </NavLink>
-            </li>
-
-            {/* Shop dropdown: Product + Category */}
-            <li className="nav-item dropdown">
-              <button
-                className="nav-link dropdown-toggle btn btn-link text-decoration-none fw-semibold"
-                type="button"
-                data-bs-toggle="dropdown"
+          {/* Search Bar - Desktop */}
+          <div className="hidden md:block flex-grow max-w-2xl mx-8 relative" ref={searchWrapRef}>
+            <form onSubmit={handleSearch} className="flex w-full group">
+              <div className="relative flex-grow flex items-center bg-gray-100 border-2 border-transparent focus-within:border-primary focus-within:bg-white rounded-l-xl px-4 transition-all overflow-hidden">
+                <FaSearch className="text-gray-400 mr-3" />
+                <input
+                  type="text"
+                  placeholder="Search gadgets, brands..."
+                  className="w-full py-2.5 bg-transparent border-none outline-none text-sm font-medium"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() => setShowRecent(true)}
+                  onBlur={() => setTimeout(() => setShowRecent(false), 200)}
+                />
+                <FaMicrophone className="text-primary hover:scale-110 cursor-pointer ml-2" />
+              </div>
+              <button 
+                type="submit" 
+                className="bg-primary hover:bg-primary-dark text-white font-bold px-8 rounded-r-xl transition-colors text-sm"
               >
-                <FaStore className={navIconClass} />
-                Shop
-              </button>
-
-              <ul className="dropdown-menu shadow border-0 rounded-3">
-                <li>
-                  <NavLink
-                    className="dropdown-item py-2 d-flex align-items-center gap-2"
-                    to="/shop"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <FaStore className="dropdown-item-icon" />
-                    Product
-                  </NavLink>
-                </li>
-                <li><hr className="dropdown-divider" /></li>
-                <li className="dropdown-item py-2 text-muted fw-semibold">Category</li>
-                {categories.length > 0 ? (
-                  categories.map((cat) => {
-                    const key = typeof cat === "object" ? cat._id || cat.name : cat;
-                    const name = typeof cat === "object" ? cat.name : cat;
-
-                    return (
-                      <li key={key}>
-                        <Link
-                          className="dropdown-item py-2 d-flex align-items-center gap-2"
-                          to={`/shop/category/${encodeURIComponent(name)}`}
-                          onClick={() => setMenuOpen(false)}
-                        >
-                          <FaLayerGroup className="dropdown-item-icon" />
-                          {name}
-                        </Link>
-                      </li>
-                    );
-                  })
-                ) : (
-                  <li className="dropdown-item py-2 text-muted">No categories</li>
-                )}
-              </ul>
-            </li>
-
-            <li className="nav-item">
-              <NavLink
-                className={({ isActive }) =>
-                  `nav-link fw-semibold px-2 nav-offers-link ${isActive ? "active nav-active" : ""}`
-                }
-                to="/offers"
-              >
-                <FaFireAlt className={navIconClass} />
-                Offers
-              </NavLink>
-            </li>
-
-            <li className="nav-item">
-              <NavLink className={navLinkClass} to="/about">
-                <FaInfoCircle className={navIconClass} />
-                About
-              </NavLink>
-            </li>
-
-            <li className="nav-item">
-              <NavLink className={navLinkClass} to="/contact">
-                <FaPhoneAlt className={navIconClass} />
-                Contact
-              </NavLink>
-            </li>
-
-            {/* More dropdown: Services + Replacement Policy */}
-            <li className="nav-item dropdown">
-              <button
-                className="nav-link dropdown-toggle btn btn-link text-decoration-none fw-semibold"
-                type="button"
-                data-bs-toggle="dropdown"
-              >
-                <FaBars className={navIconClass} />
-                More
-              </button>
-              <ul className="dropdown-menu shadow border-0 rounded-3">
-                <li>
-                  <NavLink className="dropdown-item py-2 d-flex align-items-center gap-2" to="/services" onClick={() => setMenuOpen(false)}>
-                    <FaConciergeBell className="dropdown-item-icon" />
-                    Services
-                  </NavLink>
-                </li>
-                <li>
-                  <Link className="dropdown-item py-2 d-flex align-items-center gap-2" to="/replacement-policy" onClick={() => setMenuOpen(false)}>
-                    <FaHistory className="dropdown-item-icon" />
-                    Replacement Policy
-                  </Link>
-                </li>
-              </ul>
-            </li>
-
-            {user?.isAdmin && (
-              <li className="nav-item">
-                <Link className="btn btn-warning btn-sm fw-bold ms-lg-2" to="/admin/dashboard">
-                  <FaUserShield className="me-2" />
-                  Admin Panel
-                </Link>
-              </li>
-            )}
-          </ul>
-
-            <div className="navbar-search-shell me-xl-3 my-2 my-xl-0 w-100 w-xl-auto" ref={searchWrapRef}>
-              <form className="d-flex navbar-search" onSubmit={handleSearch}>
-              <button
-                type="button"
-                className="search-filter-btn"
-                aria-label="Filter products"
-                title="Filters (coming soon)"
-                onMouseDown={(e) => e.preventDefault()}
-              >
-                <FaFilter aria-hidden="true" />
-                <span className="search-filter-label">Filter</span>
-                <FaChevronDown className="search-filter-caret" aria-hidden="true" />
-              </button>
-
-              <span className="navbar-search-divider" aria-hidden="true" />
-              <input
-                type="text"
-                className="form-control form-control-sm"
-                placeholder="Search products..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setSuggestionsOpen(true);
-                }}
-                onFocus={() => {
-                  setSearchFocused(true);
-                  setSuggestionsOpen(true);
-                }}
-                onBlur={() => {
-                  setSearchFocused(false);
-                }}
-              />
-              <button type="submit" className="btn btn-sm search-btn" aria-label="Search products">
-                <FaSearch />
+                SEARCH
               </button>
             </form>
 
-            {suggestionsOpen && (searchTerm.trim().length >= 2 || recentSearches.length > 0) && (
-              <div className="search-suggestions-panel shadow-lg">
-                {searchTerm.trim().length >= 2 && suggestions.length > 0 && (
-                  <div className="search-suggestions-group">
-                    <div className="search-suggestions-header">Suggestions</div>
-                    <ul className="list-unstyled mb-0">
-                      {suggestions.map((item) => (
-                        <li key={item._id}>
-                          <button
-                            type="button"
-                            className="search-suggestion-item"
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => {
-                              navigate(`/product/${item._id}`);
-                              setSuggestionsOpen(false);
-                            }}
-                          >
-                            <img 
-                              src={getImageUrl(item.image)} 
-                              alt="" 
-                              className="search-suggestion-thumb" 
-                            />
-                            <div className="flex-grow-1 min-w-0">
-                              <div className="text-truncate fw-bold">{item.name}</div>
-                              <small className="text-muted d-block">{item.category}</small>
-                            </div>
-                            <div className="text-success fw-bold small ms-2">₹{item.price}</div>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+            {/* Suggestions Dropdown */}
+            {showRecent && recentSearches.length > 0 && (
+              <div className="absolute top-full left-0 w-full bg-white mt-1 rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-50">
+                <div className="px-4 py-3 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
+                  <span className="text-[10px] font-black text-gray-400 tracking-widest uppercase">Recent Searches</span>
+                </div>
+                {recentSearches.map((s, i) => (
+                  <div 
+                    key={i} 
+                    className="px-4 py-3 hover:bg-gray-50 cursor-pointer flex items-center gap-3 text-sm text-gray-700 transition-colors"
+                  	onClick={() => handleSearch(null, s)}
+                  >
+                    <FaSearch className="text-gray-300 text-xs" /> {s}
                   </div>
-                )}
-
-                {recentSearches.length > 0 && (
-                  <div className="search-suggestions-group">
-                    <div className="search-suggestions-header">Recent</div>
-                    <ul className="list-unstyled mb-0">
-                      {recentSearches.map((item) => (
-                        <li key={item}>
-                          <button
-                            type="button"
-                            className="search-suggestion-item"
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => handleRecentClick(item)}
-                          >
-                            <FaClock className="me-2 search-suggestion-icon recent" />
-                            <span className="text-truncate">{item}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                ))}
               </div>
             )}
           </div>
 
-          <ul className="navbar-nav ms-auto align-items-center gap-lg-4 navbar-actions">
-            {!user && (
-              <li className="nav-item d-flex align-items-center gap-2 me-lg-2">
-                <Link to="/login" className="nav-link nav-cta-link nav-cta-login">
-                  <FaUser className="me-1" />
-                  Login
-                </Link>
-                <Link to="/register" className="nav-link nav-cta-link nav-cta-register">
-                  <FaUserPlus className="me-1" />
-                  Register
-                </Link>
-              </li>
-            )}
-            <li 
-              className="nav-item position-relative"
-              onMouseEnter={() => setCartPreviewOpen(true)}
-              onMouseLeave={() => setCartPreviewOpen(false)}
-              ref={cartRef}
-            >
-              <Link className="nav-link position-relative cart-icon-wrapper d-inline-flex align-items-center gap-2" to="/cart" aria-label={cartBadgeLabel}>
-                <FaShoppingCart size={20} />
-                <span className="cart-link-text d-none d-lg-inline">Cart</span>
-                <span className="cart-badge" aria-hidden="true">
-                  {totalCartItems}
-                </span>
-              </Link>
-
-              {cartPreviewOpen && cart.length > 0 && (
-                <div className="cart-preview-dropdown shadow-lg animate-slide-up">
-                  <div className="cart-preview-header">
-                    <span className="fw-bold">Cart Preview</span>
-                    <span className="text-muted small">{totalCartItems} items</span>
-                  </div>
-                  <div className="cart-preview-body">
-                    {cart.slice(0, 3).map((item) => (
-                      <div className="cart-preview-item" key={item._id}>
-                        <img src={getImageUrl(item.image)} alt="" className="cart-preview-thumb" />
-                        <div className="flex-grow-1 min-w-0">
-                          <p className="mb-0 text-truncate fw-medium">{item.name}</p>
-                          <small className="text-muted">{item.quantity} x ₹{item.price}</small>
-                        </div>
-                      </div>
-                    ))}
-                    {cart.length > 3 && (
-                      <div className="text-center py-1">
-                        <small className="text-muted">+{cart.length - 3} more items</small>
-                      </div>
-                    )}
-                  </div>
-                  <div className="cart-preview-footer">
-                    <Link to="/cart" className="btn btn-primary btn-sm w-100 fw-bold">View Full Cart</Link>
-                  </div>
-                </div>
-              )}
-            </li>
-
-            {user && (
-              <li className="nav-item dropdown">
-                <button
-                  className="nav-link dropdown-toggle btn btn-link d-flex align-items-center text-decoration-none profile-dropdown-btn"
-                  type="button"
-                  data-bs-toggle="dropdown"
-                >
-                  {profileAvatar ? (
-                    <img
-                      src={profileAvatar}
-                      alt={profileName || user?.name || "User profile"}
-                      className="navbar-profile-avatar me-2 shadow-sm"
-                      loading="eager"
-                      decoding="async"
-                    />
-                  ) : (
-                    <FaUserCircle size={20} className="me-2" />
-                  )}
-                  <span className="navbar-profile-copy">
-                    <span className="navbar-profile-label">Profile</span>
-                    <span className="navbar-profile-name fw-medium">{profileName || user?.name}</span>
+          {/* Right Actions */}
+          <div className="flex items-center gap-2 md:gap-6">
+            <Link to="/shop" className="group flex flex-col items-center gap-0.5 text-gray-600 hover:text-primary transition-colors">
+              <div className="relative">
+                <FaHeart className="text-2xl" />
+                {wishlist.length > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-primary text-white text-[10px] font-bold h-4 w-4 rounded-full flex items-center justify-center ring-2 ring-white">
+                    {wishlist.length}
                   </span>
-                  <FaChevronDown className="ms-2 navbar-profile-caret" />
-                </button>
+                )}
+              </div>
+              <span className="hidden xl:block text-[10px] font-bold uppercase tracking-wider">Wishlist</span>
+            </Link>
 
-                <ul className="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-4 py-3">
-                  <li className="px-3 pb-2 mb-2 border-bottom">
-                    <div className="d-flex align-items-center gap-3">
-                      {profileAvatar ? (
-                        <img
-                          src={profileAvatar}
-                          alt={profileName || user?.name || "User profile"}
-                          className="navbar-profile-avatar navbar-profile-avatar-lg shadow-sm"
-                          loading="eager"
-                          decoding="async"
-                        />
-                      ) : (
-                        <div className="navbar-profile-avatar navbar-profile-avatar-lg navbar-profile-fallback">
-                          <FaUserCircle size={20} />
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="small text-muted mb-0">Signed in as</p>
-                        <p className="fw-bold mb-0 text-truncate">{profileName || user?.name}</p>
+            <Link to="/cart" className="group flex flex-col items-center gap-0.5 text-gray-600 hover:text-red-500 transition-colors">
+              <div className="relative">
+                <FaShoppingCart className="text-2xl" />
+                {totalCartItems > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-danger text-white text-[10px] font-bold h-4 w-4 rounded-full flex items-center justify-center ring-2 ring-white">
+                    {totalCartItems}
+                  </span>
+                )}
+              </div>
+              <span className="hidden xl:block text-[10px] font-bold uppercase tracking-wider">Cart</span>
+            </Link>
+
+            {/* Profile Dropdown */}
+            <div className="relative group/user">
+              <button className="flex flex-col items-center gap-0.5 text-gray-600 hover:text-primary transition-colors focus:outline-none">
+                <FaUserCircle className="text-2xl" />
+                <span className="hidden xl:block text-[10px] font-bold uppercase tracking-wider">
+                  {user ? user.name.split(' ')[0] : "Login"}
+                </span>
+              </button>
+              
+              <div className="absolute right-0 top-full pt-2 opacity-0 invisible group-hover/user:opacity-100 group-hover/user:visible transition-all transform translate-y-2 group-hover/user:translate-y-0 z-[1100]">
+                <div className="w-56 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden">
+                  {user ? (
+                    <div className="py-2">
+                      <div className="px-4 py-3 bg-gray-50">
+                        <p className="text-xs text-gray-400 font-bold uppercase mb-0.5">Welcome back,</p>
+                        <p className="text-sm font-bold text-gray-800">{user.name}</p>
+                      </div>
+                      <div className="p-2 space-y-1">
+                        <Link to={user.isAdmin ? "/admin/dashboard" : "/profile"} className="block px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg no-underline transition-colors">My Profile</Link>
+                        <Link to="/orders" className="block px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg no-underline transition-colors">My Orders</Link>
+                        <Link to="/cart" className="block px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg no-underline transition-colors">Shopping Cart</Link>
+                        <div className="h-px bg-gray-100 my-2" />
+                        <button onClick={handleLogout} className="w-full text-left px-3 py-2 text-sm text-red-500 font-bold hover:bg-red-50 rounded-lg transition-colors flex items-center gap-2">
+                          <FaSignOutAlt /> Logout
+                        </button>
                       </div>
                     </div>
-                  </li>
-                  <li>
-                    <Link className="dropdown-item py-2 px-3 rounded-2" to="/cart">
-                      <FaShoppingCart className="me-2" /> Cart
-                    </Link>
-                  </li>
-                  <li>
-                    <Link className="dropdown-item py-2 px-3 rounded-2" to="/orders">
-                      <FaHistory className="me-2" /> My Orders
-                    </Link>
-                  </li>
+                  ) : (
+                    <div className="p-4 space-y-3">
+                      <Link to="/login" className="block w-full bg-primary hover:bg-primary-dark text-white text-center py-2.5 rounded-xl font-bold text-sm no-underline shadow-lg shadow-blue-200 transition-all">Login</Link>
+                      <Link to="/register" className="block w-full text-center text-gray-500 hover:text-gray-800 py-1 text-xs no-underline font-bold transition-colors">Create Account</Link>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
 
-                  <li>
-                    <hr className="dropdown-divider mx-3" />
-                  </li>
+            <button onClick={toggleTheme} className="hidden md:flex flex-col items-center gap-0.5 text-gray-600 hover:text-primary transition-all transform active:scale-90">
+              {theme === "light" ? <FaMoon className="text-xl" /> : <FaSun className="text-xl text-amber-500" />}
+              <span className="hidden xl:block text-[10px] font-bold uppercase tracking-wider">Mode</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
-                  <li>
-                    <button className="dropdown-item text-danger fw-semibold py-2 px-3 rounded-2" onClick={handleLogout}>
-                      <FaSignOutAlt className="me-2" /> Logout
-                    </button>
-                  </li>
-                </ul>
-              </li>
-            )}
+      {/* Primary Navigation - Desktop Only */}
+      <div className="hidden md:block bg-gray-50/50 border-t border-gray-100">
+        <div className="container mx-auto">
+          <ul className="flex items-center justify-center m-0 p-0">
+            <li>
+              <NavLink to="/shop" className="block py-4 px-6 text-sm font-bold text-gray-800 hover:text-primary no-underline transition-colors">
+                All Products
+              </NavLink>
+            </li>
+            <MegaMenu title="Laptops" groups={menuData.laptops} rootCategory="laptop" />
+            <MegaMenu title="Audio" groups={menuData.audio} rootCategory="headphones" />
+            <MegaMenu title="Mobiles" groups={menuData.mobiles} rootCategory="mobile" />
+            <li>
+              <NavLink to="/offers" className="relative block py-4 px-6 text-sm font-bold text-danger no-underline transition-colors hover:text-red-600 group">
+                Offers
+                <span className="absolute -top-1 -right-2 bg-danger text-white text-[8px] font-black px-1.5 py-0.5 rounded-full animate-bounce">HOT</span>
+              </NavLink>
+            </li>
           </ul>
+        </div>
+      </div>
+
+      {/* Mobile Sidebar Navigation */}
+      <div className={`md:hidden fixed inset-0 z-[1200] transition-opacity duration-300 ${isMobileMenuOpen ? "opacity-100 visible" : "opacity-0 invisible"}`}>
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
+        <div className={`absolute top-0 left-0 bottom-0 w-80 bg-white shadow-2xl transition-transform duration-300 ease-out transform ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
+          <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+            <span className="text-2xl font-black bg-gradient-to-r from-primary to-pink-500 bg-clip-text text-transparent">Menu</span>
+            <button onClick={() => setIsMobileMenuOpen(false)} className="text-gray-400 hover:text-red-500 text-xl"><FaTimes /></button>
+          </div>
+          <div className="p-4 space-y-1">
+             <NavLink to="/" onClick={() => setIsMobileMenuOpen(false)} className="block p-3 rounded-lg text-gray-700 font-bold hover:bg-gray-50 no-underline transition-colors">Home</NavLink>
+             <NavLink to="/shop" onClick={() => setIsMobileMenuOpen(false)} className="block p-3 rounded-lg text-gray-700 font-bold hover:bg-gray-50 no-underline transition-colors">Shop All</NavLink>
+             <NavLink to="/about" onClick={() => setIsMobileMenuOpen(false)} className="block p-3 rounded-lg text-gray-700 font-bold hover:bg-gray-50 no-underline transition-colors">About Us</NavLink>
+             <NavLink to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="block p-3 rounded-lg text-gray-700 font-bold hover:bg-gray-50 no-underline transition-colors">Contact</NavLink>
+          </div>
         </div>
       </div>
     </nav>

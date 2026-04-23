@@ -67,7 +67,7 @@ const calculateDiscount = (offer, amount) => {
 
 exports.createOrder = async (req, res) => {
   try {
-    const { products = [], paymentMethod = "COD", offerCode = "", shippingAddress = null } = req.body;
+    const { products = [], offerCode = "", shippingAddress = null } = req.body;
 
     if (!Array.isArray(products) || products.length === 0) {
       return res.status(400).json({ message: "products are required" });
@@ -116,7 +116,7 @@ exports.createOrder = async (req, res) => {
       subtotalAmount,
       discountAmount,
       offerCode: offer ? offer.code : "",
-      paymentMethod: paymentMethod === "ONLINE" ? "ONLINE" : "COD",
+      paymentMethod: "COD",
     });
 
     res.status(201).json(order);
@@ -127,7 +127,7 @@ exports.createOrder = async (req, res) => {
 
 exports.createOrderFromCart = async (req, res) => {
   try {
-    const { paymentMethod = "COD", offerCode = "", shippingAddress = null } = req.body;
+    const { offerCode = "", shippingAddress = null } = req.body;
 
     const cart = await Cart.findOne({ userId: req.user._id }).populate("items.productId");
     if (!cart || cart.items.length === 0) {
@@ -177,7 +177,7 @@ exports.createOrderFromCart = async (req, res) => {
       subtotalAmount,
       discountAmount,
       offerCode: offer ? offer.code : "",
-      paymentMethod: paymentMethod === "ONLINE" ? "ONLINE" : "COD",
+      paymentMethod: "COD",
     });
 
     cart.items = [];

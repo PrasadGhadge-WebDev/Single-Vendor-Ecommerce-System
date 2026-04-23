@@ -1,326 +1,53 @@
-/* ═══════════════════════════════════════════
-   SITE TOPBAR
-   ═══════════════════════════════════════════ */
-
 .site-topbar {
-  /* Slightly lighter gradient for clearer contrast */
-  background: linear-gradient(90deg, #111c33 0%, #24324a 100%);
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 0.78rem;
-  padding: 7px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  position: relative;
-  z-index: 1050;
-}
-
-[data-theme="dark"] .site-topbar {
-  background: linear-gradient(90deg, #0b1224 0%, #111c33 100%);
-  border-bottom-color: rgba(255, 255, 255, 0.04);
-}
-
-/* ─── Topbar Items ──────────────────────── */
-.topbar-item {
-  display: inline-flex;
+  background: #1a1a2e; /* Dark Navy as requested */
+  color: #FFFFFF;
+  height: 38px;
+  font-size: 0.8rem;
+  width: 100%;
+  display: flex;
   align-items: center;
-  gap: 10px; /* more breathing room between icon + text */
-  padding: 2px 6px;
-  color: rgba(255, 255, 255, 0.7);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.topbar-info, .topbar-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #FFFFFF;
   text-decoration: none;
-  transition: color 0.25s ease, transform 0.25s ease;
-  white-space: nowrap;
   font-weight: 500;
-}
-
-.topbar-item:hover {
-  color: #ffffff;
-  transform: translateY(-1px);
-  text-decoration: none;
-}
-
-/* ─── Icon Styling ──────────────────────── */
-.topbar-icon {
-  font-size: 0.82rem;
-  flex-shrink: 0;
-}
-
-/* WhatsApp green */
-.topbar-whatsapp {
-  /* CTA feel */
-  padding: 0.32rem 0.72rem;
-  border-radius: 999px;
-  background: rgba(var(--color-accent-rgb), 0.14);
-  border: 1px solid rgba(var(--color-accent-rgb), 0.28);
-  color: rgba(255, 255, 255, 0.92);
-}
-
-.topbar-whatsapp .topbar-icon {
-  color: var(--color-accent);
-}
-
-.topbar-whatsapp:hover {
-  color: #ffffff;
-  background: rgba(var(--color-accent-rgb), 0.22);
-  border-color: rgba(var(--color-accent-rgb), 0.4);
-}
-
-/* Mail blue */
-.topbar-mail .topbar-icon {
-  color: var(--color-primary);
-}
-
-.topbar-mail:hover {
-  color: var(--color-primary);
-}
-
-/* Call cyan */
-.topbar-call .topbar-icon {
-  color: var(--color-primary);
-}
-
-.topbar-call:hover {
-  color: var(--color-primary);
-}
-
-/* Location red */
-.topbar-location .topbar-icon {
-  color: var(--color-primary);
-}
-
-.topbar-location:hover {
-  color: var(--color-primary);
-}
-
-/* ─── Divider ───────────────────────────── */
-.topbar-divider {
-  display: inline-block;
-  width: 1px;
-  height: 14px;
-  background: rgba(255, 255, 255, 0.15);
-  flex-shrink: 0;
-}
-
-/* ─── Text ──────────────────────────────── */
-.topbar-text {
-  letter-spacing: 0.01em;
-}
-
-/* Auth links (Login / Register) */
-.topbar-auth-links {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.topbar-auth-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.42rem 0.8rem;
-  border-radius: 999px;
-  text-decoration: none;
-  font-weight: 700;
-  transition: transform 0.3s ease, background 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
-  white-space: nowrap;
-}
-
-.topbar-auth-link .topbar-icon {
-  font-size: 0.76rem;
-}
-
-.topbar-auth-link-ghost {
-  color: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.topbar-auth-link-ghost:hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.1);
-  transform: translateY(-1px);
-  text-decoration: none;
-}
-
-/* Register button (premium) */
-.topbar-auth-link-solid {
-  color: #ffffff;
-  background: linear-gradient(135deg, var(--color-primary) 0%, #93c5fd 100%);
-  border: 1px solid rgba(147, 197, 253, 0.45);
-}
-
-.topbar-auth-link-solid:hover {
-  color: #ffffff;
-  transform: translateY(-1px);
-  box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
-  text-decoration: none;
-}
-
-
-
-/* Theme Switch (Topbar) */
-.topbar-theme-switch {
-  position: relative;
-  align-items: center;
-  justify-content: center;
-  margin: 0;
+  transition: all 0.2s ease;
   cursor: pointer;
-  user-select: none;
 }
 
-.topbar-theme-switch .theme-switch-input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
+.topbar-text {
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: none;
+  transition: color 0.2s ease;
 }
 
-.topbar-theme-switch .theme-switch-track {
-  position: relative;
-  width: 48px;
-  height: 28px;
-  border-radius: 999px;
-  /* iOS-like track */
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08));
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    0 10px 20px rgba(2, 6, 23, 0.22);
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 8px;
-  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+.topbar-info:hover .topbar-text, 
+.topbar-item:hover {
+  color: #FFFFFF;
+  opacity: 1;
 }
 
-.topbar-theme-switch:hover .theme-switch-track {
-  transform: translateY(-1px);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.1));
-  border-color: rgba(255, 255, 255, 0.26);
+.topbar-icon {
+  font-size: 1rem;
+  transition: transform 0.2s ease;
 }
 
-.topbar-theme-switch:active .theme-switch-track {
-  transform: translateY(0) scale(0.98);
+.topbar-item:hover .topbar-icon {
+  transform: scale(1.2);
 }
 
-.topbar-theme-switch .theme-switch-icon {
-  width: 14px;
-  height: 14px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.8;
-  color: rgba(255, 255, 255, 0.85);
-  transition: opacity 0.3s ease, transform 0.3s ease;
+.language-selector {
+  cursor: pointer;
 }
 
-/* Light mode: track is light, so use dark icons for contrast */
-:root:not([data-theme="dark"]) .topbar-theme-switch .theme-switch-icon {
-  color: rgba(15, 23, 42, 0.78);
-  opacity: 0.92;
-}
-
-.topbar-theme-switch .theme-switch-icon svg {
-  width: 14px;
-  height: 14px;
-  display: block;
-}
-
-.topbar-theme-switch .theme-switch-thumb {
-  position: absolute;
-  left: 3px;
-  top: 3px;
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.9));
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  box-shadow:
-    0 10px 14px rgba(2, 6, 23, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55);
-  transition:
-    transform 0.32s cubic-bezier(0.2, 0.9, 0.2, 1),
-    background 0.3s ease,
-    box-shadow 0.3s ease;
-  will-change: transform;
-}
-
-.topbar-theme-switch .theme-switch-input:focus-visible + .theme-switch-track {
-  box-shadow: 0 0 0 4px rgba(var(--color-accent-rgb), 0.18), 0 10px 20px rgba(2, 6, 23, 0.22);
-  border-color: rgba(var(--color-accent-rgb), 0.35);
-}
-
-/* Checked = dark mode */
-.topbar-theme-switch .theme-switch-input:checked + .theme-switch-track {
-  background: linear-gradient(180deg, rgba(var(--color-accent-rgb), 0.22), rgba(var(--color-accent-rgb), 0.12));
-  border-color: rgba(var(--color-accent-rgb), 0.28);
-}
-
-.topbar-theme-switch .theme-switch-input:checked + .theme-switch-track .theme-switch-thumb {
-  transform: translateX(20px);
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.86));
-  border-color: rgba(255, 255, 255, 0.18);
-}
-
-.topbar-theme-switch .theme-switch-input:checked + .theme-switch-track .theme-switch-icon {
-  opacity: 0.95;
-  color: rgba(255, 255, 255, 0.92);
-}
-
-/* ═══════════════════════════════════════════
-   RESPONSIVE
-   ═══════════════════════════════════════════ */
-@media (max-width: 767.98px) {
+/* Mobile responsive - Hidden on mobile as per request */
+@media (max-width: 768px) {
   .site-topbar {
-    font-size: 0.72rem;
-    padding: 5px 0;
-  }
-
-  .topbar-left {
-    gap: 8px !important;
-  }
-
-  .topbar-icon {
-    font-size: 0.75rem;
-  }
-
-  .topbar-text {
-    font-size: 0.7rem;
-  }
-
-  .topbar-auth-link {
-    padding: 0.36rem 0.65rem;
-    font-size: 0.72rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .topbar-text {
-    display: none;
-  }
-
-  .topbar-item {
-    padding: 4px 6px;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.06);
-  }
-
-  .topbar-icon {
-    font-size: 0.9rem;
-  }
-
-  .topbar-divider {
-    display: none;
-  }
-
-  .topbar-left {
-    gap: 6px !important;
-  }
-
-  .topbar-auth-links {
-    gap: 0.4rem;
-  }
-
-  .topbar-auth-link-solid,
-  .topbar-auth-link-ghost {
-    padding: 0.34rem 0.55rem;
+    display: none; 
   }
 }
