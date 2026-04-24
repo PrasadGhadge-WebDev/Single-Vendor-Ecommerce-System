@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import API from "../../api";
 import "./ManagePayments.css";
 import { toast } from "react-toastify";
-import { FaFilter, FaSearch, FaCreditCard, FaMoneyBillWave } from "react-icons/fa";
+import { FaCreditCard, FaMoneyBillWave } from "react-icons/fa";
 
 const ManagePayments = () => {
     const [payments, setPayments] = useState([]);
@@ -19,7 +19,7 @@ const ManagePayments = () => {
             const params = {
                 page,
                 status: statusFilter,
-                method: methodFilter
+                method: methodFilter || "COD"
             };
             const { data } = await API.get("/payments", { params });
             setPayments(data.payments);
@@ -61,8 +61,7 @@ const ManagePayments = () => {
                             value={methodFilter} 
                             onChange={(e) => { setMethodFilter(e.target.value); setPage(1); }}
                         >
-                            <option value="">All Methods</option>
-                            <option value="ONLINE">Online</option>
+                            <option value="" disabled>Method</option>
                             <option value="COD">COD</option>
                         </select>
                         <select 

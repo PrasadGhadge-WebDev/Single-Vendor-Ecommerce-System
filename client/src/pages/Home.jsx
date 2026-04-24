@@ -28,33 +28,35 @@ const SLIDES = [
   {
     badge: "🔥 Top Spotlight",
     title: "Immerse Yourself in Pure Audio",
-    subhead: "Next-gen spatial audio + ANC | 40hr battery",
-    price: "₹24,999",
-    originalPrice: "₹29,999",
-    discount: "17% OFF",
+    subhead: "Premium spatial audio + ANC | 40hr battery",
+    price: "₹12,499",
     image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
     btnPrimary: "🎧 Shop Now",
-    btnSecondary: "🔍 View Deal"
+    btnSecondary: "🔍 View Deal",
+    linkPrimary: "/shop?sub=Audio",
+    linkSecondary: "/shop?search=JBL"
   },
   {
     badge: "✨ New Release",
     title: "Smartwatch Pro - Track Your Fitness",
     subhead: "Advanced health monitoring, GPS, and water resistant up to 50m.",
     price: "₹4,999",
-    tag: "Free COD available",
     image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
     btnPrimary: "⌚ Order Now",
-    btnSecondary: "Details"
+    btnSecondary: "Details",
+    linkPrimary: "/shop?search=Apple%20Watch",
+    linkSecondary: "/shop?search=Apple%20Watch"
   },
   {
     badge: "🎮 Gamer's Choice",
     title: "Gaming Laptop Sale",
     subhead: "Experience high-end gaming with RTX 40-series graphics and 165Hz display.",
     price: "₹49,999 onwards",
-    tag: "No Cost EMI available",
     image: "https://images.unsplash.com/photo-1603302576837-37561b2e2302?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
     btnPrimary: "🚀 Level Up",
-    btnSecondary: "Specs"
+    btnSecondary: "Specs",
+    linkPrimary: "/shop?sub=Laptops",
+    linkSecondary: "/shop?sub=Laptops"
   }
 ];
 
@@ -163,10 +165,10 @@ const Home = () => {
                   </div>
 
                   <div className="flex gap-4 pt-4">
-                    <Link to="/shop" className="bg-primary hover:bg-primary-dark text-white font-black px-8 py-4 rounded-xl transition-all shadow-lg shadow-blue-200">
+                    <Link to={slide.linkPrimary} className="bg-primary hover:bg-primary-dark text-white font-black px-8 py-4 rounded-xl transition-all shadow-lg shadow-blue-200">
                       {slide.btnPrimary}
                     </Link>
-                    <Link to="/shop" className="bg-white border-2 border-gray-100 hover:border-primary text-gray-800 font-bold px-8 py-4 rounded-xl transition-all">
+                    <Link to={slide.linkSecondary} className="bg-white border-2 border-gray-100 hover:border-primary text-gray-800 font-bold px-8 py-4 rounded-xl transition-all">
                       {slide.btnSecondary}
                     </Link>
                   </div>

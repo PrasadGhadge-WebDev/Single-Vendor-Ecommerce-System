@@ -129,14 +129,6 @@ const About = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 container mx-auto px-4">
-          <div className="bg-primary rounded-[40px] p-12 text-center text-white space-y-6">
-              <h2 className="text-3xl md:text-5xl font-black italic uppercase">Want to Join Us?</h2>
-              <p className="text-white/80 max-w-xl mx-auto font-bold text-lg">We are always looking for passionate tech enthusiasts to join our growing team.</p>
-              <button className="bg-white text-primary px-12 py-4 rounded-2xl font-black shadow-2xl transition-all active:scale-95 leading-none">VIEW CAREERS</button>
-          </div>
-      </section>
     </div>
   );
 };

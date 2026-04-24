@@ -13,7 +13,6 @@ import {
   FaSignInAlt,
   FaUserPlus,
   FaShoppingBasket,
-  FaChevronDown,
   FaSun,
   FaMoon,
 } from "react-icons/fa";
@@ -183,7 +182,7 @@ const Navbar = () => {
             </li>
             <li className="relative group">
               <NavLink to="/shop" className="nav-link-item">
-                Products <FaChevronDown size={10} className="ml-1" />
+                Products
               </NavLink>
               {/* Simple dropdown example */}
               <div className="absolute top-full left-0 bg-surface-1 shadow-xl rounded-lg py-2 min-w-[200px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 border border-theme">
