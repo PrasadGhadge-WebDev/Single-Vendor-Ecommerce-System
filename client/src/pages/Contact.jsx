@@ -47,7 +47,7 @@ const Contact = () => {
   };
 
   return (
-    <div className="bg-white min-h-screen">
+    <div className="bg-surface-2 min-h-screen transition-colors duration-400">
       {/* Hero Section */}
       <section className="bg-primary text-white py-20 relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10" />
@@ -63,17 +63,17 @@ const Contact = () => {
         <div className="grid lg:grid-cols-2 gap-16">
           {/* Left Side: Contact Form */}
           <div className="space-y-8">
-            <div className="bg-white p-8 md:p-12 rounded-[40px] shadow-2xl border border-gray-100">
-                <h3 className="text-2xl font-black text-gray-900 mb-8 flex items-center gap-3">
+            <div className="bg-surface-1 p-8 md:p-12 rounded-[40px] shadow-2xl border border-theme">
+                <h3 className="text-2xl font-black text-primary-text mb-8 flex items-center gap-3">
                     <span className="w-2 h-8 bg-primary rounded-full" />
                     Send a Message
                 </h3>
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Full Name *</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-text">Full Name *</label>
                             <input 
-                                className="w-full bg-gray-50 border-2 border-transparent focus:border-primary focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all font-bold text-sm" 
+                                className="w-full bg-surface-2 border-2 border-transparent focus:border-primary focus:bg-surface-1 text-primary-text rounded-2xl px-5 py-4 outline-none transition-all font-bold text-sm" 
                                 placeholder="Prasad Ghadge" 
                                 name="name" 
                                 value={formData.name} 
@@ -82,10 +82,10 @@ const Contact = () => {
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Email Address *</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-text">Email Address *</label>
                             <input 
                                 type="email" 
-                                className="w-full bg-gray-50 border-2 border-transparent focus:border-primary focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all font-bold text-sm" 
+                                className="w-full bg-surface-2 border-2 border-transparent focus:border-primary focus:bg-surface-1 text-primary-text rounded-2xl px-5 py-4 outline-none transition-all font-bold text-sm" 
                                 placeholder="prasad@example.com" 
                                 name="email" 
                                 value={formData.email} 
@@ -97,10 +97,10 @@ const Contact = () => {
 
                     <div className="grid md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Phone Number</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-text">Phone Number</label>
                             <input 
                                 type="tel"
-                                className="w-full bg-gray-50 border-2 border-transparent focus:border-primary focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all font-bold text-sm" 
+                                className="w-full bg-surface-2 border-2 border-transparent focus:border-primary focus:bg-surface-1 text-primary-text rounded-2xl px-5 py-4 outline-none transition-all font-bold text-sm" 
                                 placeholder="+91 9123456789" 
                                 name="phone" 
                                 value={formData.phone} 
@@ -108,9 +108,9 @@ const Contact = () => {
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Subject</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-text">Subject</label>
                             <select 
-                                className="w-full bg-gray-50 border-2 border-transparent focus:border-primary focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all font-bold text-sm appearance-none"
+                                className="w-full bg-surface-2 border-2 border-transparent focus:border-primary focus:bg-surface-1 text-primary-text rounded-2xl px-5 py-4 outline-none transition-all font-bold text-sm appearance-none"
                                 name="subject"
                                 value={formData.subject}
                                 onChange={handleChange}
@@ -124,9 +124,9 @@ const Contact = () => {
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Your Message *</label>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-text">Your Message *</label>
                         <textarea 
-                            className="w-full bg-gray-50 border-2 border-transparent focus:border-primary focus:bg-white rounded-2xl px-5 py-4 outline-none transition-all font-bold text-sm min-h-[150px]" 
+                            className="w-full bg-surface-2 border-2 border-transparent focus:border-primary focus:bg-surface-1 text-primary-text rounded-2xl px-5 py-4 outline-none transition-all font-bold text-sm min-h-[150px]" 
                             placeholder="Write your message here..." 
                             name="message" 
                             value={formData.message} 
@@ -152,41 +152,41 @@ const Contact = () => {
           <div className="space-y-12">
             <div className="grid sm:grid-cols-2 gap-8">
                 <div className="space-y-6">
-                    <h4 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Contact Details</h4>
+                    <h4 className="text-xs font-black uppercase tracking-[0.2em] text-muted-text">Contact Details</h4>
                     <div className="space-y-4">
                         <div className="flex items-start gap-4">
                             <div className="text-primary mt-1"><FaMapMarkerAlt /></div>
                             <div>
-                                <p className="font-bold text-gray-900">Address</p>
-                                <p className="text-sm text-gray-500">Shop No. 123, ABC Mall, Mumbai - 400001</p>
+                                <p className="font-bold text-primary-text">Address</p>
+                                <p className="text-sm text-muted-text">Shop No. 123, ABC Mall, Mumbai - 400001</p>
                             </div>
                         </div>
                         <div className="flex items-start gap-4">
                             <div className="text-primary mt-1"><FaPhoneAlt /></div>
                             <div>
-                                <p className="font-bold text-gray-900">Phone</p>
-                                <p className="text-sm text-gray-500">+91 98658 57545<br/><span className="text-success font-bold">(Call/WhatsApp Available)</span></p>
+                                <p className="font-bold text-primary-text">Phone</p>
+                                <p className="text-sm text-muted-text">+91 98658 57545<br/><span className="text-success font-bold">(Call/WhatsApp Available)</span></p>
                             </div>
                         </div>
                         <div className="flex items-start gap-4">
                             <div className="text-primary mt-1"><FaEnvelope /></div>
                             <div>
-                                <p className="font-bold text-gray-900">Email</p>
-                                <p className="text-sm text-gray-500">support@shopvendor.com</p>
+                                <p className="font-bold text-primary-text">Email</p>
+                                <p className="text-sm text-muted-text">support@electrohub.com</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div className="space-y-6">
-                    <h4 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Support Hours</h4>
-                    <div className="bg-gray-50 p-6 rounded-[30px] border border-gray-100">
+                    <h4 className="text-xs font-black uppercase tracking-[0.2em] text-muted-text">Support Hours</h4>
+                    <div className="bg-surface-1 p-6 rounded-[30px] border border-theme">
                         <div className="flex items-center gap-3 mb-4">
                             <FaClock className="text-primary text-xl" />
-                            <span className="font-black text-gray-900">Mon - Sat</span>
+                            <span className="font-black text-primary-text">Mon - Sat</span>
                         </div>
-                        <p className="text-2xl font-black italic text-gray-900">10:00 AM - 07:00 PM</p>
-                        <p className="text-xs text-gray-400 mt-2 font-bold uppercase tracking-widest italic">Closed on Sundays & Public Holidays</p>
+                        <p className="text-2xl font-black italic text-primary-text">10:00 AM - 07:00 PM</p>
+                        <p className="text-xs text-muted-text mt-2 font-bold uppercase tracking-widest italic">Closed on Sundays & Public Holidays</p>
                     </div>
                 </div>
             </div>
@@ -208,24 +208,24 @@ const Contact = () => {
       </section>
 
       {/* FAQ Accordion Section */}
-      <section className="bg-gray-50 py-20">
+      <section className="bg-surface-2 py-20">
         <div className="container mx-auto px-4 max-w-4xl">
             <div className="text-center mb-16">
                 <div className="inline-block bg-primary/10 text-primary px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-4">FAQs</div>
-                <h2 className="text-3xl md:text-5xl font-black text-gray-900">Frequently Asked Questions</h2>
+                <h2 className="text-3xl md:text-5xl font-black text-primary-text">Frequently Asked Questions</h2>
             </div>
             <div className="space-y-4">
                 {faqs.map((faq, idx) => (
-                    <div key={idx} className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
+                    <div key={idx} className="bg-surface-1 rounded-3xl border border-theme overflow-hidden shadow-sm">
                         <button 
-                            className="w-full px-8 py-6 text-left flex justify-between items-center hover:bg-gray-50 transition-colors focus:outline-none group"
+                            className="w-full px-8 py-6 text-left flex justify-between items-center hover:bg-surface-2 transition-colors focus:outline-none group"
                             onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
                         >
-                            <span className="font-bold text-gray-900 group-hover:text-primary transition-colors">{faq.q}</span>
-                            <FaChevronDown className={`transition-transform duration-300 ${openFaq === idx ? 'rotate-180 text-primary' : 'text-gray-300'}`} />
+                            <span className="font-bold text-primary-text group-hover:text-primary transition-colors">{faq.q}</span>
+                            <FaChevronDown className={`transition-transform duration-300 ${openFaq === idx ? 'rotate-180 text-primary' : 'text-muted-text'}`} />
                         </button>
                         <div className={`transition-all duration-300 ease-in-out ${openFaq === idx ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
-                            <div className="px-8 pb-6 text-gray-500 text-sm leading-relaxed border-t border-gray-50 pt-4">
+                            <div className="px-8 pb-6 text-muted-text text-sm leading-relaxed border-t border-theme pt-4">
                                 {faq.a}
                             </div>
                         </div>
@@ -237,14 +237,14 @@ const Contact = () => {
 
       {/* Help Banner */}
       <section className="container mx-auto px-4 pb-20 pt-10">
-          <div className="bg-dark rounded-[40px] p-12 text-center text-white relative overflow-hidden">
+          <div className="bg-surface-3 rounded-[40px] p-12 text-center text-primary-text relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-32 h-32 bg-primary/20 rounded-full blur-3xl -ml-16 -mt-16" />
                 <h3 className="text-2xl font-black mb-4 flex items-center justify-center gap-3">
                     <FaWhatsapp className="text-success text-3xl animate-bounce" />
                     Need Immediate Help?
                 </h3>
-                <p className="text-gray-400 font-bold mb-8">Order status, refunds, or technical issues - Chat with us on WhatsApp for faster resolution.</p>
-                <a href="https://wa.me/919865857545" className="inline-block bg-white text-dark font-black px-12 py-4 rounded-2xl shadow-xl hover:bg-gray-100 transition-all transition-duration-300 no-underline">
+                <p className="text-muted-text font-bold mb-8">Order status, refunds, or technical issues - Chat with us on WhatsApp for faster resolution.</p>
+                <a href="https://wa.me/919865857545" className="inline-block bg-primary text-white font-black px-12 py-4 rounded-2xl shadow-xl hover:bg-primary-dark transition-all transition-duration-300 no-underline">
                     START WHATSAPP CHAT
                 </a>
           </div>

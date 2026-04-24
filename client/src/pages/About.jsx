@@ -23,12 +23,12 @@ const About = () => {
   ];
 
   return (
-    <div className="bg-white">
+    <div className="bg-surface-2 min-h-screen transition-colors duration-400">
       {/* Hero Section */}
-      <section className="bg-dark text-white py-20 relative overflow-hidden">
+      <section className="bg-surface-3 text-primary-text py-20 relative overflow-hidden">
         <div className="absolute inset-0 bg-primary/10 animate-pulse-slow" />
         <div className="container mx-auto px-4 relative z-10 text-center">
-            <h1 className="text-4xl md:text-6xl font-black mb-4 italic tracking-tight">About ShopVendor</h1>
+            <h1 className="text-4xl md:text-6xl font-black mb-4 italic tracking-tight">About ElectroHub</h1>
             <p className="text-lg md:text-xl text-gray-400 font-bold max-w-2xl mx-auto">
                 Your Trusted Online Store Since 2020. Delivering premium electronics to your doorstep.
             </p>
@@ -40,19 +40,19 @@ const About = () => {
         <div className="grid md:grid-cols-2 gap-16 items-center">
           <div className="space-y-6">
             <div className="inline-block bg-primary/10 text-primary px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest">Our Journey</div>
-            <h2 className="text-3xl md:text-5xl font-black text-gray-900 leading-tight">Driven by a Passion for Pure Technology.</h2>
-            <p className="text-gray-600 leading-relaxed text-lg">
-                Founded in 2020, ShopVendor started with a simple mission: to bridge the gap between premium global brands and Indian households. We believe that technology should be accessible, reliable, and delightful.
+            <h2 className="text-3xl md:text-5xl font-black text-primary-text leading-tight">Driven by a Passion for Pure Technology.</h2>
+            <p className="text-muted-text leading-relaxed text-lg">
+                Founded in 2020, ElectroHub started with a simple mission: to bridge the gap between premium global brands and Indian households. We believe that technology should be accessible, reliable, and delightful.
             </p>
-            <p className="text-gray-600 leading-relaxed">
+            <p className="text-muted-text leading-relaxed">
                 Over the past few years, we've grown from a small specialized store to a pan-India electronics hub. Our commitment to authentic products and lightning-fast logistics remains our top priority.
             </p>
             <div className="pt-4">
-                <div className="flex items-center gap-4 p-6 bg-gray-50 rounded-3xl border-l-4 border-primary">
+                <div className="flex items-center gap-4 p-6 bg-surface-1 rounded-3xl border-l-4 border-primary border-theme">
                     <div className="text-3xl text-primary"><FaChartLine /></div>
                     <div>
-                        <h4 className="font-bold text-gray-900">Our Mission</h4>
-                        <p className="text-sm text-gray-500">To provide a seamless shopping experience with a focus on trust and transparency.</p>
+                        <h4 className="font-bold text-primary-text">Our Mission</h4>
+                        <p className="text-sm text-muted-text">To provide a seamless shopping experience with a focus on trust and transparency.</p>
                     </div>
                 </div>
             </div>
@@ -69,20 +69,20 @@ const About = () => {
       </section>
 
       {/* Our Values Section */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 bg-surface-2">
         <div className="container mx-auto px-4">
             <div className="text-center mb-16">
-                <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-4">Core Values</h2>
-                <p className="text-gray-500">The pillars that define our service standards.</p>
+                <h2 className="text-3xl md:text-4xl font-black text-primary-text mb-4">Core Values</h2>
+                <p className="text-muted-text">The pillars that define our service standards.</p>
             </div>
             <div className="grid md:grid-cols-3 gap-8">
                 {values.map((v, i) => (
-                    <div key={i} className="bg-white p-10 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all transition-duration-300">
+                    <div key={i} className="bg-surface-1 p-10 rounded-[32px] border border-theme shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all transition-duration-300">
                         <div className="w-16 h-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center text-3xl mb-6">
                             {v.icon}
                         </div>
-                        <h4 className="text-xl font-bold text-gray-900 mb-4">{v.title}</h4>
-                        <p className="text-gray-500 leading-relaxed">{v.desc}</p>
+                        <h4 className="text-xl font-bold text-primary-text mb-4">{v.title}</h4>
+                        <p className="text-muted-text leading-relaxed">{v.desc}</p>
                     </div>
                 ))}
             </div>
@@ -90,7 +90,7 @@ const About = () => {
       </section>
 
       {/* Stats Section */}
-      <section className="py-20 bg-dark text-white text-center">
+      <section className="py-20 bg-surface-3 text-primary-text text-center">
         <div className="container mx-auto px-4 grid grid-cols-2 lg:grid-cols-4 gap-12">
             {stats.map((s, i) => (
                 <div key={i} className="space-y-2">
@@ -105,8 +105,8 @@ const About = () => {
       {/* Team Members Section */}
       <section className="py-20 container mx-auto px-4">
         <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-4">Meet the Visionaries</h2>
-            <p className="text-gray-500">The expert team behind our success.</p>
+            <h2 className="text-3xl md:text-4xl font-black text-primary-text mb-4">Meet the Visionaries</h2>
+            <p className="text-muted-text">The expert team behind our success.</p>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {teamMembers.map((m, i) => (
@@ -122,7 +122,7 @@ const About = () => {
                             <a href={m.social.linkedin} className="w-10 h-10 bg-white text-primary rounded-full flex items-center justify-center hover:bg-primary hover:text-white transition-all"><FaLinkedin /></a>
                         </div>
                     </div>
-                    <h5 className="text-xl font-bold text-gray-900 mb-1">{m.name}</h5>
+                    <h5 className="text-xl font-bold text-primary-text mb-1">{m.name}</h5>
                     <p className="text-primary font-black uppercase text-[10px] tracking-widest">{m.role}</p>
                 </div>
             ))}

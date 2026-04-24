@@ -7,7 +7,7 @@ import { toast } from "react-toastify";
 import { ensureLoggedIn } from "../utils/authGuards";
 
 const FALLBACK_IMAGE =
-  "https://via.placeholder.com/120x120/f1f5f9/64748b?text=No+Image";
+  "https://placehold.co/120x120/f1f5f9/64748b?text=No+Image";
 
 const Cart = () => {
   const { cart, updateQuantity, removeItem } = useContext(CartContext);
@@ -44,11 +44,12 @@ const Cart = () => {
   };
 
   return (
-    <div className="container py-5" style={{ maxWidth: "980px" }}>
-      <h3 className="mb-4">Shopping Cart</h3>
+    <div className="bg-surface-2 min-h-screen transition-colors duration-400">
+      <div className="container py-5" style={{ maxWidth: "980px" }}>
+        <h3 className="mb-4 text-primary-text font-black">Shopping Cart</h3>
 
       {cart.length === 0 ? (
-        <p className="text-muted">Your cart is empty.</p>
+        <p className="text-muted-text">Your cart is empty.</p>
       ) : (
         <>
           {cart.map((item) => {
@@ -58,7 +59,7 @@ const Cart = () => {
             return (
               <div
                 key={`${product?._id || "item"}-${item.quantity}`}
-                className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3 p-3 border rounded-4 shadow-sm bg-body"
+                className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3 p-3 border border-theme rounded-4 shadow-sm bg-surface-1"
               >
                 <div className="d-flex align-items-center" style={{ gap: "14px" }}>
                   <Link to={`/product/${product?._id}`}>
@@ -72,8 +73,8 @@ const Cart = () => {
                       style={{
                         objectFit: "cover",
                         borderRadius: "10px",
-                        border: "1px solid var(--border-color, #e2e8f0)",
-                        background: "#f8fafc",
+                        border: "1px solid var(--border-color)",
+                        background: "var(--surface-2)",
                       }}
                       onError={(e) => {
                         e.currentTarget.src = FALLBACK_IMAGE;
@@ -83,10 +84,10 @@ const Cart = () => {
 
                   <div>
                     <Link to={`/product/${product?._id}`} className="text-decoration-none">
-                      <h6 className="mb-1">{product?.name}</h6>
+                      <h6 className="mb-1 text-primary-text font-bold">{product?.name}</h6>
                     </Link>
-                    <small className="text-muted d-block">INR {product?.price}</small>
-                    <small className="text-muted">Category: {product?.category || "-"}</small>
+                    <small className="text-muted-text d-block">INR {product?.price}</small>
+                    <small className="text-muted-text">Category: {product?.category || "-"}</small>
                   </div>
                 </div>
 
@@ -112,14 +113,15 @@ const Cart = () => {
             );
           })}
 
-          <div className="d-flex justify-content-between align-items-center mt-4 p-3 border rounded-4 shadow-sm bg-body">
-            <h4 className="mb-0">Total: INR {total}</h4>
+          <div className="d-flex justify-content-between align-items-center mt-4 p-3 border border-theme rounded-4 shadow-sm bg-surface-1">
+            <h4 className="mb-0 text-primary-text font-black">Total: INR {total}</h4>
             <button className="btn btn-success" onClick={handleBuyTotalOrder}>
               Buy Total Order
             </button>
           </div>
         </>
       )}
+      </div>
     </div>
   );
 };

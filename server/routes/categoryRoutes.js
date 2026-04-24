@@ -3,7 +3,8 @@ const {
   getCategories,
   addCategory,
   updateCategory,
-  deleteCategory
+  deleteCategory,
+  getCategoryById
 } = require("../controllers/categoryController");
 
 const { requireSignIn, isAdmin } = require("../middlewares/authMiddleware");
@@ -12,6 +13,7 @@ const upload = require("../middlewares/uploadMiddleware");
 const router = express.Router();
 
 router.get("/", getCategories);
+router.get("/:id", getCategoryById);
 
 // 🔥 Add multer here
 router.post("/", requireSignIn, isAdmin, upload.single("image"), addCategory);

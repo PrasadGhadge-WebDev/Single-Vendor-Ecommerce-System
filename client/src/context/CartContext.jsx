@@ -1,16 +1,27 @@
-import { createContext, useState, useEffect } from "react";
+import { createContext, useState, useEffect, useContext } from "react";
 import API from "../api";
 import { toast } from "react-toastify";
+import { AuthContext } from "./AuthContext";
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const CartContext = createContext();
 
 const CartProvider = ({ children }) => {
   const [cart, setCart] = useState([]);
+  const { user } = useContext(AuthContext);
 
   const fetchCart = async () => {
-    const { data } = await API.get("/cart");
-    setCart(data?.items || []);
+    if (!user) return;
+    try {
+      const { data } = await API.get("/cart");
+      setCart(data?.items || []);
+    } catch (error) {
+      console.error("Error fetching cart:", error);
+      // Don't toast for 401 as it's expected when not logged in or token expires
+      if (error.response?.status !== 401) {
+        toast.error("Failed to load cart");
+      }
+    }
   };
 
   const addToCart = async (product) => {
@@ -58,8 +69,12 @@ const CartProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    fetchCart();
-  }, []);
+    if (user) {
+      fetchCart();
+    } else {
+      setCart([]);
+    }
+  }, [user]);
 
   return (
     <CartContext.Provider

@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const businessSettingSchema = new mongoose.Schema(
   {
     // General Settings
-    storeName: { type: String, default: "Single Vendor Store", trim: true },
+    storeName: { type: String, default: "ElectroHub", trim: true },
     logoUrl: { type: String, default: "", trim: true },
     email: { type: String, default: "", trim: true, lowercase: true },
     phone: { type: String, default: "", trim: true },
@@ -12,7 +12,7 @@ const businessSettingSchema = new mongoose.Schema(
     timezone: { type: String, default: "UTC", trim: true },
 
     // Store Information
-    businessName: { type: String, default: "Single Vendor Store", trim: true },
+    businessName: { type: String, default: "ElectroHub", trim: true },
     gstNumber: { type: String, default: "", trim: true },
     ownerName: { type: String, default: "", trim: true },
 

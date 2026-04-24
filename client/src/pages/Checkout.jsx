@@ -202,8 +202,8 @@ const Checkout = () => {
       <div className="container py-5">
         <div className="d-flex flex-wrap align-items-end justify-content-between gap-2 mb-4">
           <div>
-            <h2 className="checkout-title fw-bold mb-1">{buyNowItem ? "Buy Now Checkout" : "Checkout"}</h2>
-            <div className="text-muted">Fill delivery details and confirm your order.</div>
+            <h2 className="checkout-title fw-bold mb-1 text-primary-text">{buyNowItem ? "Buy Now Checkout" : "Checkout"}</h2>
+            <div className="text-muted-text font-bold">Fill delivery details and confirm your order.</div>
           </div>
         </div>
 
@@ -218,7 +218,7 @@ const Checkout = () => {
               }}
             >
               <div className="card-header py-3 px-4">
-                <h5 className="mb-0">Delivery Address</h5>
+                <h5 className="mb-0 text-primary-text font-bold">Delivery Address</h5>
               </div>
 
               <div className="card-body p-4">
@@ -353,8 +353,8 @@ const Checkout = () => {
                   </button>
                 </div>
 
-                <div className="text-muted small mt-3">
-                  <span className="text-danger">*</span> Required fields
+                <div className="text-muted-text small mt-3 font-bold">
+                   <span className="text-danger">*</span> Required fields
                 </div>
               </div>
             </form>
@@ -363,8 +363,8 @@ const Checkout = () => {
           <div className="col-lg-5">
             <div className="card checkout-card shadow-sm checkout-sticky">
               <div className="card-header py-3 px-4 d-flex align-items-center justify-content-between">
-                <h5 className="mb-0">Order Summary</h5>
-                <span className="badge text-bg-light">{checkoutItems.length} item{checkoutItems.length === 1 ? "" : "s"}</span>
+                <h5 className="mb-0 text-primary-text font-bold">Order Summary</h5>
+                <span className="badge bg-surface-2 text-primary-text border border-theme">{checkoutItems.length} item{checkoutItems.length === 1 ? "" : "s"}</span>
               </div>
 
               <div className="card-body p-4">
@@ -393,8 +393,8 @@ const Checkout = () => {
                   {checkoutItems.map((item) => (
                     <div key={item.productId?._id} className="d-flex justify-content-between align-items-start gap-3">
                       <div className="text-truncate" title={item.productId?.name || ""}>
-                        <div className="fw-semibold text-truncate">{item.productId?.name}</div>
-                        <div className="text-muted small">Qty {item.quantity}</div>
+                        <div className="fw-semibold text-truncate text-primary-text">{item.productId?.name}</div>
+                        <div className="text-muted-text small font-bold">Qty {item.quantity}</div>
                       </div>
                       <div className="fw-semibold">INR {((item.productId?.price || 0) * item.quantity).toFixed(2)}</div>
                     </div>
@@ -425,19 +425,19 @@ const Checkout = () => {
                 </div>
 
                 <div className="d-flex justify-content-between">
-                  <span className="text-muted">Subtotal</span>
-                  <span className="fw-semibold">INR {totalAmount.toFixed(2)}</span>
+                  <span className="text-muted-text font-bold">Subtotal</span>
+                  <span className="fw-semibold text-primary-text">INR {totalAmount.toFixed(2)}</span>
                 </div>
                 <div className="d-flex justify-content-between">
-                  <span className="text-muted">Discount</span>
-                  <span className="fw-semibold">- INR {discountAmount.toFixed(2)}</span>
+                  <span className="text-muted-text font-bold">Discount</span>
+                  <span className="fw-semibold text-success">- INR {discountAmount.toFixed(2)}</span>
                 </div>
 
                 <hr className="my-3" />
 
                 <div className="d-flex justify-content-between align-items-baseline">
-                  <span className="fw-bold">Final Total</span>
-                  <span className="fw-bold fs-5">INR {finalPayable.toFixed(2)}</span>
+                  <span className="fw-bold text-primary-text">Final Total</span>
+                  <span className="fw-bold fs-5 text-primary">INR {finalPayable.toFixed(2)}</span>
                 </div>
               </div>
             </div>

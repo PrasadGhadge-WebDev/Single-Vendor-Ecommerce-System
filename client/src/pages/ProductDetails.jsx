@@ -153,14 +153,15 @@ const ProductDetails = () => {
   const maxStock = Math.max(1, Number(product.stock || 1));
 
   return (
-    <div className="container py-5 product-details-page">
+    <div className="product-details-page min-h-screen transition-colors duration-400">
+      <div className="container py-5">
       <button type="button" className="btn btn-sm btn-outline-secondary mb-4" onClick={() => navigate(-1)}>
         Back
       </button>
 
       <div className="row g-4 align-items-start">
         <div className="col-md-5">
-          <div className="card border border-2 shadow-sm">
+          <div className="card border-theme shadow-sm overflow-hidden rounded-[32px]">
             {product.image ? (
               <img
                 src={getImageUrl(product.image)}
@@ -171,22 +172,22 @@ const ProductDetails = () => {
                 decoding="async"
               />
             ) : (
-              <div className="p-5 text-center text-muted">No image available</div>
+              <div className="p-5 text-center text-muted-text">No image available</div>
             )}
           </div>
         </div>
 
         <div className="col-md-7">
-          <h2 className="fw-bold mb-2">{product.name}</h2>
-          <p className="text-muted mb-2">Category: {product.category || "-"}</p>
-          <h4 className="text-success fw-bold mb-3">INR {product.price}</h4>
+          <h2 className="fw-bold mb-2 text-primary-text">{product.name}</h2>
+          <p className="text-muted-text mb-2 font-bold">Category: {product.category || "-"}</p>
+          <h4 className="text-primary fw-bold mb-3">INR {product.price}</h4>
 
-          <p className="mb-4" style={{ whiteSpace: "pre-line" }}>
+          <p className="mb-4 text-muted-text leading-relaxed" style={{ whiteSpace: "pre-line" }}>
             {product.description || "No description available."}
           </p>
 
           <div className="buy-qty-wrap mb-3">
-            <label className="form-label mb-1">Quantity</label>
+            <label className="form-label mb-1 text-primary-text font-bold uppercase text-[10px] tracking-widest">Quantity</label>
             <div className="buy-qty-controls">
               <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => updateBuyQty(buyQty - 1)}>
                 -
@@ -241,8 +242,8 @@ const ProductDetails = () => {
 
           <div className="row g-2">
             <div className="col-sm-6">
-              <div className="p-3 border rounded product-stat-card">
-                <small className="d-block product-stat-label">Stock</small>
+              <div className="p-4 border rounded-[20px] product-stat-card border-theme">
+                <small className="d-block product-stat-label font-bold uppercase tracking-widest text-[10px] mb-1">Availability Status</small>
                 <strong className={product.stock > 0 ? "product-stock-in" : "product-stock-out"}>
                   {product.stock > 0 ? `${product.stock} available` : "Out of stock"}
                 </strong>
@@ -257,11 +258,11 @@ const ProductDetails = () => {
 
       <div className="row g-4 mt-5">
         <div className="col-lg-7">
-          <div className="card shadow-sm">
-            <div className="card-header d-flex flex-column align-items-start gap-2">
+          <div className="card shadow-sm border-theme rounded-[32px] overflow-hidden">
+            <div className="card-header d-flex flex-column align-items-start gap-2 py-4">
               <div className="d-flex align-items-center gap-3 w-100 flex-wrap">
-                <h5 className="mb-0">Customer Reviews</h5>
-                <div className="text-muted small">{reviews.length} review{reviews.length === 1 ? "" : "s"}</div>
+                <h5 className="mb-0 text-primary-text font-black">Customer Reviews</h5>
+                <div className="text-muted-text small font-bold">{reviews.length} review{reviews.length === 1 ? "" : "s"}</div>
               </div>
               <div className="d-flex align-items-center gap-3 flex-wrap">
                 {reviewCount > 0 ? (
@@ -369,6 +370,7 @@ const ProductDetails = () => {
             </div>
           )}
         </section>
+      </div>
       </div>
     </div>
   );

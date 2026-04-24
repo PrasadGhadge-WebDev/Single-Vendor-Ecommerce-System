@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Review = require("../models/Review");
 const Product = require("../models/Product");
 
@@ -105,12 +106,19 @@ exports.deleteReview = async (req, res) => {
 
 exports.getProductReviews = async (req, res) => {
   try {
-    const reviews = await Review.find({ product: req.params.productId })
+    const { productId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      return res.status(400).json({ message: "Invalid product ID format" });
+    }
+
+    const reviews = await Review.find({ product: productId })
       .populate("user", "name")
       .sort({ createdAt: -1 });
 
     res.status(200).json(reviews);
   } catch (error) {
+    console.error("Error in getProductReviews:", error);
     res.status(500).json({ message: error.message });
   }
 };

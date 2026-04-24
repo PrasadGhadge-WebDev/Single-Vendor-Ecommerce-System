@@ -8,34 +8,17 @@ import { buildSearchSuggestions } from "../utils/productInsights";
 import "./Shop.css";
 import { ensureLoggedIn } from "../utils/authGuards";
 
-const FALLBACK_IMAGE = "https://via.placeholder.com/420x320/f1f5f9/64748b?text=No+Image";
+const FALLBACK_IMAGE = "https://placehold.co/420x320/f1f5f9/64748b?text=No+Image";
 
-const FEATURED_CATEGORIES = [
-  {
-    label: "Phones",
-    emoji: "📱",
-    query: "phone",
-    keywords: ["phone", "mobile", "smartphone", "iphone", "android"],
-    accent: "shop-category-card-phones",
-    description: "Flagship phones, budget picks, and accessories",
-  },
-  {
-    label: "Laptops",
-    emoji: "💻",
-    query: "laptop",
-    keywords: ["laptop", "computer", "macbook", "notebook", "pc"],
-    accent: "shop-category-card-laptops",
-    description: "Work machines, gaming rigs, and study setups",
-  },
-  {
-    label: "Audio",
-    emoji: "🎧",
-    query: "headphone",
-    keywords: ["headphone", "headphones", "earbuds", "audio", "speaker"],
-    accent: "shop-category-card-audio",
-    description: "Headsets, earbuds, and immersive sound gear",
-  },
-];
+const CATEGORY_STYLE_MAP = {
+  "Mobiles": { emoji: "📱", accent: "category-card-phones", description: "Phones & Accessories" },
+  "Laptops": { emoji: "💻", accent: "category-card-laptops", description: "Work & Gaming Laptops" },
+  "Audio": { emoji: "🎧", accent: "category-card-audio", description: "Speakers & Headphones" },
+  "Wearables": { emoji: "⌚", accent: "category-card-wearables", description: "Smart Watches" },
+  "Tablets": { emoji: "📱", accent: "category-card-tablets", description: "iPad & Tablets" },
+  "Accessories": { emoji: "🔌", accent: "category-card-accessories", description: "Tech Essentials" },
+  "Peripherals": { emoji: "⌨️", accent: "category-card-peripherals", description: "Keyboards & Mice" },
+};
 
 const SORT_TABS = [
   { key: "recommended", label: "Recommended" },
@@ -56,10 +39,10 @@ const getPriceMeta = (product) => {
   const salePrice = Number(product?.price || 0);
   const compareAtPrice = Number(
     product?.compareAtPrice ||
-      product?.originalPrice ||
-      product?.mrp ||
-      product?.listPrice ||
-      0
+    product?.originalPrice ||
+    product?.mrp ||
+    product?.listPrice ||
+    0
   );
 
   const fallbackCompare = compareAtPrice > salePrice ? compareAtPrice : 0;
@@ -102,6 +85,7 @@ const StarRow = ({ value }) => {
 
 const Shop = () => {
   const [products, setProducts] = useState([]);
+  const [allProductsForStats, setAllProductsForStats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("recommended");
   const [viewMode, setViewMode] = useState("list");
@@ -128,6 +112,18 @@ const Shop = () => {
   }, [search]);
 
   useEffect(() => {
+    const fetchAllProducts = async () => {
+      try {
+        const { data } = await API.get("/products");
+        setAllProductsForStats(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Error fetching all products for stats:", err);
+      }
+    };
+    fetchAllProducts();
+  }, []);
+
+  useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
@@ -139,6 +135,11 @@ const Shop = () => {
         const url = params.toString() ? `/products?${params.toString()}` : "/products";
         const { data } = await API.get(url);
         setProducts(Array.isArray(data) ? data : []);
+
+        // Reset price and brand filters when category changes to ensure products are visible
+        setBrandFilter("all");
+        setPriceMin("");
+        setPriceMax("");
       } catch (err) {
         console.error("Error fetching products:", err);
       } finally {
@@ -166,11 +167,29 @@ const Shop = () => {
   }, [priceMax, priceMin, productStats.max, productStats.min]);
 
   const categoryCards = useMemo(() => {
-    return FEATURED_CATEGORIES.map((item) => ({
-      ...item,
-      count: products.filter((product) => matchesKeyword(product, item.keywords)).length,
-    }));
-  }, [products]);
+    // 1. Get all unique subcategories from products
+    const subCats = {};
+    allProductsForStats.forEach(p => {
+      if (p.subCategory) {
+        subCats[p.subCategory] = (subCats[p.subCategory] || 0) + 1;
+      }
+    });
+
+    // 2. Map them to card objects
+    return Object.keys(subCats).map(name => {
+      const style = CATEGORY_STYLE_MAP[name] || { 
+        emoji: "📦", 
+        accent: "category-card-default", 
+        description: `Explore our range of ${name}` 
+      };
+      return {
+        label: name,
+        sub: name,
+        count: subCats[name],
+        ...style
+      };
+    });
+  }, [allProductsForStats]);
 
   const sidebarCategories = useMemo(() => {
     const names = Array.from(
@@ -314,76 +333,15 @@ const Shop = () => {
         <div className="shop-hero-glow shop-hero-glow-right" />
 
         <div className="container position-relative">
-          <div className="shop-breadcrumbs">
-            <Link to="/">Home</Link>
-            <span>/</span>
-            <Link to="/shop">Shop</Link>
-            {categoryName && (
-              <>
-                <span>/</span>
-                <span>{categoryName}</span>
-              </>
-            )}
-          </div>
+
 
           <div className="shop-hero-copy">
-            <span className="shop-hero-kicker">Curated electronics</span>
-            <h1>Tech Gadgets</h1>
-            <p>
-              Browse premium phones, laptops, and audio gear in a card-based layout with quick filtering, smooth sorting, and product-focused browsing.
+            <h1 className="text-white font-bold text-4xl md:text-6xl mb-4">
+              {searchInput || subCategory || categoryName || "All Products"}
+            </h1>
+            <p className="text-white/80 text-lg md:text-xl max-w-2xl">
+              Explore our premium selection of electronics and gadgets.
             </p>
-
-            <form
-              className="shop-search-shell"
-              onSubmit={(e) => {
-                e.preventDefault();
-                updateSearch(searchInput);
-              }}
-            >
-              <div className="shop-search-field">
-                <FaSearch className="shop-search-icon" />
-                <input
-                  type="search"
-                  value={searchInput}
-                  onChange={(e) => updateSearch(e.target.value)}
-                  onFocus={handleSearchFocus}
-                  onBlur={handleSearchBlur}
-                  placeholder="Search products, brands, or categories"
-                  aria-label="Search products"
-                />
-                {searchInput && (
-                  <button
-                    type="button"
-                    className="shop-search-clear"
-                    onClick={() => updateSearch("")}
-                    aria-label="Clear search"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-
-              {showSearchSuggestions && searchSuggestions.length > 0 && (
-                <div className="shop-search-dropdown">
-                  {searchSuggestions.map((suggestion) => (
-                    <button
-                      key={`${suggestion.type}-${suggestion.label}`}
-                      type="button"
-                      className="shop-search-suggestion"
-                      onMouseDown={() => handleSuggestionSelect(suggestion)}
-                    >
-                      <div>
-                        <strong>{suggestion.label}</strong>
-                        <span>{suggestion.helper}</span>
-                      </div>
-                      <span className="shop-search-suggestion-tag">
-                        {suggestion.type === "category" ? "Category" : "Product"}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </form>
           </div>
         </div>
       </section>
@@ -392,16 +350,28 @@ const Shop = () => {
         <div className="row g-3">
           {categoryCards.map((item) => (
             <div className="col-md-4" key={item.label}>
-              <Link to={`/shop?search=${encodeURIComponent(item.query)}`} className={`shop-category-card ${item.accent}`}>
-                <div className="shop-category-icon">{item.emoji}</div>
-                <div className="shop-category-copy">
-                  <span className="shop-category-label">Popular category</span>
-                  <h3>{item.label}</h3>
-                  <p>{item.description}</p>
+              <Link to={`/shop?sub=${encodeURIComponent(item.sub)}`} 
+                className={`shop-category-card relative overflow-hidden rounded-[24px] p-6 min-h-[160px] group transition-all duration-500 hover:-translate-y-1 hover:shadow-xl flex flex-col justify-between ${
+                  item.accent === 'category-card-phones' ? 'bg-gradient-to-br from-orange-600 to-red-800 text-white' :
+                  item.accent === 'category-card-laptops' ? 'bg-gradient-to-br from-blue-700 to-indigo-950 text-white' :
+                  item.accent === 'category-card-wearables' ? 'bg-gradient-to-br from-purple-600 to-indigo-900 text-white' :
+                  item.accent === 'category-card-tablets' ? 'bg-gradient-to-br from-pink-600 to-rose-900 text-white' :
+                  item.accent === 'category-card-audio' ? 'bg-gradient-to-br from-teal-600 to-emerald-950 text-white' :
+                  'bg-gradient-to-br from-slate-700 to-slate-900 text-white'
+                }`}
+              >
+                <div className="relative z-10 flex justify-between items-start">
+                  <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-2xl shadow-inner border border-white/20">
+                    {item.emoji}
+                  </div>
+                  <span className="text-xs font-bold bg-black/20 px-2 py-1 rounded-full backdrop-blur-sm">
+                    {item.count} items
+                  </span>
                 </div>
-                <div className="shop-category-meta">
-                  <span>{item.count} products</span>
-                  <span>Browse</span>
+
+                <div className="relative z-10 mt-3">
+                  <h3 className="text-xl font-black mb-1">{item.label}</h3>
+                  <p className="text-[10px] opacity-80 font-medium line-clamp-1">{item.description}</p>
                 </div>
               </Link>
             </div>
@@ -631,10 +601,12 @@ const Shop = () => {
                         <Link to={`/product/${product._id}`} className="shop-grid-title-link">
                           <h5>{product.name}</h5>
                         </Link>
-                        <div className="shop-grid-rating">
-                          <StarRow value={Math.round(getRatingValue(product))} />
-                          <span>{getRatingValue(product).toFixed(1)}</span>
-                        </div>
+                        {Number(product?.numReviews || 0) > 0 && (
+                          <div className="shop-grid-rating">
+                            <StarRow value={Math.round(getRatingValue(product))} />
+                            <span>{getRatingValue(product).toFixed(1)}</span>
+                          </div>
+                        )}
                         <div className="shop-grid-price">
                           <strong>{toCurrency(getPriceMeta(product).salePrice)}</strong>
                           {getPriceMeta(product).hasDiscount && <del>{toCurrency(getPriceMeta(product).compareAtPrice)}</del>}
@@ -698,12 +670,19 @@ const Shop = () => {
                           </button>
                         </div>
 
-                        <div className="shop-list-rating">
-                          <StarRow value={Math.round(rating)} />
-                          <span className="shop-list-rating-value">{rating.toFixed(1)}</span>
-                          <span className="shop-list-rating-count">({Number(product?.numReviews || 0)} orders)</span>
-                          <span className="shop-list-shipping">Free shipping</span>
-                        </div>
+                        {Number(product?.numReviews || 0) > 0 ? (
+                          <div className="shop-list-rating">
+                            <StarRow value={Math.round(rating)} />
+                            <span className="shop-list-rating-value">{rating.toFixed(1)}</span>
+                            <span className="shop-list-rating-count">({Number(product?.numReviews || 0)} orders)</span>
+                            <span className="shop-list-shipping">Free shipping</span>
+                          </div>
+                        ) : (
+                          <div className="shop-list-rating">
+                            <span className="shop-list-shipping ms-0">Free shipping</span>
+                            <span className="badge bg-light text-dark ms-2">New</span>
+                          </div>
+                        )}
 
                         <p className="shop-list-description">
                           {product.description || "Short description about the product goes here, with features and buying details."}

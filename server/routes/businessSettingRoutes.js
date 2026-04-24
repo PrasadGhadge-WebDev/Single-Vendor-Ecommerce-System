@@ -10,11 +10,13 @@ const {
 
 const router = express.Router();
 
+// Public route
 router.get("/public", getPublicBusinessSettings);
-router.use(requireSignIn, isAdmin);
-router.get("/", getBusinessSettings);
-router.put("/", updateBusinessSettings);
-router.get("/reports", getBusinessReports);
-router.get("/bills/:orderId", getBillByOrderId);
+
+// Protected routes
+router.get("/", requireSignIn, isAdmin, getBusinessSettings);
+router.put("/", requireSignIn, isAdmin, updateBusinessSettings);
+router.get("/reports", requireSignIn, isAdmin, getBusinessReports);
+router.get("/bills/:orderId", requireSignIn, isAdmin, getBillByOrderId);
 
 module.exports = router;

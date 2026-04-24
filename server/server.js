@@ -25,6 +25,19 @@ connectDB();
 
 const app = express();
 
+// Fix for duplicate email: null error
+const User = require("./models/User");
+const fixIndexes = async () => {
+  try {
+    await User.collection.dropIndex("email_1");
+    console.log("Re-syncing User indexes...");
+    await User.syncIndexes();
+  } catch (err) {
+    // If index doesn't exist, it's fine
+  }
+};
+fixIndexes();
+
 app.use(
   cors({
     origin: (origin, callback) => callback(null, true),
@@ -71,6 +84,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({
     success: false,
     message: "Internal Server Error",
+    error: err.message
   });
 });
 

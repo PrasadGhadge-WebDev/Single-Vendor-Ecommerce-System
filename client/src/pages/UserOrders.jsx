@@ -24,7 +24,7 @@ const timelineStyles = {
     top: "0.5rem",
     bottom: "0.3rem",
     width: "2px",
-    backgroundColor: "#ced4da",
+    backgroundColor: "var(--border-color)",
   },
   dot: {
     position: "absolute",
@@ -33,7 +33,7 @@ const timelineStyles = {
     width: "10px",
     height: "10px",
     borderRadius: "50%",
-    backgroundColor: "#0d6efd",
+    backgroundColor: "var(--color-primary)",
   },
 };
 
@@ -225,21 +225,21 @@ const REVIEWABLE_STATUSES = new Set(["delivered"]);
           alt={product?.name || "Product"}
           loading="lazy"
           decoding="async"
-          style={{ width: "72px", height: "72px", objectFit: "cover", borderRadius: "6px" }}
+          style={{ width: "72px", height: "72px", objectFit: "cover", borderRadius: "6px", border: "1px solid var(--border-color)" }}
         />
         <div className="flex-grow-1">
-          <div className="fw-semibold">{product?.name || "Product"}</div>
-          <small className="text-muted d-block">Qty: {item.quantity}</small>
-          <small className="text-muted d-block">Price: INR {item.price?.toFixed?.(2) ?? item.price}</small>
+          <div className="fw-semibold text-primary-text">{product?.name || "Product"}</div>
+          <small className="text-muted-text d-block">Qty: {item.quantity}</small>
+          <small className="text-muted-text d-block">Price: INR {item.price?.toFixed?.(2) ?? item.price}</small>
         </div>
         <div className="text-end">
-          <small className="text-muted d-block">Subtotal</small>
-          <div className="fw-bold">INR {subtotal}</div>
+          <small className="text-muted-text d-block">Subtotal</small>
+          <div className="fw-bold text-primary-text">INR {subtotal}</div>
         </div>
         {reviewAllowed && (
           <div className="w-100 mt-3">
             {reviewVisible ? (
-              <div className="border rounded-3 p-3 bg-white shadow-sm">
+              <div className="border border-theme rounded-3 p-3 bg-surface-2 shadow-sm">
                 <div className="d-flex align-items-center gap-2 mb-2">
                   {renderInteractiveStars(draft.rating, (value) =>
                     handleReviewFieldChange(order._id, productId, "rating", value)
@@ -247,7 +247,7 @@ const REVIEWABLE_STATUSES = new Set(["delivered"]);
                   <small className="text-muted mb-0">Click stars to select rating</small>
                 </div>
                 <textarea
-                  className="form-control mb-2"
+                  className="form-control mb-2 bg-surface-1 border-theme text-primary-text"
                   rows={2}
                   placeholder="Share your experience..."
                   value={draft.comment}
@@ -298,36 +298,37 @@ const REVIEWABLE_STATUSES = new Set(["delivered"]);
   };
 
   return (
-    <div className="container mt-4" style={{ maxWidth: "1100px" }}>
-      <h3 className="mb-4">My Orders</h3>
+    <div className="bg-surface-2 min-h-screen transition-colors duration-400">
+      <div className="container py-5" style={{ maxWidth: "1100px" }}>
+        <h3 className="mb-4 text-primary-text font-black">My Orders</h3>
 
       {loading ? (
         <p>Loading your orders...</p>
       ) : orders.length === 0 ? (
-        <p className="text-muted">You have not placed any orders.</p>
+        <p className="text-muted-text">You have not placed any orders.</p>
       ) : (
         <div className="d-flex flex-column gap-4">
           {orders.map((o) => {
             const timelineEntries = buildTimelineEntries(o);
             return (
-              <div key={o._id} className="card shadow-sm border-0">
-                <div className="card-body">
+              <div key={o._id} className="card shadow-sm border-theme bg-surface-1 rounded-[24px] overflow-hidden">
+                <div className="card-body p-4">
                   <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2">
                     <div>
-                      <div className="fs-6 text-muted">Order ID: {o._id}</div>
-                      <div className="fw-semibold fs-5 text-dark">
+                      <div className="fs-6 text-muted-text font-bold">Order ID: {o._id}</div>
+                      <div className="fw-black fs-5 text-primary-text">
                         Status: <span className="text-capitalize">{o.status}</span>
                       </div>
-                      <small className="text-muted">Placed on {new Date(o.createdAt).toLocaleString()}</small>
+                      <small className="text-muted-text">Placed on {new Date(o.createdAt).toLocaleString()}</small>
                     </div>
                     <div className="text-md-end">
-                      <div className="fw-semibold">Total: INR {o.totalAmount}</div>
-                      <small className="text-muted">Discount: INR {o.discountAmount || 0}</small>
+                      <div className="fw-black text-primary-text">Total: INR {o.totalAmount}</div>
+                      <small className="text-muted-text">Discount: INR {o.discountAmount || 0}</small>
                     </div>
                   </div>
                   <div className="mb-3">
                     <div className="d-flex justify-content-between flex-column flex-lg-row gap-2">
-                      <div className="badge bg-light border text-dark text-wrap" style={{ maxWidth: "320px" }}>
+                      <div className="badge bg-surface-2 border border-theme text-primary-text text-wrap p-3 font-bold" style={{ maxWidth: "320px" }}>
                         Note: {getLatestNote(o)}
                       </div>
                       {(o.status === "pending" || o.status === "confirmed") && (
@@ -338,7 +339,7 @@ const REVIEWABLE_STATUSES = new Set(["delivered"]);
                     </div>
                   </div>
                   {timelineEntries.length > 0 && (
-                    <div className="order-timeline rounded-3 border px-3 py-2 mb-3">
+                    <div className="order-timeline rounded-3 border border-theme bg-surface-2 px-3 py-2 mb-3">
                       <div style={timelineStyles.wrapper}>
                         <div style={timelineStyles.line} />
                         {timelineEntries.map((entry, index) => (
@@ -349,18 +350,18 @@ const REVIEWABLE_STATUSES = new Set(["delivered"]);
                           >
                             <span style={timelineStyles.dot} aria-hidden="true" />
                             <div>
-                              <div className="fw-semibold small text-uppercase">{entry.title}</div>
+                              <div className="fw-black small text-uppercase text-primary-text">{entry.title}</div>
                               {entry.description && (
-                                <div className="text-muted small mb-1">{entry.description}</div>
+                                <div className="text-muted-text small mb-1">{entry.description}</div>
                               )}
-                              <div className="text-muted small">{formatOrderTimestamp(entry.date)}</div>
+                              <div className="text-muted-text small">{formatOrderTimestamp(entry.date)}</div>
                             </div>
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
-                  <div className="border rounded-3">
+                  <div className="border border-theme rounded-3 overflow-hidden">
                     {o.products?.map((item) => renderProductRow(o, item))}
                   </div>
                 </div>
@@ -369,6 +370,7 @@ const REVIEWABLE_STATUSES = new Set(["delivered"]);
           })}
         </div>
       )}
+      </div>
     </div>
   );
 };

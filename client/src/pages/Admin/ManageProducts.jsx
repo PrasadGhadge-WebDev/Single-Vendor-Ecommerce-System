@@ -166,7 +166,7 @@ const ManageProducts = () => {
       payload.append("category", finalCategory);
       payload.append("subCategory", addForm.newCategory.trim() ? "" : addForm.subCategory);
       payload.append("stock", addForm.stock);
-      payload.append("supplier", addForm.supplier);
+      if (addForm.supplier) payload.append("supplier", addForm.supplier);
       if (addForm.image) payload.append("image", addForm.image);
 
       await API.post("/products", payload, {
@@ -193,7 +193,12 @@ const ManageProducts = () => {
       updateData.append("name", formData.name);
       updateData.append("price", formData.price);
       updateData.append("stock", formData.stock);
-      updateData.append("supplier", formData.supplier);
+      if (formData.supplier) {
+        updateData.append("supplier", formData.supplier);
+      } else {
+        // Explicitly clear supplier when admin selects the empty option.
+        updateData.append("supplier", "");
+      }
       if (formData.image) updateData.append("image", formData.image);
 
       await API.put(`/products/${editingProduct._id}`, updateData, {

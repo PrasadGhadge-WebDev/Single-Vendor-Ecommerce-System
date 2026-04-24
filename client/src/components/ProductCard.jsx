@@ -184,9 +184,9 @@ const ProductCard = ({ product, showBuyNow = true, onBuyNow }) => {
             </div>
 
             <div className="product-card-price-row mt-2">
-              <span className="product-card-price" style={{ fontSize: "20px", fontWeight: "bold", color: "var(--page-text)" }}>${pricingMeta.salePrice.toLocaleString("en-US")}</span>
+              <span className="product-card-price" style={{ fontSize: "20px", fontWeight: "bold", color: "var(--page-text)" }}>₹{pricingMeta.salePrice.toLocaleString("en-IN")}</span>
               {pricingMeta.hasDiscount && (
-                <span className="product-card-compare text-muted text-decoration-line-through">${pricingMeta.compareAtPrice.toLocaleString("en-US")}</span>
+                <span className="product-card-compare text-muted text-decoration-line-through">₹{pricingMeta.compareAtPrice.toLocaleString("en-IN")}</span>
               )}
             </div>
             

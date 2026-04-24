@@ -8,6 +8,7 @@ import CartProvider from "./context/CartContext";
 import AuthProvider, { AuthContext } from "./context/AuthContext";
 import { BusinessSettingsProvider } from "./context/BusinessSettingsContext";
 import { WishlistProvider } from "./context/WishlistContext";
+import { ThemeProvider } from "./context/ThemeContext";
 
 import Home from "./pages/Home";
 import Shop from "./pages/Shop";
@@ -22,6 +23,7 @@ import Contact from "./pages/Contact";
 import ProductDetails from "./pages/ProductDetails";
 import Offers from "./pages/Offers";
 import ReplacementPolicy from "./pages/ReplacementPolicy";
+import FAQ from "./pages/FAQ";
 
 import Dashboard from "./pages/Admin/Dashboard";
 import AddProduct from "./pages/Admin/AddProduct";
@@ -64,7 +66,6 @@ const LayoutWrapper = ({ children }) => {
 
   return (
     <div className="d-flex flex-column min-vh-100">
-      {!isAdminRoute && <Topbar />}
       {!isAdminRoute && <Navbar />}
 
       <div className="flex-grow-1">{children}</div>
@@ -76,83 +77,84 @@ const LayoutWrapper = ({ children }) => {
 
 function App() {
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") || "light";
-    document.documentElement.setAttribute("data-theme", savedTheme);
-    document.body.setAttribute("data-bs-theme", savedTheme);
+    // Theme logic moved to ThemeContext
   }, []);
 
   return (
-    <AuthProvider>
-      <WishlistProvider>
-        <CartProvider>
-          <BusinessSettingsProvider>
-            <Router>
-              <LayoutWrapper>
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/shop" element={<Shop />} />
-                  <Route path="/shop/category/:categoryName" element={<Shop />} />
-                  <Route path="/product/:id" element={<ProductDetails />} />
-                  <Route path="/about" element={<About />} />
-                  <Route path="/services" element={<Services />} />
-                  <Route path="/contact" element={<Contact />} />
-                  <Route path="/offers" element={<Offers />} />
-                  <Route path="/replacement-policy" element={<ReplacementPolicy />} />
-                  <Route path="/cart" element={<Cart />} />
-                  <Route path="/checkout" element={<Checkout />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
+    <ThemeProvider>
+      <AuthProvider>
+        <WishlistProvider>
+          <CartProvider>
+            <BusinessSettingsProvider>
+              <Router>
+                <LayoutWrapper>
+                  <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/shop" element={<Shop />} />
+                    <Route path="/shop/category/:categoryName" element={<Shop />} />
+                    <Route path="/product/:id" element={<ProductDetails />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/services" element={<Services />} />
+                    <Route path="/contact" element={<Contact />} />
+                    <Route path="/offers" element={<Offers />} />
+                    <Route path="/replacement-policy" element={<ReplacementPolicy />} />
+                    <Route path="/cart" element={<Cart />} />
+                    <Route path="/checkout" element={<Checkout />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
+                    <Route path="/faq" element={<FAQ />} />
 
-                  <Route
-                    path="/admin"
-                    element={
-                      <AdminRoute>
-                        <AdminLayout />
-                      </AdminRoute>
-                    }
-                  >
-                    <Route index element={<Dashboard />} />
-                    <Route path="dashboard" element={<Dashboard />} />
-                    <Route path="products" element={<ManageProducts />} />
-                    <Route path="categories" element={<ManageCategories />} />
-                    <Route path="users" element={<ManageUsers />} />
-                    <Route path="offers" element={<ManageOffers />} />
-                    <Route path="suppliers" element={<ManageSuppliers />} />
-                    <Route path="reviews" element={<ManageReviews />} />
-                    <Route path="business-settings" element={<BusinessSettings />} />
-                    <Route path="stock-history" element={<StockHistory />} />
-                    <Route path="profile" element={<AdminProfile />} />
-                    <Route path="add-product" element={<AddProduct />} />
-                    <Route path="orders" element={<Orders />} />
-                    <Route path="payments" element={<ManagePayments />} />
-                  </Route>
+                    <Route
+                      path="/admin"
+                      element={
+                        <AdminRoute>
+                          <AdminLayout />
+                        </AdminRoute>
+                      }
+                    >
+                      <Route index element={<Dashboard />} />
+                      <Route path="dashboard" element={<Dashboard />} />
+                      <Route path="products" element={<ManageProducts />} />
+                      <Route path="categories" element={<ManageCategories />} />
+                      <Route path="users" element={<ManageUsers />} />
+                      <Route path="offers" element={<ManageOffers />} />
+                      <Route path="suppliers" element={<ManageSuppliers />} />
+                      <Route path="reviews" element={<ManageReviews />} />
+                      <Route path="business-settings" element={<BusinessSettings />} />
+                      <Route path="stock-history" element={<StockHistory />} />
+                      <Route path="profile" element={<AdminProfile />} />
+                      <Route path="add-product" element={<AddProduct />} />
+                      <Route path="orders" element={<Orders />} />
+                      <Route path="payments" element={<ManagePayments />} />
+                    </Route>
 
-                  <Route
-                    path="/orders"
-                    element={
-                      <ProtectedRoute>
-                        <UserOrders />
-                      </ProtectedRoute>
-                    }
-                  />
+                    <Route
+                      path="/orders"
+                      element={
+                        <ProtectedRoute>
+                          <UserOrders />
+                        </ProtectedRoute>
+                      }
+                    />
 
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </LayoutWrapper>
-              <ToastContainer
-                position="top-right"
-                autoClose={1800}
-                hideProgressBar={false}
-                newestOnTop
-                closeOnClick
-                pauseOnHover
-                theme="colored"
-              />
-            </Router>
-          </BusinessSettingsProvider>
-        </CartProvider>
-      </WishlistProvider>
-    </AuthProvider>
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </LayoutWrapper>
+                <ToastContainer
+                  position="top-right"
+                  autoClose={1800}
+                  hideProgressBar={false}
+                  newestOnTop
+                  closeOnClick
+                  pauseOnHover
+                  theme="colored"
+                />
+              </Router>
+            </BusinessSettingsProvider>
+          </CartProvider>
+        </WishlistProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

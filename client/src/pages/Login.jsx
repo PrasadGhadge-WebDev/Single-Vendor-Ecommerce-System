@@ -2,51 +2,64 @@ import React, { useState, useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import API from "../api";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "./Login.css";
+import { toast } from "react-toastify";
 
 const Login = () => {
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [step, setStep] = useState(1); // 1: Mobile, 2: OTP
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-const submitHandler = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  setError("");
-
-  try {
-    if (!email || !password) {
-      setError("Please enter email and password");
+  const handleSendOtp = async (e) => {
+    e.preventDefault();
+    if (!phone) return toast.error("Please enter mobile number");
+    if (phone.length !== 10) return toast.error("Mobile number must be exactly 10 digits");
+    
+    setLoading(true);
+    setError("");
+    try {
+      await API.post("/auth/send-otp", { phone });
+      toast.info("OTP sent to your mobile (use 123456)");
+      setStep(2);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to send OTP");
+    } finally {
       setLoading(false);
-      return;
     }
+  };
 
-    const { data } = await API.post("/auth/login", { email, password }, { headers: { "Content-Type": "application/json" } });
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    if (!otp) return toast.error("Please enter OTP");
 
-    login(data);
-
-    if (data.isAdmin) {
-      navigate("/admin/dashboard");
-    } else {
-      const redirectTo = location.state?.from || "/";
-      navigate(redirectTo);
+    setLoading(true);
+    setError("");
+    try {
+      const { data } = await API.post("/auth/verify-otp", { phone, otp });
+      if (data.success) {
+        toast.success("Login successful");
+        login(data);
+        
+        if (data.isAdmin) {
+          navigate("/admin/dashboard");
+        } else {
+          const redirectTo = location.state?.from || "/";
+          navigate(redirectTo);
+        }
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || "Invalid OTP");
+    } finally {
+      setLoading(false);
     }
+  };
 
-  } catch (err) {
-    const errorMsg = err.response?.data?.message || "Login failed";
-    setError(errorMsg);
-    console.error("Login error:", errorMsg);
-  } finally {
-    setLoading(false);
-  }
-};
   return (
     <div className="login-wrapper">
       <div className="background-bubbles">
@@ -56,49 +69,57 @@ const submitHandler = async (e) => {
       </div>
 
       <div className="login-card">
-        <h2>Welcome Back</h2>
-        <p className="sub-text">Sign in to access your dashboard</p>
+        <div className="logo-section">
+          <h2>ElectroHub</h2>
+          <p className="sub-text">
+            {step === 1 ? "Step 1: Mobile Number" : "Step 2: OTP Verification"}
+          </p>
+        </div>
 
         {error && <div className="alert">{error}</div>}
 
-        <form onSubmit={submitHandler}>
-          <div className="input-group">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="username"
-              required
-              placeholder=" "
-            />
-            <label>Email</label>
-          </div>
-
-          <div className="input-group password-group">
-            <input
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-              placeholder=" "
-            />
-            <label>Password</label>
-            <span
-              className="password-toggle"
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? <FaEyeSlash /> : <FaEye />}
-            </span>
-          </div>
-
-          <button type="submit" className="btn-gradient" disabled={loading}>
-            {loading ? "Logging in..." : "Login"}
-          </button>
-        </form>
+        {step === 1 ? (
+          <form onSubmit={handleSendOtp}>
+            <div className="input-group">
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+                required
+                placeholder=" "
+                maxLength="10"
+                pattern="[0-9]{10}"
+              />
+              <label>Mobile Number</label>
+            </div>
+            <button type="submit" className="btn-gradient" disabled={loading}>
+              {loading ? "Sending..." : "Continue"}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleVerifyOtp}>
+            <div className="input-group">
+              <input
+                type="text"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                required
+                placeholder=" "
+                maxLength="6"
+              />
+              <label>Enter OTP</label>
+              <div className="resend-link" onClick={() => setStep(1)}>
+                Change Number?
+              </div>
+            </div>
+            <button type="submit" className="btn-gradient" disabled={loading}>
+              {loading ? "Verifying..." : "Verify"}
+            </button>
+          </form>
+        )}
 
         <div className="login-footer">
-          <small>© {new Date().getFullYear()} Online Store</small>
+          <small>© {new Date().getFullYear()} ElectroHub Store</small>
         </div>
       </div>
     </div>

@@ -1,8 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700&display=swap');
 
 :root {
   font-family: "Inter", "Segoe UI", sans-serif;
@@ -273,4 +272,25 @@ small.text-muted {
 .btn-buy-action:focus-visible {
   outline: 0;
   box-shadow: 0 0 0 0.2rem var(--search-focus-ring), 0 8px 18px var(--shadow-color);
+}
+
+@layer utilities {
+  .bg-surface-1 {
+    background-color: var(--surface-1) !important;
+  }
+  .bg-surface-2 {
+    background-color: var(--surface-2) !important;
+  }
+  .bg-surface-3 {
+    background-color: var(--surface-3) !important;
+  }
+  .text-primary-text {
+    color: var(--page-text) !important;
+  }
+  .text-muted-text {
+    color: var(--muted-text) !important;
+  }
+  .border-theme {
+    border-color: var(--border-color) !important;
+  }
 }

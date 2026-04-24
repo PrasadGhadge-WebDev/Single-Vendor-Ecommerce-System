@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
 exports.requireSignIn = async (req, res, next) => {
+  console.log(`Auth Check: ${req.method} ${req.originalUrl}`);
   let token;
 
   if (req.headers.authorization?.startsWith("Bearer")) {
@@ -27,7 +28,7 @@ exports.requireSignIn = async (req, res, next) => {
       return res.status(401).json({ message: "Invalid or expired token" });
     }
   } else {
-    res.status(401).json({ message: "Not authorized" });
+    res.status(401).json({ message: `Not authorized for ${req.originalUrl}` });
   }
 };
 

@@ -289,7 +289,7 @@ const Dashboard = () => {
                   <p className="text-muted mb-0">No order status data available.</p>
                 ) : (
                   <div className="dashboard-chart">
-                    <ResponsiveContainer>
+                    <ResponsiveContainer width="100%" height={300}>
                       <PieChart>
                         <Pie data={orderStatusData} dataKey="value" nameKey="name" outerRadius={94} label>
                           {orderStatusData.map((entry, index) => (
@@ -312,7 +312,7 @@ const Dashboard = () => {
                   <p className="text-muted mb-0">No supplier purchase data available.</p>
                 ) : (
                   <div className="dashboard-chart">
-                    <ResponsiveContainer>
+                    <ResponsiveContainer width="100%" height={300}>
                       <BarChart
                         data={topSuppliersData}
                         layout="vertical"
@@ -362,7 +362,7 @@ const Dashboard = () => {
                   <p className="text-muted mb-0">No low stock products.</p>
                 ) : (
                   <div className="dashboard-chart">
-                    <ResponsiveContainer>
+                    <ResponsiveContainer width="100%" height={300}>
                       <BarChart
                         data={lowStockChartData}
                         layout="vertical"
@@ -397,7 +397,7 @@ const Dashboard = () => {
               <div className="dashboard-panel card border-0 h-100">
                 <h5 className="dashboard-panel-title">Inventory Snapshot</h5>
                 <div className="dashboard-chart">
-                  <ResponsiveContainer>
+                  <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={inventorySnapshot}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="label" />
