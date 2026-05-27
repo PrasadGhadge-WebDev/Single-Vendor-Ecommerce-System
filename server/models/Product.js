@@ -2,6 +2,10 @@ const mongoose = require("mongoose");
 
 const productSchema = new mongoose.Schema(
   {
+    _id: {
+      type: String,
+      default: () => new mongoose.Types.ObjectId().toString(),
+    },
     name: {
       type: String,
       required: true,
@@ -26,14 +30,46 @@ const productSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    brand: {
+      type: String,
+      trim: true,
+    },
+    discountPrice: {
+      type: Number,
+      min: 0,
+    },
     image: {
       type: String,
       default: "",
     },
+    images: [
+      {
+        type: String,
+      },
+    ],
     stock: {
       type: Number,
       default: 0,
       min: 0,
+    },
+    sku: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    warranty: {
+      type: String,
+      trim: true,
+    },
+    features: [
+      {
+        type: String,
+      },
+    ],
+    status: {
+      type: String,
+      enum: ["In Stock", "Out of Stock"],
+      default: "In Stock",
     },
     averageRating: {
       type: Number,
@@ -48,7 +84,7 @@ const productSchema = new mongoose.Schema(
     },
     supplier: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Supplier"
+      ref: "Supplier",
     },
   },
   { timestamps: true }

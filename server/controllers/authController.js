@@ -125,17 +125,32 @@ exports.registerUser = async (req, res) => {
       token,
     });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: "Email already exists. Please use a different one." });
+    }
     res.status(500).json({ message: error.message });
   }
 };
 
 exports.loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { identifier, password } = req.body;
 
-    const user = await User.findOne({ email });
+    if (!identifier || !password) {
+      return res.status(400).json({ message: "Email/Mobile and password are required" });
+    }
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    // Find user by email OR phone
+    const user = await User.findOne({
+      $or: [{ email: identifier }, { phone: identifier }],
+    });
+
+    if (!user || !user.password) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
@@ -146,6 +161,7 @@ exports.loginUser = async (req, res) => {
       _id: user._id,
       name: user.name,
       email: user.email,
+      phone: user.phone,
       isAdmin: user.isAdmin,
       isSuperAdmin: user.isSuperAdmin,
       token,
@@ -185,10 +201,107 @@ exports.completeRegistration = async (req, res) => {
       isSuperAdmin: user.isSuperAdmin,
     });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: "Email already exists. Please use a different one." });
+    }
     res.status(500).json({ message: error.message });
   }
 };
 
 exports.logoutUser = async (req, res) => {
   res.status(200).json({ success: true, message: "Logout successful" });
+};
+
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { identifier } = req.body;
+    if (!identifier) {
+      return res.status(400).json({ message: "Email or Mobile is required" });
+    }
+
+    const user = await User.findOne({
+      $or: [{ email: identifier }, { phone: identifier }],
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found with this Email/Mobile" });
+    }
+
+    // Generate OTP
+    const otp = "123456"; // Mock OTP
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Save OTP tracking by identifier (email or phone)
+    await Otp.findOneAndUpdate(
+      { $or: [{ email: identifier }, { phone: identifier }] },
+      { email: user.email, phone: user.phone, otp, expiresAt },
+      { upsert: true, new: true }
+    );
+
+    console.log(`Reset OTP for ${identifier}: ${otp}`);
+    res.status(200).json({ success: true, message: "OTP sent successfully (123456)" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.verifyResetOtp = async (req, res) => {
+  try {
+    const { identifier, otp } = req.body;
+    if (!identifier || !otp) {
+      return res.status(400).json({ message: "Identifier and OTP are required" });
+    }
+
+    const otpData = await Otp.findOne({
+      $or: [{ email: identifier }, { phone: identifier }],
+      otp,
+    });
+
+    if (!otpData) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
+    res.status(200).json({ success: true, message: "OTP verified successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { identifier, otp, newPassword } = req.body;
+    if (!identifier || !otp || !newPassword) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const otpData = await Otp.findOne({
+      $or: [{ email: identifier }, { phone: identifier }],
+      otp,
+    });
+
+    if (!otpData) {
+      return res.status(400).json({ message: "OTP verification failed or session expired" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const user = await User.findOneAndUpdate(
+      { $or: [{ email: identifier }, { phone: identifier }] },
+      { password: hashedPassword },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Delete OTP after successful reset
+    await Otp.deleteOne({ _id: otpData._id });
+
+    res.status(200).json({ success: true, message: "Password reset successful" });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: "Email already exists. Please use a different one." });
+    }
+    res.status(500).json({ message: error.message });
+  }
 };

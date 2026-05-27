@@ -17,6 +17,22 @@ const parseSupplierId = (value) => {
   return new mongoose.Types.ObjectId(normalized);
 };
 
+const buildProductQuery = (id) => {
+  const normalized = String(id || "").trim();
+  if (mongoose.Types.ObjectId.isValid(normalized)) {
+    return { _id: new mongoose.Types.ObjectId(normalized) };
+  }
+  // Now that the schema supports string _ids, we can query both SKU and _id safely.
+  return { 
+    $or: [
+      { _id: normalized }, 
+      { sku: { $regex: new RegExp(`^${normalized}$`, "i") } }
+    ] 
+  };
+};
+
+exports.buildProductQuery = buildProductQuery;
+
 exports.addProduct = async (req, res) => {
   try {
     const { name, description, price, category, subCategory, stock, supplier } = req.body;
@@ -46,7 +62,8 @@ exports.addProduct = async (req, res) => {
       subCategory: subCategory || "",
       stock: parsedStock !== undefined ? parsedStock : 0,
       supplier: parsedSupplier === undefined ? undefined : parsedSupplier,
-      image: req.file ? req.file.filename : "",
+      image: req.files?.image ? req.files.image[0].filename : "",
+      images: req.files?.images ? req.files.images.map(f => f.filename) : [],
     });
 
     if (Number(product.stock || 0) > 0) {
@@ -77,6 +94,7 @@ exports.addProduct = async (req, res) => {
 };
 
 exports.getProducts = async (req, res) => {
+  console.log(`[DEBUG] getProducts called. Filter: ${JSON.stringify(req.query)}`);
   try {
     const {
       category,
@@ -116,7 +134,7 @@ exports.getProducts = async (req, res) => {
     const sortField = sortBy || "createdAt";
     const sortOrder = String(order).toLowerCase() === "asc" ? 1 : -1;
 
-    let query = Product.find(filter).populate("supplier", "name company").sort({ [sortField]: sortOrder });
+    let query = Product.find(filter).populate("supplier", "name company").sort({ [sortField]: sortOrder }).lean();
 
     if (page !== undefined || limit !== undefined) {
       const pageNum = Math.max(1, Number(page || 1));
@@ -126,6 +144,7 @@ exports.getProducts = async (req, res) => {
     }
 
     const products = await query;
+    console.log(`[DEBUG] Found ${products.length} products.`);
 
     if (String(includeMeta).toLowerCase() === "true") {
       const total = await Product.countDocuments(filter);
@@ -149,13 +168,10 @@ exports.getProducts = async (req, res) => {
 exports.getProductById = async (req, res) => {
   try {
     const { id } = req.params;
+    const query = buildProductQuery(id);
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid product ID format" });
-    }
-
-    // Find product first without populate to avoid CastError on bad supplier field
-    const product = await Product.findById(id).lean();
+    // Find product using the robust query (supports ObjectId, string ID, and SKU)
+    const product = await Product.findOne(query).lean();
 
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
@@ -176,6 +192,9 @@ exports.getProductById = async (req, res) => {
 
     res.status(200).json(product);
   } catch (error) {
+    if (error.name === "CastError") {
+      return res.status(404).json({ message: "Product not found" });
+    }
     console.error("Error in getProductById:", error);
     res.status(500).json({
       success: false,
@@ -193,9 +212,6 @@ exports.updateProduct = async (req, res) => {
     const parsedStock = parseOptionalNumber(stock);
     const parsedSupplier = parseSupplierId(supplier);
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid product ID format" });
-    }
     if (price !== undefined && Number.isNaN(parsedPrice)) {
       return res.status(400).json({ message: "Price must be a valid number" });
     }
@@ -212,8 +228,8 @@ exports.updateProduct = async (req, res) => {
       return res.status(400).json({ message: "Invalid supplier ID format" });
     }
 
-    const objectId = new mongoose.Types.ObjectId(id);
-    const existing = await Product.collection.findOne({ _id: objectId });
+    const query = buildProductQuery(id);
+    const existing = await Product.collection.findOne(query);
     if (!existing) return res.status(404).json({ message: "Product not found" });
 
     const previousStock = Number(existing.stock || 0);
@@ -242,22 +258,23 @@ exports.updateProduct = async (req, res) => {
       updateFields.supplier = parsedSupplier;
     }
 
-    if (req.file) updateFields.image = req.file.filename;
+    if (req.files?.image) updateFields.image = req.files.image[0].filename;
+    if (req.files?.images) updateFields.images = req.files.images.map(f => f.filename);
     updateFields.updatedAt = new Date();
 
-    await Product.collection.updateOne({ _id: objectId }, { $set: updateFields });
-    const product = await Product.collection.findOne({ _id: objectId });
+    await Product.collection.updateOne(query, { $set: updateFields });
+    const product = await Product.collection.findOne(query);
     const nextStock = Number(product?.stock || 0);
 
     if (stock !== undefined && nextStock !== previousStock) {
       await logStockHistory({
-        productId: objectId,
+        productId: product._id,
         eventType: "MANUAL_ADJUSTMENT",
         quantityChange: nextStock - previousStock,
         previousStock,
         newStock: nextStock,
         referenceType: "PRODUCT",
-        referenceId: objectId.toString(),
+        referenceId: product._id.toString(),
         note: "Manual stock update by admin",
         actorId: req.user?._id || null,
       });
@@ -279,7 +296,8 @@ exports.updateProduct = async (req, res) => {
 exports.deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const deleted = await Product.findByIdAndDelete(id);
+    const query = buildProductQuery(id);
+    const deleted = await Product.findOneAndDelete(query);
     if (!deleted) return res.status(404).json({ message: "Product not found" });
 
     res.status(200).json({ message: "Product deleted successfully" });

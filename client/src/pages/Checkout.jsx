@@ -4,9 +4,9 @@ import API from "../api";
 import { CartContext } from "../context/CartContext";
 import { AuthContext } from "../context/AuthContext";
 import { toast } from "react-toastify";
+import axios from "axios";
 import "./Checkout.css";
-
-const normalizeDigits = (value) => String(value || "").replace(/\D/g, "");
+import { normalizeDigits, isValidName, isValidPincode } from "../utils/validation";
 
 const validateAddress = (address) => {
   const errors = {};
@@ -17,10 +17,12 @@ const validateAddress = (address) => {
   const addressLine1 = String(address?.addressLine1 || "").trim();
   const city = String(address?.city || "").trim();
   const state = String(address?.state || "").trim();
-  const pincode = normalizeDigits(address?.pincode || "");
+  const pincode = String(address?.pincode || "").trim();
   const country = String(address?.country || "").trim();
 
-  if (fullName.length < 3) errors.fullName = "Enter a valid full name (min 3 characters).";
+  if (!isValidName(fullName)) {
+    errors.fullName = "Enter a valid full name (min 3 letters, no numbers).";
+  }
 
   if (!phoneDigits) {
     errors.phone = "Phone number is required.";
@@ -35,7 +37,7 @@ const validateAddress = (address) => {
 
   if (!pincode) {
     errors.pincode = "Pincode is required.";
-  } else if (!/^\d{6}$/.test(pincode)) {
+  } else if (!isValidPincode(pincode)) {
     errors.pincode = "Enter a valid 6-digit pincode.";
   }
 
@@ -230,7 +232,13 @@ const Checkout = () => {
                     <input
                       className={`form-control ${wasValidated && addressErrors.fullName ? "is-invalid" : ""}`}
                       value={address.fullName}
-                      onChange={(e) => setAddress((prev) => ({ ...prev, fullName: e.target.value }))}
+                      onChange={(e) => {
+                        const cleanValue = e.target.value.replace(/[0-9]/g, "");
+                        setAddress((prev) => ({ ...prev, fullName: cleanValue }));
+                        if (wasValidated) {
+                          setAddressErrors((prev) => ({ ...prev, fullName: undefined }));
+                        }
+                      }}
                       placeholder="Enter full name"
                       autoComplete="name"
                       required
@@ -245,11 +253,11 @@ const Checkout = () => {
                     <input
                       className={`form-control ${wasValidated && addressErrors.phone ? "is-invalid" : ""}`}
                       value={address.phone}
-                      onChange={(e) => setAddress((prev) => ({ ...prev, phone: e.target.value }))}
+                      onChange={(e) => setAddress((prev) => ({ ...prev, phone: e.target.value.replace(/\D/g, "") }))}
                       placeholder="Enter phone number"
                       inputMode="tel"
                       autoComplete="tel"
-                      maxLength={15}
+                      maxLength={10}
                       required
                     />
                     {wasValidated && addressErrors.phone && <div className="invalid-feedback">{addressErrors.phone}</div>}
@@ -262,7 +270,25 @@ const Checkout = () => {
                     <input
                       className={`form-control ${wasValidated && addressErrors.pincode ? "is-invalid" : ""}`}
                       value={address.pincode}
-                      onChange={(e) => setAddress((prev) => ({ ...prev, pincode: e.target.value }))}
+                      onChange={async (e) => {
+                        const pin = e.target.value.replace(/\D/g, "").slice(0, 6);
+                        setAddress((prev) => ({ ...prev, pincode: pin }));
+                        if (pin.length === 6) {
+                          try {
+                            const { data } = await axios.get(`https://api.postalpincode.in/pincode/${pin}`);
+                            if (data[0].Status === "Success") {
+                              const postOffice = data[0].PostOffice[0];
+                              setAddress((prev) => ({
+                                ...prev,
+                                city: postOffice.District,
+                                state: postOffice.State
+                              }));
+                            }
+                          } catch (err) {
+                            console.error("Pincode lookup failed", err);
+                          }
+                        }
+                      }}
                       placeholder="Pincode"
                       inputMode="numeric"
                       autoComplete="postal-code"
@@ -345,10 +371,10 @@ const Checkout = () => {
                 </div>
 
                 <div className="d-flex flex-wrap gap-2 mt-4">
-                  <button type="button" className="btn btn-outline-secondary" onClick={() => navigate(-1)} disabled={loading}>
+                  <button type="button" className="btn btn-outline-theme px-4 rounded-pill" onClick={() => navigate(-1)} disabled={loading}>
                     Back
                   </button>
-                  <button type="submit" className="btn btn-success ms-auto" disabled={loading}>
+                  <button type="submit" className="btn btn-buy-action ms-auto px-5 rounded-pill" disabled={loading}>
                     {loading ? "Processing..." : "Place Order"}
                   </button>
                 </div>
@@ -413,7 +439,7 @@ const Checkout = () => {
                       onChange={(e) => setOfferCode(e.target.value.toUpperCase())}
                       placeholder="Enter coupon code"
                     />
-                    <button type="button" className="btn btn-outline-primary" onClick={applyOffer}>
+                    <button type="button" className="btn btn-outline-primary px-4" onClick={applyOffer}>
                       Apply
                     </button>
                   </div>

@@ -54,3 +54,15 @@ exports.getStockHistory = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+exports.deleteStockHistory = async (req, res) => {
+  try {
+    const entry = await StockHistory.findById(req.params.id);
+    if (!entry) return res.status(404).json({ message: "Stock history entry not found" });
+
+    await entry.deleteOne();
+    res.status(200).json({ message: "Entry deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

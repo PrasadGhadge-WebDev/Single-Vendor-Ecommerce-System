@@ -28,7 +28,7 @@ exports.addCategory = async (req, res) => {
 
 exports.getCategories = async (req, res) => {
   try {
-    const categories = await Category.find().sort({ name: 1 });
+    const categories = await Category.find().sort({ name: 1 }).lean();
     res.status(200).json(categories);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -39,7 +39,7 @@ exports.getCategoryById = async (req, res) => {
   try {
     const { id } = req.params;
     console.log("Fetching category by ID:", id);
-    const category = await Category.findById(id);
+    const category = await Category.findById(id).lean();
     if (!category) {
       console.log("Category not found for ID:", id);
       return res.status(404).json({ message: "Category not found" });
@@ -89,10 +89,8 @@ exports.deleteCategory = async (req, res) => {
       return res.status(404).json({ message: "Category not found" });
     }
 
-    const inUse = await Product.exists({ category: category.name });
-    if (inUse) {
-      return res.status(400).json({ message: "Category is in use by products and cannot be deleted" });
-    }
+    // Reassign products to Uncategorized instead of blocking deletion
+    await Product.updateMany({ category: category.name }, { $set: { category: "Uncategorized" } });
 
     await Category.findByIdAndDelete(id);
 

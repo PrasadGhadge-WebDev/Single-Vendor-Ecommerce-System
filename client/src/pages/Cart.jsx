@@ -45,8 +45,8 @@ const Cart = () => {
 
   return (
     <div className="bg-surface-2 min-h-screen transition-colors duration-400">
-      <div className="container py-5" style={{ maxWidth: "980px" }}>
-        <h3 className="mb-4 text-primary-text font-black">Shopping Cart</h3>
+      <div className="container" style={{ maxWidth: "980px", paddingTop: "120px", paddingBottom: "60px" }}>
+        <h1 className="mb-8 text-primary-text font-black italic tracking-tighter uppercase">Shopping Cart</h1>
 
       {cart.length === 0 ? (
         <p className="text-muted-text">Your cart is empty.</p>
@@ -115,7 +115,7 @@ const Cart = () => {
 
           <div className="d-flex justify-content-between align-items-center mt-4 p-3 border border-theme rounded-4 shadow-sm bg-surface-1">
             <h4 className="mb-0 text-primary-text font-black">Total: INR {total}</h4>
-            <button className="btn btn-success" onClick={handleBuyTotalOrder}>
+            <button className="btn btn-buy-action px-4 rounded-pill" onClick={handleBuyTotalOrder}>
               Buy Total Order
             </button>
           </div>

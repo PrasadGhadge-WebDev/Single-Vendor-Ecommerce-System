@@ -1,5 +1,8 @@
 const BusinessSetting = require("../models/BusinessSetting");
 const Order = require("../models/Order");
+const Product = require("../models/Product");
+const User = require("../models/User");
+const Review = require("../models/Review");
 
 const getOrCreateSettings = async () => {
   let settings = await BusinessSetting.findOne();
@@ -43,6 +46,8 @@ exports.getPublicBusinessSettings = async (req, res) => {
       isTaxInclusive: settings.isTaxInclusive,
       metaTitle: settings.metaTitle,
       metaDescription: settings.metaDescription,
+      aboutStory: settings.aboutStory,
+      aboutMission: settings.aboutMission,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -138,6 +143,11 @@ exports.getBillByOrderId = async (req, res) => {
 
     if (!order) return res.status(404).json({ message: "Order not found" });
 
+    // Check ownership: Admin can see any bill, User can only see their own
+    if (!req.user.isAdmin && String(order.user?._id || order.user) !== String(req.user._id)) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
     const taxPercent = Number(settings.taxPercent || 0);
     const taxableAmount = Number(order.totalAmount || 0);
     const taxAmount = (taxableAmount * taxPercent) / 100;
@@ -172,6 +182,27 @@ exports.getBillByOrderId = async (req, res) => {
         grandTotal,
       },
       footerNote: settings.invoiceFooter || "",
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+exports.getStoreStats = async (req, res) => {
+  try {
+    const [productCount, orderCount, userCount, reviewStats] = await Promise.all([
+      Product.countDocuments({ status: "published" }),
+      Order.countDocuments({ status: { $ne: "cancelled" } }),
+      User.countDocuments({ role: "user" }),
+      Review.aggregate([
+        { $group: { _id: null, avgRating: { $avg: "$rating" } } }
+      ])
+    ]);
+
+    res.status(200).json({
+      products: productCount,
+      orders: orderCount,
+      customers: userCount,
+      rating: reviewStats[0]?.avgRating ? reviewStats[0].avgRating.toFixed(1) : "4.8"
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -7,6 +7,8 @@ const {
   getDashboardStats,
   getUserOrders,
   cancelOrderByUser,
+  deleteOrder,
+  markOrderAsPaid,
 } = require("../controllers/orderController");
 
 const { requireSignIn, isAdmin } = require("../middlewares/authMiddleware");
@@ -20,5 +22,7 @@ router.get("/stats/dashboard", requireSignIn, isAdmin, getDashboardStats);
 router.get("/my-orders", requireSignIn, getUserOrders);
 router.put("/:id/cancel", requireSignIn, cancelOrderByUser);
 router.put("/:id", requireSignIn, isAdmin, updateOrderStatus);
+router.put("/:id/pay", requireSignIn, isAdmin, markOrderAsPaid);
+router.delete("/:id", requireSignIn, isAdmin, deleteOrder);
 
 module.exports = router;

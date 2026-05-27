@@ -125,84 +125,83 @@ const ProductCard = ({ product, showBuyNow = true, onBuyNow }) => {
   };
 
   return (
-    <div className="product-card-shell h-100">
-      <Link to={`/product/${product._id}`} className="text-decoration-none">
-        <div className="product-card-modern h-100 d-flex flex-column">
-          <div className="product-card-media">
+    <div className="w-full md:w-[220px] lg:w-[260px] h-auto md:h-[380px] lg:h-[420px] mx-auto">
+      <Link
+        to={`/product/${product._id}`}
+        className="block h-full w-full outline-none"
+        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+      >
+        <div className="h-full w-full bg-white rounded-[24px] p-[20px] shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.12)] hover:-translate-y-2 transition-all duration-300 flex flex-col relative group border border-gray-100/50">
+          
+          <button
+            type="button"
+            className={`absolute top-[20px] right-[20px] w-[42px] h-[42px] bg-white shadow-md rounded-full flex items-center justify-center z-20 hover:scale-110 transition-transform ${isWishlisted ? "text-red-500" : "text-gray-400"}`}
+            onClick={handleWishlist}
+            aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+          >
+            {isWishlisted ? <FaHeart size={18} /> : <FaRegHeart size={18} />}
+          </button>
+
+          <div className="w-full h-[160px] flex items-center justify-center overflow-hidden mb-5 relative z-10 shrink-0">
             <img
               src={imageSrc}
-              className="product-card-image primary-img"
+              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
               alt={product?.name || "Product image"}
               loading="lazy"
-              decoding="async"
               onError={(e) => {
                 e.currentTarget.src = fallbackImage;
               }}
             />
-            {secondarySrc && (
-              <img
-                src={secondarySrc}
-                className="product-card-image secondary-img"
-                alt={product?.name || "Product secondary image"}
-                loading="lazy"
-                decoding="async"
-              />
-            )}
-
-            <button
-              type="button"
-              className={`product-card-wishlist ${isWishlisted ? "active" : ""}`}
-              onClick={handleWishlist}
-              aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
-            >
-              {isWishlisted ? <FaHeart /> : <FaRegHeart />}
-            </button>
-
-            {pricingMeta.hasDiscount ? (
-              <span className="product-card-badge product-card-badge-discount">
-                -{pricingMeta.discountPercent}% OFF
+            {pricingMeta.hasDiscount && (
+              <span className="absolute bottom-0 left-0 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-md z-10 shadow-sm">
+                {pricingMeta.discountPercent}% OFF
               </span>
-            ) : null}
+            )}
           </div>
 
-          <div className="product-card-body pb-5">
-            <h6 className="product-card-title">{product.name}</h6>
-
-            <div className="product-card-rating">
-              {reviewCount > 0 ? (
-                <>
-                  <div className="product-card-stars" aria-label={`Rating ${rating.toFixed(1)} out of 5`}>
-                    {renderStars()}
+          <div className="flex-grow flex flex-col justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <span className="bg-blue-600 text-white px-3 py-[3px] rounded-full text-[9px] font-bold tracking-wider whitespace-nowrap">NEW ARRIVAL</span>
+                <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest whitespace-nowrap">PREMIUM QUALITY</span>
+              </div>
+              <h3 className="text-[18px] font-bold text-gray-900 leading-[1.3] line-clamp-2 h-[48px]" title={product.name}>
+                {product.name}
+              </h3>
+              
+              <div className="mt-1 mb-2 hidden md:block">
+                {reviewCount > 0 ? (
+                  <div className="flex items-center gap-1">
+                    <div className="flex text-yellow-400 text-[10px]">
+                      {renderStars()}
+                    </div>
+                    <span className="text-[10px] text-gray-400 font-bold">({reviewCount})</span>
                   </div>
-                </>
-              ) : (
-                <div className="d-flex align-items-center gap-2">
-                  <span className="product-card-badge-new">New</span>
-                  <span className="product-card-cod-badge">COD Available</span>
-                </div>
-              )}
+                ) : null}
+              </div>
             </div>
 
-            <div className="product-card-price-row mt-2">
-              <span className="product-card-price" style={{ fontSize: "20px", fontWeight: "bold", color: "var(--page-text)" }}>₹{pricingMeta.salePrice.toLocaleString("en-IN")}</span>
-              {pricingMeta.hasDiscount && (
-                <span className="product-card-compare text-muted text-decoration-line-through">₹{pricingMeta.compareAtPrice.toLocaleString("en-IN")}</span>
-              )}
-            </div>
-            
-            <div className="product-card-actions-hover">
+            <div className="flex flex-col mt-auto shrink-0">
+              <div className="flex items-baseline gap-2 mb-4">
+                <span className="text-[22px] font-black text-gray-900">₹{pricingMeta.salePrice.toLocaleString("en-IN")}</span>
+                {pricingMeta.hasDiscount && (
+                  <span className="text-[12px] text-gray-400 line-through font-medium">₹{pricingMeta.compareAtPrice.toLocaleString("en-IN")}</span>
+                )}
+              </div>
+              
               <button
-                className="btn btn-cart-action product-card-btn"
+                className="w-full h-[52px] rounded-[14px] bg-[#0a192f] text-white font-bold text-[13px] tracking-wide flex items-center justify-center gap-2 hover:bg-black hover:shadow-lg active:scale-95 transition-all duration-300"
                 onClick={(e) => {
                   e.preventDefault();
                   if (!ensureLoggedIn({ user, navigate, location, message: "Please login to add to cart" })) return;
                   addToCart(product);
                 }}
               >
-                <FaShoppingCart className="me-2" /> Add to Cart
+                <FaShoppingCart size={16} /> ADD TO CART
               </button>
             </div>
           </div>
+
         </div>
       </Link>
     </div>

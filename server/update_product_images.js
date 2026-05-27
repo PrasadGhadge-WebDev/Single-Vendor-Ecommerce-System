@@ -1,50 +1,58 @@
 const mongoose = require("mongoose");
-const path = require("path");
-require("dotenv").config({ path: path.join(__dirname, ".env") });
-
 const Product = require("./models/Product");
+require("dotenv").config();
 
-const updates = [
-  { name: /iPhone 15 Pro Max/i, image: "iphone_premium.png" },
-  { name: /Dell XPS 13/i, image: "dell_premium.png" },
-  { name: /Casual Hoodie/i, image: "hoodie_premium.png" },
-  { name: /MacBook Pro M3/i, image: "macbook_premium.png" },
-  { name: /Samsung Galaxy S24 Ultra/i, image: "s24_premium.png" },
-  { name: /Denim Jacket/i, image: "jacket_premium.png" },
-  { name: /Gaming T-Shirt/i, image: "tshirt_premium.png" },
-  { name: /Summer Dress/i, image: "dress_premium.png" },
-  // Generic fallbacks for other electronics/clothing
-  { category: /Electronics/i, image: "iphone_premium.png", condition: (p) => !p.image || p.image.includes("s10") },
-  { category: /Clothing/i, image: "hoodie_premium.png", condition: (p) => !p.image || p.image.includes("Clothing") },
-];
+const MONGO_URI = process.env.MONGO_URL || "mongodb://127.0.0.1:27017/singlevendor";
 
-const updateProducts = async () => {
+const updateImages = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URL);
-    const products = await Product.find({});
-    
-    for (const p of products) {
-      for (const update of updates) {
-        if (update.name && update.name.test(p.name)) {
-          p.image = update.image;
-          break;
-        }
-        if (update.category && update.category.test(p.category)) {
-          if (update.condition && update.condition(p)) {
-            p.image = update.image;
-            break;
-          }
-        }
+    await mongoose.connect(MONGO_URI);
+    console.log("Connected to MongoDB");
+
+    const products = await Product.find();
+    console.log(`Found ${products.length} products`);
+
+    const medicalImages = [
+      "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1631549916768-4119b2e55916?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1607619056574-7b8d3ee536b2?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1471864190281-ad5f9f8162e6?q=80&w=1000&auto=format&fit=crop"
+    ];
+
+    const techImages = [
+      "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1546054454-aa26e2b734c7?q=80&w=1000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop"
+    ];
+
+    for (let i = 0; i < products.length; i++) {
+      const p = products[i];
+      let pool = techImages;
+      
+      if (p.category?.toLowerCase().includes("med") || p.category?.toLowerCase().includes("health") || p.name?.toLowerCase().includes("med")) {
+        pool = medicalImages;
       }
-      await p.save();
+
+      // Shuffle and take 3
+      const shuffled = [...pool].sort(() => 0.5 - Math.random());
+      const selected = shuffled.slice(0, 3);
+
+      await Product.findByIdAndUpdate(p._id, {
+        image: selected[0],
+        images: selected
+      });
+      console.log(`Updated images for: ${p.name}`);
     }
-    
-    console.log("✅ Successfully updated product images.");
+
+    console.log("All products updated successfully");
     process.exit(0);
   } catch (err) {
-    console.error(err);
+    console.error("Migration error:", err);
     process.exit(1);
   }
 };
 
-updateProducts();
+updateImages();

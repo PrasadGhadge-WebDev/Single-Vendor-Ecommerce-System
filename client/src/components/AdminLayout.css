@@ -160,34 +160,50 @@
   align-items: center;
   gap: 14px;
   width: 100%;
-  padding: 13px 16px;
+  padding: 10px 16px;
   border-radius: 16px;
-  border: none;
   background: color-mix(in srgb, var(--surface-1) 85%, transparent);
   color: var(--page-text);
-  font-size: 0.98rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 700;
   cursor: pointer;
   text-decoration: none;
-  transition: all 0.25s ease;
-  border: 1px solid transparent;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  position: relative;
+  overflow: hidden;
 }
 
 /* Hover Effect */
 .sidebar a:hover,
 .sidebar button.sidebar-btn:hover {
-  background: color-mix(in srgb, var(--accent-color) 14%, var(--surface-1));
+  background: color-mix(in srgb, var(--accent-color) 12%, var(--surface-1));
   color: var(--page-text);
-  transform: translateX(3px);
+  transform: translateX(4px);
   border-color: color-mix(in srgb, var(--accent-color) 24%, transparent);
+}
+
+.sidebar a:hover svg,
+.sidebar button.sidebar-btn:hover svg {
+  transform: scale(1.25) translateY(-1px);
+  color: var(--accent-color);
 }
 
 /* Active Link */
 .sidebar a.active-link {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-color) 82%, #2563eb), color-mix(in srgb, var(--accent-color) 68%, #60a5fa));
-  color: #ffffff;
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--accent-color) 28%, transparent);
-  border-color: color-mix(in srgb, #ffffff 22%, transparent);
+  background: linear-gradient(135deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 80%, #60a5fa));
+  color: #ffffff !important;
+  box-shadow: 
+    0 10px 25px color-mix(in srgb, var(--accent-color) 40%, transparent),
+    inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  border: 1px solid color-mix(in srgb, #ffffff 20%, transparent);
+  border-left: 5px solid #ffffff;
+  padding-left: 11px;
+}
+
+.sidebar a.active-link svg {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  transform: scale(1.1);
 }
 
 /* Logout Button Special */
@@ -204,8 +220,9 @@
 
 /* Icons */
 .sidebar svg {
-  min-width: 22px;
-  min-height: 22px;
+  min-width: 20px;
+  min-height: 20px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Collapse Hide Text */
@@ -238,13 +255,17 @@
   backdrop-filter: blur(10px);
   padding: 14px 25px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-  border-bottom: 1px solid var(--admin-header-border);
+  border-bottom: 1.5px solid rgba(0, 0, 0, 0.15);
+  position: relative;
+  z-index: 20;
 }
 
 .admin-header-right {
   display: flex;
   align-items: center;
   gap: 12px;
+  position: relative;
+  z-index: 21;
 }
 
 .toggle-btn {
@@ -272,7 +293,7 @@
   border-radius: 10px;
   padding: 6px 8px;
   background: var(--surface-1);
-  border: 1px solid var(--border-color);
+  border: 1px solid rgba(0, 0, 0, 0.12);
 }
 
 .profile-area span {
@@ -292,11 +313,40 @@
   background: var(--surface-3);
 }
 
+.admin-header .dropdown-menu {
+  z-index: 1100;
+  min-width: 180px;
+  margin-top: 8px;
+  padding: 6px;
+  background: var(--surface-1);
+  border: 1px solid var(--border-color) !important;
+}
+
+.admin-header .dropdown-item {
+  border-radius: 8px;
+  color: var(--page-text);
+}
+
+.admin-header .dropdown-item:hover,
+.admin-header .dropdown-item:focus {
+  background: var(--surface-3);
+  color: var(--page-text);
+}
+
+.admin-header .dropdown-item.text-danger {
+  color: #dc3545 !important;
+}
+
+.admin-header .dropdown-item.text-danger:hover,
+.admin-header .dropdown-item.text-danger:focus {
+  color: #dc3545 !important;
+}
+
 .admin-theme-btn {
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  border: 1px solid var(--border-color);
+  border: 1px solid rgba(0, 0, 0, 0.12);
   background: var(--surface-1);
   color: var(--page-text);
   display: inline-flex;
@@ -321,6 +371,8 @@
   overflow-y: auto;
   background: var(--admin-content-bg);
   color: var(--page-text);
+  position: relative;
+  z-index: 1;
 }
 
 /* Scrollbar */
@@ -340,7 +392,7 @@
 .modern-btn {
   padding: 8px 18px;
   border-radius: 10px;
-  border: none;
+  border: 1.5px solid rgba(0, 0, 0, 0.25);
   background: linear-gradient(90deg, #2563eb, #3b82f6);
   color: #fff;
   font-weight: 500;
@@ -370,4 +422,71 @@
   .sidebar.collapsed {
     width: 280px;
   }
+}
+
+/* =========================
+   GLOBAL FORM STYLES
+========================= */
+
+.content-area label {
+  display: block;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
+  color: var(--page-text);
+  opacity: 0.85;
+}
+
+.content-area input:not([type="checkbox"]):not([type="radio"]), 
+.content-area select, 
+.content-area textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background-color: var(--surface-1);
+  color: var(--page-text);
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  outline: none;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.content-area input:focus, 
+.content-area select:focus, 
+.content-area textarea:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-color) 15%, transparent);
+}
+
+.content-area .card {
+  background-color: var(--surface-1);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  box-shadow: 0 10px 30px var(--shadow-color);
+}
+
+.content-area h3, .content-area h5 {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--page-text);
+}
+
+/* Specific button modernization */
+.content-area .btn {
+  border-radius: 12px;
+  padding: 8px 20px;
+  font-weight: 700;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.content-area .btn:active {
+  transform: scale(0.96);
 }

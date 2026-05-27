@@ -24,7 +24,7 @@ const Footer = () => {
   const contactAddress = settings?.address || "";
 
   return (
-    <footer className="footer-premium">
+    <footer className="footer-compact">
       <div className="container">
         <div className="row g-5 footer-top">
           {/* Column 1: Brand */}
@@ -49,7 +49,7 @@ const Footer = () => {
               <li><Link to="/shop">Shop All</Link></li>
               <li><Link to="/about">About Us</Link></li>
               <li><Link to="/contact">Contact</Link></li>
-              <li><Link to="/faq">FAQ</Link></li>
+
             </ul>
           </div>
 
@@ -67,9 +67,9 @@ const Footer = () => {
           <div className="col-lg-3 col-md-6">
             <h6 className="footer-heading">Contact Us</h6>
             <ul className="footer-contact list-unstyled">
-              <li><FaEnvelope className="me-2" /> {contactEmail || "support@store.com"}</li>
-              <li><FaPhoneAlt className="me-2" /> {contactPhone || "+1 (800) 123-4567"}</li>
-              <li><FaMapMarkerAlt className="me-2" /> {contactAddress || "Global Delivery"}</li>
+              {contactEmail && <li><FaEnvelope className="me-2" /> {contactEmail}</li>}
+              {contactPhone && <li><FaPhoneAlt className="me-2" /> {contactPhone}</li>}
+              {contactAddress && <li><FaMapMarkerAlt className="me-2" /> {contactAddress}</li>}
             </ul>
             <div className="footer-payments mt-4">
               <FaCcVisa className="payment-icon" />
@@ -83,14 +83,12 @@ const Footer = () => {
           <div className="footer-copyright">
             © {new Date().getFullYear()} {storeTitle}. All rights reserved.
           </div>
-          <div className="footer-badge">
-            <FaAward className="me-2 text-warning" />
-            1,20,000+ Happy Customers
-          </div>
         </div>
       </div>
     </footer>
   );
 };
+
+
 
 export default Footer;

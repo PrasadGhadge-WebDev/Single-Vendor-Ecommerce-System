@@ -39,7 +39,7 @@ exports.getSuppliers = async (req, res) => {
       filter.isActive = String(isActive).toLowerCase() === "true";
     }
 
-    const suppliers = await Supplier.find(filter).sort({ createdAt: -1 });
+    const suppliers = await Supplier.find(filter).sort({ createdAt: -1 }).lean();
     res.status(200).json(suppliers);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -48,7 +48,7 @@ exports.getSuppliers = async (req, res) => {
 
 exports.getSupplierById = async (req, res) => {
   try {
-    const supplier = await Supplier.findById(req.params.id);
+    const supplier = await Supplier.findById(req.params.id).lean();
     if (!supplier) return res.status(404).json({ message: "Supplier not found" });
     res.status(200).json(supplier);
   } catch (error) {
@@ -191,7 +191,8 @@ exports.getPurchases = async (req, res) => {
     const purchases = await Purchase.find(filter)
       .sort({ purchaseDate: -1, createdAt: -1 })
       .populate("supplier", "name company email")
-      .populate("product", "name category price");
+      .populate("product", "name category price")
+      .lean();
 
     res.status(200).json(purchases);
   } catch (error) {
@@ -204,7 +205,7 @@ exports.getSupplierProducts = async (req, res) => {
     const supplier = await Supplier.findById(req.params.id);
     if (!supplier) return res.status(404).json({ message: "Supplier not found" });
 
-    const products = await Product.find({ supplier: req.params.id }).sort({ updatedAt: -1 });
+    const products = await Product.find({ supplier: req.params.id }).sort({ updatedAt: -1 }).lean();
     res.status(200).json(products);
   } catch (error) {
     res.status(500).json({ message: error.message });

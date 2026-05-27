@@ -4,6 +4,8 @@ import { useNavigate, Link } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import "./Register.css";
 import { toast } from "react-toastify";
+import { FaTimes } from "react-icons/fa";
+import { isValidEmail, isValidName, isValidPassword, isValidPhone, normalizeDigits } from "../utils/validation";
 
 const Register = () => {
   const [step, setStep] = useState(1); // 1: Full Form, 2: OTP
@@ -28,29 +30,39 @@ const Register = () => {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+    if (error) setError("");
   };
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
     const { name, email, password, confirmPassword, phone, termsAccepted } = formData;
+    const trimmedName = String(name || "").trim();
+    const trimmedEmail = String(email || "").trim();
+    const trimmedPhone = normalizeDigits(phone);
 
-    if (!name || !email || !password || !phone) {
-      return toast.error("Please fill all required fields");
+    if (!isValidName(trimmedName)) {
+      return setError("Enter a valid name with at least 3 letters and no numbers");
+    }
+    if (!isValidEmail(trimmedEmail)) {
+      return setError("Please enter a valid email address");
+    }
+    if (!isValidPassword(password)) {
+      return setError("Password must be at least 6 characters");
     }
     if (password !== confirmPassword) {
-      return toast.error("Passwords do not match");
+      return setError("Passwords do not match");
     }
-    if (phone.length !== 10) {
-      return toast.error("Mobile number must be 10 digits");
+    if (!isValidPhone(trimmedPhone)) {
+      return setError("Please enter a valid 10-digit mobile number");
     }
     if (!termsAccepted) {
-      return toast.error("Please accept Terms & Conditions");
+      return setError("Please accept Terms & Conditions");
     }
 
     setLoading(true);
     setError("");
     try {
-      await API.post("/auth/send-otp", { phone, email });
+      await API.post("/auth/send-otp", { phone: trimmedPhone, email: trimmedEmail });
       toast.info("OTP sent to your mobile (use 123456)");
       setStep(2);
     } catch (err) {
@@ -62,7 +74,9 @@ const Register = () => {
 
   const handleFinalSubmit = async (e) => {
     e.preventDefault();
-    if (!otp) return toast.error("Please enter OTP");
+    if (!/^[0-9]{6}$/.test(otp)) {
+      return setError("Please enter a valid 6-digit OTP");
+    }
 
     setLoading(true);
     setError("");
@@ -94,90 +108,87 @@ const Register = () => {
 
   return (
     <div className="register-wrapper">
-      <div className="background-bubbles">
-        {[...Array(10)].map((_, i) => (
-          <span key={i} className={`bubble bubble-${i}`}></span>
-        ))}
-      </div>
-
       <div className="register-card">
+        <button className="close-btn" onClick={() => navigate("/login")}>
+          <FaTimes />
+        </button>
+
         <div className="logo-section">
           <h2>ElectroHub</h2>
-          <p className="sub-text">
+          <span className="sub-text">
             {step === 1 ? "Create your account" : "Verify Mobile Number"}
-          </p>
+          </span>
         </div>
 
-        {error && <div className="alert">{error}</div>}
+        {error && <div className="alert-box">{error}</div>}
 
         {step === 1 ? (
-          <form onSubmit={handleSendOtp} className="registration-form">
+          <form onSubmit={handleSendOtp} className="registration-form" autoComplete="off">
             <div className="input-row">
-              <div className="input-group">
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  required
-                  placeholder=" "
-                />
-                <label>Full Name</label>
-              </div>
+              <label>Full Name</label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value.replace(/[0-9]/g, "") })}
+                required
+                placeholder="Enter your full name"
+                autoComplete="off"
+              />
             </div>
 
             <div className="input-row">
-              <div className="input-group">
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  required
-                  placeholder=" "
-                />
-                <label>Email Address</label>
-              </div>
+              <label>Email Address</label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                required
+                placeholder="Enter your email"
+                autoComplete="off"
+              />
             </div>
 
             <div className="input-row split">
-              <div className="input-group">
+              <div>
+                <label>Password</label>
                 <input
                   type="password"
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
                   required
-                  placeholder=" "
+                  placeholder="Password"
+                  autoComplete="new-password"
                 />
-                <label>Password</label>
               </div>
-              <div className="input-group">
+              <div>
+                <label>Confirm</label>
                 <input
                   type="password"
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
                   required
-                  placeholder=" "
+                  placeholder="Confirm"
+                  autoComplete="new-password"
                 />
-                <label>Confirm</label>
               </div>
             </div>
 
             <div className="input-row">
-              <div className="input-group">
-                <input
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/\D/g, "")})}
-                  required
-                  placeholder=" "
-                  maxLength="10"
-                />
-                <label>Mobile Number</label>
-              </div>
+              <label>Mobile Number</label>
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: normalizeDigits(e.target.value).slice(0, 10) })}
+                required
+                placeholder="10-digit number"
+                maxLength="10"
+                autoComplete="off"
+              />
             </div>
 
             <div className="terms-checkbox">
@@ -202,20 +213,21 @@ const Register = () => {
             </div>
           </form>
         ) : (
-          <form onSubmit={handleFinalSubmit}>
+          <form onSubmit={handleFinalSubmit} className="registration-form">
             <div className="otp-info">
               OTP sent to <strong>+91 {formData.phone}</strong>
             </div>
-            <div className="input-group">
+            <div className="input-row">
+              <label>Enter 6-digit OTP</label>
               <input
                 type="text"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
                 required
-                placeholder=" "
+                placeholder="6-digit code"
                 maxLength="6"
+                autoComplete="off"
               />
-              <label>Enter 6-digit OTP</label>
               <div className="resend-link" onClick={() => setStep(1)}>
                 Change Details?
               </div>
@@ -225,10 +237,6 @@ const Register = () => {
             </button>
           </form>
         )}
-
-        <div className="register-footer">
-          <small>© {new Date().getFullYear()} ElectroHub Store</small>
-        </div>
       </div>
     </div>
   );

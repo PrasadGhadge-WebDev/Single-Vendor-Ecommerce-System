@@ -1,9 +1,13 @@
-import React from "react";
-import { FaPhoneAlt, FaEnvelope, FaTruck, FaQuestionCircle, FaGift, FaGlobe } from "react-icons/fa";
+import React, { useContext } from "react";
+import { Link } from "react-router-dom";
+import { FaPhoneAlt, FaEnvelope, FaTruck, FaGift, FaGlobe, FaBoxOpen } from "react-icons/fa";
+import { AuthContext } from "../context/AuthContext";
 
 const Topbar = () => {
+  const { user } = useContext(AuthContext);
+
   return (
-    <div className="hidden md:block bg-dark text-white py-2">
+    <div className="hidden md:block bg-dark text-white py-1">
       <div className="container mx-auto px-4 flex justify-between items-center text-xs font-medium">
         {/* Left Side: Contact Info */}
         <div className="flex items-center gap-6">
@@ -19,19 +23,17 @@ const Topbar = () => {
 
         {/* Right Side: Navigation Links */}
         <div className="flex items-center gap-6">
-          <a href="/track" className="flex items-center gap-1.5 hover:text-secondary transition-all transform hover:scale-105">
+          <Link to="/shop" className="flex items-center gap-1.5 hover:text-secondary transition-all transform hover:scale-105">
             <FaTruck /> Track Order
-          </a>
-          <a href="/help" className="flex items-center gap-1.5 hover:text-secondary transition-all transform hover:scale-105">
-            <FaQuestionCircle /> Help
-          </a>
-          <a href="/offers" className="flex items-center gap-1.5 hover:text-secondary transition-all transform hover:scale-105">
+          </Link>
+
+          <Link to="/offers" className="flex items-center gap-1.5 hover:text-secondary transition-all transform hover:scale-105">
             <FaGift /> Offers
-          </a>
-          <div className="flex items-center gap-1.5 cursor-pointer hover:text-secondary transition-all transform hover:scale-105 group">
+          </Link>
+          <div className="flex items-center gap-1.5 cursor-pointer hover:text-secondary transition-all transform hover:scale-105 group relative">
             <FaGlobe />
             <span>Language (EN)</span>
-            <div className="hidden group-hover:block absolute top-full right-0 bg-white text-dark shadow-xl rounded-md p-2 min-w-[100px] z-50">
+            <div className="hidden group-hover:block absolute top-full right-0 bg-white text-dark shadow-xl rounded-md p-2 min-w-[100px] z-[1100]">
                <div className="hover:bg-gray-100 p-1 px-2 rounded">English</div>
                <div className="hover:bg-gray-100 p-1 px-2 rounded">Hindi</div>
             </div>

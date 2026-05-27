@@ -3,3 +3,21 @@
   margin: 0;
   padding: 0;
 }
+
+/* Add margin-top to prevent content from going behind fixed navbar */
+.global-page-frame {
+  margin-top: 115px;
+}
+
+/* Adjust spacing for smaller screens */
+@media (max-width: 768px) {
+  .global-page-frame {
+    margin-top: 100px;
+  }
+}
+
+@media (max-width: 480px) {
+  .global-page-frame {
+    margin-top: 85px;
+  }
+}

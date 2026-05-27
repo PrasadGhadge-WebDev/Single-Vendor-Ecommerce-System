@@ -35,6 +35,11 @@ const AdminLayout = () => {
   React.useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     document.body.setAttribute("data-bs-theme", theme);
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
     localStorage.setItem("theme", theme);
   }, [theme]);
 
@@ -120,6 +125,18 @@ const AdminLayout = () => {
               </NavLink>
             </li>
 
+            {/* Orders */}
+            <li>
+              <NavLink
+                to="/admin/orders"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+                title="Orders"
+              >
+                <FaShoppingCart />
+                {!collapsed && <span>Orders</span>}
+              </NavLink>
+            </li>
+
             {/* Categories */}
             <li>
               <NavLink
@@ -192,18 +209,6 @@ const AdminLayout = () => {
               </NavLink>
             </li>
 
-            {/* Business Settings */}
-            <li>
-              <NavLink
-                to="/admin/business-settings"
-                className={({ isActive }) => (isActive ? "active-link" : "")}
-                title="Business Settings"
-              >
-                <FaCog />
-                {!collapsed && <span>Business Settings</span>}
-              </NavLink>
-            </li>
-
             {/* Payments */}
             <li>
               <NavLink
@@ -227,17 +232,6 @@ const AdminLayout = () => {
               </NavLink>
             </li>
 
-            {/* Orders */}
-            <li>
-              <NavLink
-                to="/admin/orders"
-                className={({ isActive }) => (isActive ? "active-link" : "")}
-                title="Orders"
-              >
-                <FaShoppingCart />
-                {!collapsed && <span>Orders</span>}
-              </NavLink>
-            </li>
           </ul>
         </div>
 

@@ -1,9 +1,37 @@
 const User = require("../models/User");
+const Order = require("../models/Order");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
 exports.getAllUsers = async (req, res) => {
-  const users = await User.find().select("-password");
-  res.json(users);
+  try {
+    const users = await User.find().select("-password").lean();
+    
+    // Aggregate orders for all users to get real-time metrics
+    const ordersData = await Order.aggregate([
+      {
+        $group: {
+          _id: "$user",
+          ordersCount: { $sum: 1 },
+          totalSpent: { $sum: "$totalAmount" }
+        }
+      }
+    ]);
+
+    // Map the aggregated data back to the user list
+    const usersWithStats = users.map(user => {
+      const stats = ordersData.find(o => o._id && o._id.toString() === user._id.toString());
+      return {
+        ...user,
+        ordersCount: stats ? stats.ordersCount : 0,
+        totalSpent: stats ? stats.totalSpent : 0
+      };
+    });
+
+    res.json(usersWithStats);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
 exports.getMyProfile = async (req, res) => {
@@ -119,6 +147,51 @@ exports.createUser = async (req, res) => {
       isAdmin: user.isAdmin,
       isSuperAdmin: user.isSuperAdmin,
     });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.toggleBlockUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isBlocked } = req.body;
+    const targetUser = await User.findById(id);
+    if (!targetUser) return res.status(404).json({ message: "User not found" });
+    if (targetUser.isSuperAdmin) return res.status(403).json({ message: "Cannot block super admin" });
+    
+    targetUser.isBlocked = isBlocked;
+    await targetUser.save();
+    res.json({ message: `User ${isBlocked ? 'blocked' : 'unblocked'} successfully` });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const targetUser = await User.findById(id);
+    if (!targetUser) return res.status(404).json({ message: "User not found" });
+    
+    const tempPassword = Math.random().toString(36).slice(-8);
+    targetUser.password = await bcrypt.hash(tempPassword, 10);
+    await targetUser.save();
+    
+    res.json({ message: `Password reset successfully. Temporary password: ${tempPassword}` });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.impersonateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const targetUser = await User.findById(id);
+    if (!targetUser) return res.status(404).json({ message: "User not found" });
+    
+    const token = jwt.sign({ id: targetUser._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    res.json({ token });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -1,44 +1,32 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { FaEdit, FaPlus, FaStar, FaTrash } from "react-icons/fa";
+import { FaEdit, FaPlus, FaStar, FaTrash, FaSearch, FaChevronDown, FaSync, FaCommentAlt, FaBoxOpen, FaUser, FaClock, FaCheckCircle } from "react-icons/fa";
 import API from "../../api";
 import { toast } from "react-toastify";
 import Pagination from "../../components/Pagination";
-import "./ManageReviews.css";
 import { AuthContext } from "../../context/AuthContext";
+import ConfirmModal from "../../components/ConfirmModal";
 
 const REVIEWS_PER_PAGE = 12;
-
 const starValues = [1, 2, 3, 4, 5];
-const initialForm = {
-  productId: "",
-  rating: 5,
-  title: "",
-  comment: "",
-};
 
 const ManageReviews = () => {
+  const { user } = useContext(AuthContext);
   const [reviews, setReviews] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [updating, setUpdating] = useState(false);
   const [averageRating, setAverageRating] = useState(0);
   const [totalReviews, setTotalReviews] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [reviewPage, setReviewPage] = useState(1);
   const [filters, setFilters] = useState({ productId: "", search: "", rating: 0 });
-  const [form, setForm] = useState(initialForm);
   const [editingId, setEditingId] = useState(null);
   const [editPayload, setEditPayload] = useState({ rating: 5, title: "", comment: "" });
-  const [productSearchTerm, setProductSearchTerm] = useState("");
-  const [filterProductSearchTerm, setFilterProductSearchTerm] = useState("");
-  const [showAddForm, setShowAddForm] = useState(false);
-  const { user } = useContext(AuthContext);
-  const canAddReview = Boolean(user?.isAdmin || user?.isSuperAdmin);
+  const [updating, setUpdating] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState({ isOpen: false, reviewId: null });
 
   const fetchProducts = async () => {
     try {
-      const { data } = await API.get("/products?limit=500&sortBy=createdAt&order=desc");
+      const { data } = await API.get("/products?limit=500");
       const list = Array.isArray(data) ? data : data?.products || [];
       setProducts(Array.isArray(list) ? list : []);
     } catch (error) {
@@ -47,9 +35,9 @@ const ManageReviews = () => {
     }
   };
 
-  const fetchReviews = useCallback(async () => {
+  const fetchReviews = useCallback(async (showLoader = true) => {
     try {
-      setLoading(true);
+      if (showLoader) setLoading(true);
       const params = {
         page: reviewPage,
         limit: REVIEWS_PER_PAGE,
@@ -65,166 +53,51 @@ const ManageReviews = () => {
       setAverageRating(data.averageRating || 0);
     } catch (error) {
       console.error("Failed to load reviews", error);
-      toast.error(error.response?.data?.message || "Failed to load reviews");
     } finally {
-      setLoading(false);
+      if (showLoader) setLoading(false);
     }
-  }, [filters.productId, filters.search, filters.rating, reviewPage]);
+  }, [filters, reviewPage]);
 
   useEffect(() => {
     fetchProducts();
   }, []);
 
   useEffect(() => {
-    setReviewPage(1);
-  }, [filters.productId, filters.search, filters.rating]);
-
-  useEffect(() => {
     fetchReviews();
   }, [fetchReviews]);
 
-  useEffect(() => {
-    const selected = products.find((product) => product._id === form.productId);
-    setProductSearchTerm(selected?.name || "");
-  }, [form.productId, products]);
-
-  useEffect(() => {
-    if (!filters.productId) {
-      setFilterProductSearchTerm("");
-      return;
-    }
-    const selected = products.find((product) => product._id === filters.productId);
-    setFilterProductSearchTerm(selected?.name || "");
-  }, [filters.productId, products]);
-
-  const handleFilterChange = (field, value) => {
-    setFilters((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleFormChange = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const ratingButtonStyle = {
-    border: "none",
-    background: "transparent",
-    padding: 0,
-    cursor: "pointer",
-    lineHeight: 1,
-  };
-
-  const renderRatingPicker = (value, onChange) => (
-    <div className="d-flex gap-1" role="radiogroup" aria-label="Rating">
-      {starValues.map((star) => (
-        <button
-          key={`star-${star}-${value}`}
-          type="button"
-          className="p-0"
-          style={ratingButtonStyle}
-          aria-pressed={star === value}
-          aria-label={`${star} star${star > 1 ? "s" : ""}`}
-          onClick={() => onChange(star)}
-        >
-          <FaStar className={`fs-5 ${star <= value ? "text-warning" : "text-muted"}`} />
-        </button>
-      ))}
-    </div>
-  );
-
-  const renderStars = (value, options = {}) => {
-    const { interactive = false, onClick } = options;
-    const rounded = Math.min(5, Math.max(0, Math.round(value || 0)));
-    return Array.from({ length: 5 }, (_, index) => {
-      const starValue = index + 1;
-      const filled = starValue <= rounded;
-
-      if (interactive) {
-        return (
-          <button
-            key={`interactive-star-${starValue}`}
-            type="button"
-            className="btn btn-sm btn-link p-0 text-decoration-none text-reset"
-            aria-label={`${starValue} star${starValue > 1 ? "s" : ""}`}
-            onClick={() => onClick?.(starValue)}
-          >
-            <FaStar className={`me-1 ${filled ? "text-warning" : "text-muted"}`} />
-          </button>
-        );
-      }
-
-      return (
-        <FaStar key={`star-${starValue}`} className={`me-1 ${filled ? "text-warning" : "text-muted"}`} />
-      );
-    });
-  };
-
-  const findProductByName = (label) => {
-    const normalized = String(label || "").trim().toLowerCase();
-    if (!normalized) return null;
-    return products.find((product) => String(product.name || "").trim().toLowerCase() === normalized) || null;
-  };
-
-  const handleProductSearchInput = (value) => {
-    setProductSearchTerm(value);
-    const matched = findProductByName(value);
-    setForm((prev) => ({ ...prev, productId: matched?._id || "" }));
-  };
-
-  const handleFilterProductSearchInput = (value) => {
-    setFilterProductSearchTerm(value);
-    const matched = findProductByName(value);
-    handleFilterChange("productId", matched?._id || "");
-  };
-
-  const productSuggestions = useMemo(() => {
-    const term = filterProductSearchTerm.trim().toLowerCase();
-    if (!term) {
-      return [];
-    }
-    return products.filter((product) => String(product.name || "").toLowerCase().includes(term)).slice(0, 5);
-  }, [filterProductSearchTerm, products]);
-
-  const handleFilterProductDropdownSelect = (product) => {
-    if (!product) return;
-    handleFilterChange("productId", product._id);
-    setFilterProductSearchTerm(product.name || "");
-  };
-
-  const handleRatingFilterChange = (value) => {
-    setFilters((prev) => {
-      const nextValue = prev.rating === value ? 0 : value;
-      return nextValue === prev.rating ? prev : { ...prev, rating: nextValue };
-    });
-  };
-
-  const clearRatingFilter = () => {
-    setFilters((prev) => ({ ...prev, rating: 0 }));
-  };
-
-  const handleAddReview = async (event) => {
-    event.preventDefault();
-    if (!form.productId || !form.rating) {
-      toast.warning("Product and rating are required");
-      return;
-    }
-
+  const handleUpdateReview = async (id) => {
     try {
-      setSaving(true);
-      await API.post("/reviews", {
-        productId: form.productId,
-        rating: Number(form.rating),
-        title: form.title.trim(),
-        comment: form.comment.trim(),
+      setUpdating(true);
+      await API.put(`/reviews/${id}`, {
+        rating: Number(editPayload.rating),
+        title: editPayload.title.trim(),
+        comment: editPayload.comment.trim(),
       });
-      toast.success("Review created");
-      setForm(initialForm);
-      setReviewPage(1);
-      fetchReviews();
-      fetchProducts();
+      toast.success("Review updated");
+      setEditingId(null);
+      fetchReviews(false);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to add review");
+      toast.error(error.response?.data?.message || "Update failed");
     } finally {
-      setSaving(false);
+      setUpdating(false);
+    }
+  };
+
+  const handleDeleteReview = (id) => {
+    setConfirmConfig({ isOpen: true, reviewId: id });
+  };
+
+  const handleConfirmDeleteReview = async () => {
+    const id = confirmConfig.reviewId;
+    if (!id) return;
+    
+    try {
+      await API.delete(`/reviews/${id}`);
+      toast.success("Review deleted");
+      fetchReviews(false);
+    } catch (error) {
+      toast.error("Delete failed");
     }
   };
 
@@ -237,350 +110,230 @@ const ManageReviews = () => {
     });
   };
 
-  const handleEditChange = (field, value) => {
-    setEditPayload((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleUpdateReview = async (id) => {
-    if (!editPayload.rating) {
-      toast.warning("Rating is required");
-      return;
-    }
-    try {
-      setUpdating(true);
-      await API.put(`/reviews/${id}`, {
-        rating: Number(editPayload.rating),
-        title: editPayload.title.trim(),
-        comment: editPayload.comment.trim(),
-      });
-      toast.success("Review updated");
-      setEditingId(null);
-      fetchReviews();
-      fetchProducts();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to update review");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleDeleteReview = async (id) => {
-    if (!window.confirm("Delete this review?")) return;
-    try {
-      await API.delete(`/reviews/${id}`);
-      toast.success("Review deleted");
-      if (reviews.length === 1 && reviewPage > 1) {
-        setReviewPage((prev) => Math.max(1, prev - 1));
-      } else {
-        fetchReviews();
-      }
-      fetchProducts();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to delete review");
-    }
-  };
-
-  const selectedProduct = useMemo(() => {
-    return products.find((product) => product._id === filters.productId) || null;
-  }, [filters.productId, products]);
-
-  const globalAverage = useMemo(() => {
-    return averageRating ? averageRating.toFixed(2) : "0.00";
-  }, [averageRating]);
-
-  const ratingDistribution = useMemo(() => {
-    const base = starValues.reduce((acc, value) => {
-      acc[value] = 0;
-      return acc;
-    }, {});
-    reviews.forEach((review) => {
-      const rating = Math.min(5, Math.max(1, Math.round(review.rating || 0)));
-      base[rating] = (base[rating] || 0) + 1;
-    });
-    return base;
-  }, [reviews]);
-
-  const distributionPercent = (star) => {
-    if (!reviews.length) return 0;
-    return Math.round((ratingDistribution[star] / reviews.length) * 100);
-  };
-
-  const formatReviewDate = (value) => (value ? new Date(value).toLocaleString() : "-");
-
-  const filterSummary = `${selectedProduct?.name || "All products"} - ${
-    filters.rating ? `${filters.rating}-star` : "All ratings"
-  } - ${filters.search || "Any keyword"}`;
-
-  useEffect(() => {
-    if (!canAddReview) {
-      setShowAddForm(false);
-    }
-  }, [canAddReview]);
-
   return (
-    <div className="container-fluid py-3 reviews-page">
-
-      <section className="stats-grid mb-4">
-        <div className="stats-card">
-          <div className="label">Overall rating</div>
-          <div className="value">{globalAverage}</div>
-          <div className="text-muted small">{totalReviews} reviews · {selectedProduct?.name || "All products"}</div>
-        </div>
-        <div className="stats-card">
-          <div className="label">Active filters</div>
-          <div className="value">{filters.rating ? `${filters.rating}★` : "All ★"}</div>
-          <div className="text-muted small">{filters.search ? `Keyword: ${filters.search}` : "Keyword filter disabled"}</div>
-        </div>
-        <div className="stats-card">
-          <div className="label">Page snapshot</div>
-          <div className="value">
-            {reviewPage} / {totalPages}
-          </div>
-          <div className="text-muted small">Updated whenever reviews change</div>
-        </div>
-      </section>
-
-      <section className="card-panel card p-3 mb-3">
-        <div className="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
-          <div>
-            <h5 className="mb-1">Review filters</h5>
-            <p className="text-muted mb-0">Slice the data like a modern marketplace dashboard.</p>
-          </div>
-          <div className="badge review-filter-badge px-3 py-2">{filterSummary}</div>
-        </div>
-        <div className="row g-3 align-items-end mt-2">
-          <div className="col-md-4">
-            <label className="form-label mb-1">Product</label>
-            <input
-              className="form-control"
-              placeholder="Search product"
-              value={filterProductSearchTerm}
-              onChange={(e) => handleFilterProductSearchInput(e.target.value)}
-              autoComplete="off"
-            />
-            <div className="suggestion-list mt-2">
-              {filterProductSearchTerm.trim() ? (
-                productSuggestions.map((product) => (
-                  <button
-                    key={`suggestion-${product._id}`}
-                    type="button"
-                    className={`suggestion-pill ${filters.productId === product._id ? "active" : ""}`}
-                    onClick={() => handleFilterProductDropdownSelect(product)}
-                  >
-                    {product.name}
-                  </button>
-                ))
-              ) : (
-                <span className="suggestion-pill empty">Type to see suggestions</span>
-              )}
-              {filterProductSearchTerm.trim() && !productSuggestions.length && (
-                <span className="suggestion-pill empty">No suggestions</span>
-              )}
+    <div className="space-y-6 animate-in fade-in duration-700">
+      {/* V3 Premium Module Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 relative">
+        <div className="relative group">
+          <div className="absolute -left-8 -top-8 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-all duration-700" />
+          <div className="flex items-start gap-4 relative">
+            <div className="w-1.5 h-12 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full shadow-lg shadow-indigo-500/20" />
+            <div>
+              <h1 className="text-4xl font-black tracking-tight flex items-center gap-3" style={{ color: 'var(--page-text)' }}>
+                Reviews
+                <span className="text-[10px] uppercase tracking-[0.3em] font-black px-2 py-1 bg-indigo-500/10 text-indigo-600 rounded-lg ml-2">
+                  Feedback
+                </span>
+              </h1>
+              <p className="text-sm font-bold opacity-40 uppercase tracking-[0.1em] mt-1.5">
+                Customer Sentiment Analysis & Reputation Management Console
+              </p>
             </div>
           </div>
-          <div className="col-md-4">
-            <label className="form-label mb-1">Keyword</label>
-            <input
-              className="form-control"
-              placeholder="Keyword in comment or title"
-              value={filters.search}
-              onChange={(e) => handleFilterChange("search", e.target.value)}
-            />
-            <small className="text-muted">Search comment/title text.</small>
-          </div>
-          <div className="col-md-4">
-            <label className="form-label mb-1">Star rating</label>
-            <div>{renderRatingPicker(filters.rating, handleRatingFilterChange)}</div>
-            <button className="btn btn-sm btn-link p-0" type="button" onClick={clearRatingFilter}>
-              Clear star filter
-            </button>
-          </div>
-        </div>
-        <div className="rating-distribution">
-          <div className="d-flex align-items-center justify-content-between mb-2">
-            <small className="text-muted">Rating distribution (current page)</small>
-            <small className="text-muted">{reviews.length} reviews</small>
-          </div>
-          {starValues
-            .slice()
-            .reverse()
-            .map((star) => (
-              <div key={`dist-${star}`} className="distribution-row">
-                <div className="text-nowrap small">
-                  {star} <FaStar className="text-warning" />
-                </div>
-                <div className="progress flex-grow-1">
-                  <div className="progress-bar" role="progressbar" style={{ width: `${distributionPercent(star)}%` }} />
-                </div>
-                <span className="text-muted small">{ratingDistribution[star] || 0}</span>
-              </div>
-            ))}
-        </div>
-      </section>
-
-      <section className="card-panel card p-3 mb-3">
-        <div className="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2 mb-3">
-         
-          {canAddReview ? (
-            <button
-              className={`btn btn-sm ${showAddForm ? "btn-outline-secondary" : "btn-primary"}`}
-              type="button"
-              onClick={() => setShowAddForm((prev) => !prev)}
-            >
-              {showAddForm ? "Hide form" : "Add review"}
-            </button>
-          ) : (
-            <span className="text-muted small">Admin privilege required</span>
-          )}
         </div>
 
-        {canAddReview && showAddForm ? (
-          <form className="row g-3" onSubmit={handleAddReview}>
-            <div className="col-md-4">
-              <label className="form-label mb-1">Product</label>
-              <input
-                className="form-control"
-                placeholder="Enter product name"
-                list="review-product-list"
-                value={productSearchTerm}
-                onChange={(e) => handleProductSearchInput(e.target.value)}
-                required
-              />
-              <datalist id="review-product-list">
-                {products.map((product) => (
-                  <option key={product._id} value={product.name || ""} />
-                ))}
-              </datalist>
-            </div>
-            <div className="col-md-2">
-              <label className="form-label mb-1">Rating</label>
-              {renderRatingPicker(form.rating, (value) => handleFormChange("rating", value))}
-            </div>
-            <div className="col-md-2">
-              <label className="form-label mb-1">Headline</label>
-              <input
-                className="form-control"
-                placeholder="Short title"
-                value={form.title}
-                onChange={(e) => handleFormChange("title", e.target.value)}
-              />
-            </div>
-            <div className="col-md-6">
-              <label className="form-label mb-1">Comment</label>
-              <textarea
-                className="form-control"
-                rows={1}
-                value={form.comment}
-                placeholder="Optional feedback"
-                onChange={(e) => handleFormChange("comment", e.target.value)}
-              />
-            </div>
-            <div className="col-12 text-end">
-              <button className="btn btn-primary" type="submit" disabled={saving}>
-                {saving ? "Saving..." : <><FaPlus className="me-1" /> Add Review</>}
-              </button>
-            </div>
-          </form>
-        ) : canAddReview ? (
-          <p className="text-muted small mb-0">Click “Add review” to open the form.</p>
-        ) : (
-          <p className="text-muted small mb-0">Only admins can submit reviews.</p>
-        )}
-      </section>
-
-      <section className="card-panel card p-3">
-        {loading ? (
-          <p className="mb-0 text-center">Loading reviews...</p>
-        ) : reviews.length === 0 ? (
-          <p className="mb-0 text-muted text-center">No reviews yet.</p>
-        ) : (
-          <>
-            <div className="row g-3">
-              {reviews.map((review) => (
-                <div className="col-md-6" key={`card-${review._id}`}>
-                  <article className="review-card h-100">
-                    <div className="card-body">
-                      {editingId === review._id ? (
-                        <div className="review-card-edit">
-                          <div className="row g-2">
-                            <div className="col-12">
-                              <label className="form-label mb-1">Rating</label>
-                              {renderRatingPicker(editPayload.rating, (value) => handleEditChange("rating", value))}
-                            </div>
-                            <div className="col-12">
-                              <label className="form-label mb-1">Headline</label>
-                              <input
-                                className="form-control"
-                                value={editPayload.title}
-                                onChange={(event) => handleEditChange("title", event.target.value)}
-                              />
-                            </div>
-                            <div className="col-12">
-                              <label className="form-label mb-1">Comment</label>
-                              <textarea
-                                className="form-control"
-                                rows={2}
-                                value={editPayload.comment}
-                                onChange={(event) => handleEditChange("comment", event.target.value)}
-                              />
-                            </div>
-                            <div className="col-12 d-flex gap-2">
-                              <button
-                                className="btn btn-success"
-                                type="button"
-                                onClick={() => handleUpdateReview(review._id)}
-                                disabled={updating}
-                              >
-                                {updating ? "Saving..." : "Save changes"}
-                              </button>
-                              <button className="btn btn-outline-secondary" type="button" onClick={() => setEditingId(null)}>
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="d-flex align-items-start justify-content-between">
-                            <div>
-                              <h6 className="mb-1">{review.title || "Untitled"}</h6>
-                              <p className="review-meta mb-0">{review.user?.name || "Anonymous"}</p>
-                              <p className="review-meta mb-0">{review.product?.name || "Unknown product"}</p>
-                            </div>
-                            <div className="review-rating-group text-end">
-                              {renderStars(review.rating)}
-                              <span className="text-muted small">
-                                {typeof review.rating === "number" ? review.rating.toFixed(1) : review.rating || "-"}
-                              </span>
-                            </div>
-                          </div>
-                          <p className="review-comment mt-3">{review.comment || "No comment provided."}</p>
-                          <div className="d-flex align-items-center justify-content-between review-actions mt-3">
-                            <small className="review-meta">Posted {formatReviewDate(review.createdAt)}</small>
-                            <div className="d-flex gap-2">
-                              <button className="btn btn-sm btn-outline-primary" onClick={() => startEdit(review)}>
-                                <FaEdit />
-                              </button>
-                              <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteReview(review._id)}>
-                                <FaTrash />
-                              </button>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </article>
-                </div>
+        <div className="flex items-center gap-3 relative z-10">
+          <div className="flex flex-col items-end">
+            <div className="flex items-center gap-1 mb-1">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <FaStar key={i} className={i < Math.round(averageRating) ? "text-amber-400" : "text-slate-200"} size={14} />
               ))}
+              <span className="text-xl font-black ml-2 text-indigo-600">{averageRating.toFixed(1)}</span>
             </div>
-            {totalPages > 1 && (
-              <div className="d-flex justify-content-center mt-4">
-                <Pagination currentPage={reviewPage} totalPages={totalPages} onPageChange={setReviewPage} />
-              </div>
-            )}
-          </>
-        )}
-      </section>
+            <p className="text-[10px] font-black opacity-30 uppercase tracking-widest">Global Satisfaction Score</p>
+          </div>
+          <div className="w-px h-10 bg-slate-200 dark:bg-slate-700 mx-2" />
+          <button 
+            onClick={() => fetchReviews()}
+            className="p-3 bg-white dark:bg-slate-800 border rounded-2xl hover:bg-slate-50 transition-all shadow-sm" 
+            style={{ borderColor: 'var(--border-color)', color: 'var(--page-text)' }}
+          >
+            <FaSync size={14} className={loading ? "animate-spin" : ""} />
+          </button>
+        </div>
+      </div>
+
+      {/* Advanced Filter Suite */}
+      <div className="p-4 bg-white dark:bg-slate-900/60 rounded-3xl border shadow-xl shadow-indigo-500/5 flex flex-col xl:flex-row gap-4 items-center" style={{ borderColor: 'var(--border-color)' }}>
+        <div className="flex-grow w-full relative">
+          <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
+            <FaSearch className="text-indigo-500/40" size={14} />
+          </div>
+          <input
+            type="text"
+            placeholder="Search by sentiment keyword, customer name or review title..."
+            value={filters.search}
+            onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+            className="w-full pr-6 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:bg-white dark:focus:bg-slate-800 focus:ring-4 ring-indigo-500/10 focus:border-indigo-500/30 transition-all outline-none"
+            style={{ paddingLeft: '52px', color: 'var(--page-text)' }}
+          />
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 w-full xl:w-auto shrink-0">
+          <div className="relative">
+            <select
+              value={filters.productId}
+              onChange={(e) => setFilters(prev => ({ ...prev, productId: e.target.value }))}
+              className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none appearance-none font-bold opacity-70 hover:opacity-100"
+            >
+              <option value="">Filter by Product</option>
+              {products.map(p => (
+                <option key={p._id} value={p._id}>{p.name}</option>
+              ))}
+            </select>
+            <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={10} />
+          </div>
+
+          <div className="relative">
+            <select
+              value={filters.rating}
+              onChange={(e) => setFilters(prev => ({ ...prev, rating: e.target.value }))}
+              className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none appearance-none font-bold opacity-70 hover:opacity-100"
+            >
+              <option value="0">All Ratings</option>
+              <option value="5">5 Stars</option>
+              <option value="4">4 Stars</option>
+              <option value="3">3 Stars</option>
+              <option value="2">2 Stars</option>
+              <option value="1">1 Star</option>
+            </select>
+            <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={10} />
+          </div>
+
+          <button 
+            onClick={() => {
+              setFilters({ productId: "", search: "", rating: 0 });
+              fetchReviews(true);
+            }}
+            className="px-6 py-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+
+      {/* Professional High-Density Data Grid */}
+      <div className="bg-white dark:bg-slate-900/60 rounded-3xl border shadow-xl overflow-hidden" style={{ borderColor: 'var(--border-color)' }}>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse table-fixed min-w-[1200px]">
+            <thead>
+              <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b" style={{ borderColor: 'var(--border-color)' }}>
+                <th className="w-[15%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Customer</th>
+                <th className="w-[18%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Product Identity</th>
+                <th className="w-[10%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700 text-center">Sentiment</th>
+                <th className="w-[30%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Feedback Content</th>
+                <th className="w-[12%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Timestamp</th>
+                <th className="w-[15%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 text-right">Operations</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y dark:divide-slate-800" style={{ borderColor: 'var(--border-color)' }}>
+              {reviews.map((review, idx) => (
+                <tr 
+                  key={review._id} 
+                  className={`group transition-all duration-200 ${idx % 2 === 0 ? 'bg-transparent' : 'bg-slate-50/30 dark:bg-slate-800/20'} hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5`}
+                >
+                  <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-600">
+                        <FaUser size={12} />
+                      </div>
+                      <div className="truncate">
+                        <p className="font-bold text-xs truncate" style={{ color: 'var(--page-text)' }}>{review.user?.name || "Anonymous"}</p>
+                        <p className="text-[9px] font-bold opacity-30 uppercase tracking-tighter">Verified Buyer</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-2 truncate">
+                      <FaBoxOpen className="text-slate-300" size={14} />
+                      <p className="text-xs font-bold truncate opacity-80">{review.product?.name || "Product Deleted"}</p>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800 text-center">
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="flex gap-0.5">
+                        {starValues.map(s => (
+                          <FaStar key={s} className={s <= review.rating ? "text-amber-400" : "text-slate-200"} size={10} />
+                        ))}
+                      </div>
+                      <span className="text-[10px] font-black text-slate-400">{review.rating}.0</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800">
+                    {editingId === review._id ? (
+                      <div className="space-y-2">
+                        <input 
+                          className="w-full px-2 py-1 bg-slate-50 dark:bg-slate-800 border rounded-lg text-xs font-bold"
+                          value={editPayload.title}
+                          onChange={(e) => setEditPayload(prev => ({ ...prev, title: e.target.value }))}
+                          placeholder="Review Title"
+                        />
+                        <textarea 
+                          className="w-full px-2 py-1 bg-slate-50 dark:bg-slate-800 border rounded-lg text-[11px] outline-none"
+                          rows={2}
+                          value={editPayload.comment}
+                          onChange={(e) => setEditPayload(prev => ({ ...prev, comment: e.target.value }))}
+                          placeholder="Feedback detail..."
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <p className="text-xs font-black truncate" style={{ color: 'var(--page-text)' }}>{review.title || "Untitled Feedback"}</p>
+                        <p className="text-[11px] font-medium opacity-60 line-clamp-2 leading-relaxed">{review.comment || "No detailed feedback provided."}</p>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-1.5 opacity-60">
+                      <FaClock size={10} />
+                      <p className="text-[10px] font-bold">{new Date(review.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      {editingId === review._id ? (
+                        <button
+                          onClick={() => handleUpdateReview(review._id)}
+                          disabled={updating}
+                          className="p-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/10 active:scale-95 disabled:opacity-50"
+                        >
+                          <FaCheckCircle size={14} />
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={() => startEdit(review)}
+                          className="p-2 hover:bg-indigo-600 hover:text-white rounded-lg transition-all text-slate-400"
+                          title="Edit"
+                        >
+                          <FaEdit size={14} />
+                        </button>
+                      )}
+                      <button 
+                        onClick={() => handleDeleteReview(review._id)}
+                        className="p-2 hover:bg-rose-600 hover:text-white rounded-lg transition-all text-slate-400"
+                        title="Delete"
+                      >
+                        <FaTrash size={14} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <Pagination currentPage={reviewPage} totalPages={totalPages} onPageChange={setReviewPage} />
+
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        onClose={() => setConfirmConfig({ isOpen: false, reviewId: null })}
+        onConfirm={handleConfirmDeleteReview}
+        title="Delete Review"
+        message="Are you sure you want to permanently remove this customer review? This action cannot be undone."
+        confirmText="Delete Review"
+      />
     </div>
   );
 };

@@ -121,8 +121,10 @@ export const buildSearchSuggestions = (products = [], query = "", limit = 6) => 
     fallback.forEach((product) => {
       pushSuggestion(suggestions, seen, {
         type: "product",
-        label: product.name || "Product",
-        helper: product.category || "Popular product",
+        name: product.name,
+        category: product.category,
+        image: product.image,
+        price: product.price,
         query: product.name || "",
         productId: product._id,
       });
@@ -158,8 +160,10 @@ export const buildSearchSuggestions = (products = [], query = "", limit = 6) => 
   scoring.forEach(({ product }) => {
     pushSuggestion(suggestions, seen, {
       type: "product",
-      label: product.name || "Product",
-      helper: [product.category, product.brand || product.supplier?.name].filter(Boolean).join(" • "),
+      name: product.name,
+      category: product.category,
+      image: product.image,
+      price: product.price,
       query: product.name || "",
       productId: product._id,
     });
@@ -173,8 +177,7 @@ export const buildSearchSuggestions = (products = [], query = "", limit = 6) => 
     categoryMatches.forEach((category) => {
       pushSuggestion(suggestions, seen, {
         type: "category",
-        label: category,
-        helper: `Browse ${category}`,
+        name: category,
         query: category,
       });
     });

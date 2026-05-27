@@ -1,62 +1,37 @@
 import React, { useState, useEffect, useContext, useMemo } from "react";
-import { FaPlus, FaTimes } from "react-icons/fa";
+import { useSearchParams } from "react-router-dom";
+import { FaPlus, FaSearch, FaChevronDown, FaEdit, FaTrash, FaFileCsv, FaSync, FaLayerGroup, FaTags, FaBoxOpen } from "react-icons/fa";
 import API, { getImageUrl } from "../../api";
 import { AuthContext } from "../../context/AuthContext";
 import { downloadCsv, inDateRange } from "../../utils/adminHelpers";
 import { toast } from "react-toastify";
 import Pagination from "../../components/Pagination";
-import "./Dashboard.css";
-import "./ManageCategories.css";
+import CategoryFormModal from "../../components/CategoryFormModal";
+import ConfirmModal from "../../components/ConfirmModal";
 
 const CATEGORIES_PER_PAGE = 8;
 
 const ManageCategories = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useContext(AuthContext);
   const [categories, setCategories] = useState([]);
-  const [newCategory, setNewCategory] = useState("");
-  const [newSubCategories, setNewSubCategories] = useState([]);
-  const [newSubCategoryInput, setNewSubCategoryInput] = useState("");
-  const [newImage, setNewImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [search, setSearch] = useState("");
+  const [dateRange, setDateRange] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [showAddForm, setShowAddForm] = useState(false);
+  const showModal = searchParams.get("modal") === "category";
+  const editingId = searchParams.get("id");
+  const [editingCategory, setEditingCategory] = useState(null);
   const [categoryPage, setCategoryPage] = useState(1);
-
-  const [editCategoryId, setEditCategoryId] = useState(null);
-  const [editCategoryName, setEditCategoryName] = useState("");
-  const [editSubCategories, setEditSubCategories] = useState([]);
-  const [editSubCategoryInput, setEditSubCategoryInput] = useState("");
-  const [editCategoryImage, setEditCategoryImage] = useState(null);
-  const [editLoading, setEditLoading] = useState(false);
-
-  const normalizeSubCategory = (value) => value.trim();
-
-  const addSubCategoryItem = (value, setter) => {
-    const item = normalizeSubCategory(value);
-    if (!item) return false;
-
-    let added = false;
-    setter((prev) => {
-      if (prev.some((subCategory) => subCategory.toLowerCase() === item.toLowerCase())) {
-        return prev;
-      }
-      added = true;
-      return [...prev, item];
-    });
-    return added;
-  };
-
-  const removeSubCategoryItem = (value, setter) => {
-    setter((prev) => prev.filter((subCategory) => subCategory !== value));
-  };
+  const [confirmConfig, setConfirmConfig] = useState({ isOpen: false, categoryId: null });
 
   const fetchCategories = async () => {
     try {
       const { data } = await API.get("/categories");
-      setCategories(Array.isArray(data) ? data : data.categories || []);
+      const list = Array.isArray(data) ? data : data.categories || [];
+      setCategories(list);
     } catch (err) {
       console.error(err);
       setCategories([]);
@@ -73,109 +48,83 @@ const ManageCategories = () => {
     return () => clearInterval(timer);
   }, [autoRefresh]);
 
-  const addCategory = async () => {
-    if (!newCategory.trim()) return toast.warning("Enter category name");
-    if (!user?.isAdmin) return toast.warning("Admin only");
-
-    const formData = new FormData();
-    formData.append("name", newCategory);
-    formData.append("subCategories", JSON.stringify(newSubCategories));
-    if (newImage) formData.append("image", newImage);
-
-    setLoading(true);
-    try {
-      await API.post("/categories", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      setNewCategory("");
-      setNewSubCategories([]);
-      setNewSubCategoryInput("");
-      setNewImage(null);
-      setShowAddForm(false);
-      fetchCategories();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Error adding category");
-    } finally {
-      setLoading(false);
+  const deleteCategory = (id) => {
+    if (!id) {
+      toast.error("Invalid category ID");
+      return;
     }
+    if (!user?.isAdmin) return toast.warning("Admin only");
+    setConfirmConfig({ isOpen: true, categoryId: id });
   };
 
-  const deleteCategory = async (id) => {
-    if (!user?.isAdmin) return toast.warning("Admin only");
-    if (!window.confirm("Delete this category?")) return;
+  const handleConfirmDelete = async () => {
+    const id = confirmConfig.categoryId;
+    if (!id) return;
 
     try {
       await API.delete(`/categories/${id}`);
       fetchCategories();
+      toast.success("Category removed from system");
     } catch (err) {
       toast.error(err.response?.data?.message || "Delete failed");
     }
   };
 
-  const startEdit = (category) => {
-    setEditCategoryId(category._id);
-    setEditCategoryName(category.name);
-    setEditSubCategories(Array.isArray(category.subCategories) ? category.subCategories : []);
-    setEditSubCategoryInput("");
-    setEditCategoryImage(null);
+  const openAddModal = () => {
+    setEditingCategory(null);
+    setSearchParams({ modal: "category" });
   };
 
-  const cancelEdit = () => {
-    setEditCategoryId(null);
-    setEditCategoryName("");
-    setEditSubCategories([]);
-    setEditSubCategoryInput("");
-    setEditCategoryImage(null);
+  const openEditModal = (cat) => {
+    setEditingCategory(cat);
+    setSearchParams({ modal: "category", id: cat._id });
   };
 
-  const updateCategory = async () => {
-    if (!editCategoryName.trim()) return toast.warning("Enter category name");
-    if (!user?.isAdmin) return toast.warning("Admin only");
+  const resetModal = () => {
+    setSearchParams({});
+    setEditingCategory(null);
+  };
 
-    const formData = new FormData();
-    formData.append("name", editCategoryName);
-    formData.append("subCategories", JSON.stringify(editSubCategories));
-    if (editCategoryImage) formData.append("image", editCategoryImage);
-
-    setEditLoading(true);
-    try {
-      await API.put(`/categories/${editCategoryId}`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      cancelEdit();
-      fetchCategories();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Update failed");
-    } finally {
-      setEditLoading(false);
+  // Sync editingCategory if URL has ID but state doesn't
+  useEffect(() => {
+    if (showModal && editingId && !editingCategory && categories.length > 0) {
+      const cat = categories.find(c => c._id === editingId);
+      if (cat) setEditingCategory(cat);
     }
-  };
+  }, [showModal, editingId, editingCategory, categories]);
 
   const filteredCategories = useMemo(() => {
     const term = search.trim().toLowerCase();
     return categories.filter((category) => {
-      if ((dateFrom || dateTo) && !inDateRange(category.createdAt, dateFrom, dateTo)) return false;
+      // Smart Date Range Filtering
+      if (dateRange !== "all") {
+        const entryDate = new Date(category.createdAt);
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        if (dateRange === "today") {
+          if (entryDate < startOfToday) return false;
+        } else if (dateRange === "7days") {
+          const sevenDaysAgo = new Date(startOfToday);
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          if (entryDate < sevenDaysAgo) return false;
+        } else if (dateRange === "custom") {
+          if ((dateFrom || dateTo) && !inDateRange(category.createdAt, dateFrom, dateTo)) return false;
+        }
+      }
+
       if (!term) return true;
       return String(category.name || "")
         .toLowerCase()
         .includes(term);
     });
-  }, [categories, search, dateFrom, dateTo]);
+  }, [categories, search, dateRange, dateFrom, dateTo]);
 
   useEffect(() => {
     setCategoryPage(1);
-  }, [search, dateFrom, dateTo]);
+  }, [search, dateRange, dateFrom, dateTo]);
 
   const totalCategoryPages = Math.max(1, Math.ceil(filteredCategories.length / CATEGORIES_PER_PAGE));
-
-  useEffect(() => {
-    if (categoryPage > totalCategoryPages) {
-      setCategoryPage(totalCategoryPages);
-    }
-  }, [categoryPage, totalCategoryPages]);
-
   const paginatedCategories = useMemo(() => {
     const startIndex = (categoryPage - 1) * CATEGORIES_PER_PAGE;
     return filteredCategories.slice(startIndex, startIndex + CATEGORIES_PER_PAGE);
@@ -183,287 +132,188 @@ const ManageCategories = () => {
 
   const exportCategories = () => {
     downloadCsv(
-      "categories.csv",
-        filteredCategories.map((category) => ({
-        name: category.name,
-        subCategories: Array.isArray(category.subCategories) ? category.subCategories.join(", ") : "",
-        image: category.image || "",
-        createdAt: category.createdAt || "",
+      "category_report.csv",
+      filteredCategories.map((category) => ({
+        "Category Name": category.name,
+        "Sub-Categories": Array.isArray(category.subCategories) ? category.subCategories.join(" | ") : "N/A",
+        "Created On": category.createdAt ? new Date(category.createdAt).toLocaleDateString() : "N/A",
       }))
     );
   };
 
-  const handleNewSubCategoryAdd = () => {
-    const added = addSubCategoryItem(newSubCategoryInput, setNewSubCategories);
-    if (added) setNewSubCategoryInput("");
-  };
-
-  const handleEditSubCategoryAdd = () => {
-    const added = addSubCategoryItem(editSubCategoryInput, setEditSubCategories);
-    if (added) setEditSubCategoryInput("");
-  };
-
-  const renderSubCategoryEditor = ({
-    items,
-    inputValue,
-    setInputValue,
-    onAdd,
-    onRemove,
-    placeholder,
-  }) => (
-    <div className="category-subcategory-editor">
-      <div className="input-group category-subcategory-input-group">
-        <input
-          type="text"
-          className="form-control"
-          placeholder={placeholder}
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              onAdd();
-            }
-          }}
-        />
-        <button type="button" className="btn btn-outline-primary category-chip-add-btn" onClick={onAdd}>
-          Add
-        </button>
-      </div>
-      {items.length > 0 && (
-        <div className="category-chip-list">
-          {items.map((subCategory) => (
-            <span key={subCategory} className="category-chip">
-              {subCategory}
-              <button
-                type="button"
-                className="category-chip-remove"
-                onClick={() => onRemove(subCategory)}
-                aria-label={`Remove ${subCategory}`}
-              >
-                <FaTimes />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
   return (
-    <div className="dashboard-wrap manage-categories-page">
-      <div>
-        <div className="dashboard-hero-copy">
-          {/* <p className="dashboard-kicker mb-1">Catalog Control</p> */}
-          {/* <h2 className="mb-1">Manage Categories</h2> */}
-          {/* <p className="mb-0">Organize category groups, update images, and maintain clean subcategory lists.</p> */}
+    <div className="space-y-6 animate-in fade-in duration-700">
+      {/* V3 Premium Module Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 relative">
+        <div className="relative group">
+          <div className="absolute -left-8 -top-8 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-all duration-700" />
+          <div className="flex items-start gap-4 relative">
+            <div className="w-1.5 h-12 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full shadow-lg shadow-indigo-500/20" />
+            <div>
+              <h1 className="text-4xl font-black tracking-tight flex items-center gap-3" style={{ color: 'var(--page-text)' }}>
+                Categories
+                <span className="text-[10px] uppercase tracking-[0.3em] font-black px-2 py-1 bg-indigo-500/10 text-indigo-600 rounded-lg ml-2">
+                  Taxonomy
+                </span>
+              </h1>
+              <p className="text-sm font-bold opacity-40 uppercase tracking-[0.1em] mt-1.5">
+                Strategic Catalog Classification & Hierarchy Management
+              </p>
+            </div>
+          </div>
         </div>
-        {/* <div className="dashboard-hero-chip">
-          <span>{filteredCategories.length} categories</span>
-        </div> */}
-      </div>
 
-      <div className="dashboard-export-actions">
-          <button
-            type="button"
-            className="btn btn-success btn-sm d-inline-flex align-items-center gap-1"
-            onClick={() => {
-              setShowAddForm((prev) => !prev);
-              if (showAddForm) {
-                setNewCategory("");
-                setNewSubCategories([]);
-                setNewSubCategoryInput("");
-                setNewImage(null);
-              }
-            }}
-            aria-label={showAddForm ? "Close category form" : "Open category add form"}
-            title={showAddForm ? "Close category form" : "Add category"}
+        <div className="flex items-center gap-3 relative z-10">
+          <button 
+            onClick={openAddModal}
+            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-95 group"
           >
-            {showAddForm ? (
-              <>
-                <FaTimes />
-                <span>Close form</span>
-              </>
-            ) : (
-              <>
-                <FaPlus />
-                <span>Add category</span>
-              </>
-            )}
+            <FaPlus size={12} className="group-hover:rotate-90 transition-transform" />
+            <span>Add Category</span>
           </button>
-          <button className="btn btn-outline-primary btn-sm" onClick={fetchCategories}>
-            Refresh
+          <button 
+            onClick={exportCategories}
+            className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-slate-800 border rounded-2xl hover:bg-slate-50 transition-all text-sm font-bold shadow-sm" 
+            style={{ borderColor: 'var(--border-color)', color: 'var(--page-text)' }}
+          >
+            <FaFileCsv size={12} className="text-indigo-600" />
+            <span>Export</span>
           </button>
-          <button className="btn btn-primary btn-sm" onClick={exportCategories}>
-            Export CSV
-          </button>
-      </div>
-
-      <div className="dashboard-toolbar card border-0 p-3">
-        {showAddForm && (
-          <div className="dashboard-panel card border-0 manage-categories-create-panel mb-3">
-            <div className="dashboard-panel-head">
-              <h5 className="dashboard-panel-title mb-0">Add Category</h5>
-            </div>
-            <div className="row g-3">
-              <div className="col-md-4">
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="New category"
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                />
-              </div>
-              <div className="col-md-5">
-                {renderSubCategoryEditor({
-                  items: newSubCategories,
-                  inputValue: newSubCategoryInput,
-                  setInputValue: setNewSubCategoryInput,
-                  onAdd: handleNewSubCategoryAdd,
-                  onRemove: (value) => removeSubCategoryItem(value, setNewSubCategories),
-                  placeholder: "Type subcategory and click Add",
-                })}
-              </div>
-              <div className="col-md-3">
-                <div className="manage-categories-file-block">
-                  <input type="file" className="form-control" onChange={(e) => setNewImage(e.target.files[0])} />
-                  <div className="d-flex gap-2 mt-3">
-                    <button className="btn btn-primary flex-fill" onClick={addCategory} disabled={loading}>
-                      {loading ? "Adding..." : "Add"}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-outline-secondary"
-                      onClick={() => {
-                        setShowAddForm(false);
-                        setNewCategory("");
-                        setNewSubCategories([]);
-                        setNewSubCategoryInput("");
-                        setNewImage(null);
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="row g-3 align-items-end">
-          <div className="col-md-4">
-            <label className="form-label mb-1">Search</label>
-            <input className="form-control" placeholder="Search categories" value={search} onChange={(e) => setSearch(e.target.value)} />
-          </div>
-          <div className="col-md-3">
-            <label className="form-label mb-1">From</label>
-            <input type="datetime-local" className="form-control" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          </div>
-          <div className="col-md-3">
-            <label className="form-label mb-1">To</label>
-            <input type="datetime-local" className="form-control" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-          </div>
-          <div className="col-md-2">
-            <div className="form-check form-switch dashboard-refresh-toggle">
-              <input
-                id="categoriesAutoRefresh"
-                className="form-check-input"
-                type="checkbox"
-                checked={autoRefresh}
-                onChange={(e) => setAutoRefresh(e.target.checked)}
-              />
-              <label className="form-check-label" htmlFor="categoriesAutoRefresh">
-                Auto 30s
-              </label>
-            </div>
-          </div>
         </div>
       </div>
 
-      {filteredCategories.length === 0 ? (
-        <p className="text-muted">No categories found</p>
-      ) : (
-        <div className="dashboard-panel card border-0">
-          <div className="dashboard-panel-head">
-            <h5 className="dashboard-panel-title mb-0">Category List</h5>
+      {/* Advanced Filter Suite */}
+      <div className="p-4 bg-white dark:bg-slate-900/60 rounded-3xl border shadow-xl shadow-indigo-500/5 flex flex-col xl:flex-row gap-4 items-center" style={{ borderColor: 'var(--border-color)' }}>
+        <div className="flex-grow w-full relative">
+          <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
+            <FaSearch className="text-indigo-500/40" size={14} />
           </div>
-          <ul className="list-group manage-categories-list">
-            {paginatedCategories.map((category) => (
-              <li key={category._id} className="list-group-item manage-category-item">
-                <div className="manage-category-main">
-                  {category.image && (
-                    <img src={getImageUrl(category.image)} alt={category.name} className="manage-category-thumb" loading="lazy" decoding="async" />
-                  )}
+          <input
+            type="text"
+            placeholder="Search categories or sub-categories..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pr-6 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:bg-white dark:focus:bg-slate-800 focus:ring-4 ring-indigo-500/10 focus:border-indigo-500/30 transition-all outline-none"
+            style={{ paddingLeft: '52px', color: 'var(--page-text)' }}
+          />
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 w-full xl:w-auto shrink-0">
+          <div className="relative">
+            <select 
+              className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-transparent rounded-2xl text-xs font-bold opacity-70 hover:opacity-100 transition-all outline-none appearance-none cursor-pointer"
+              value={dateRange} 
+              onChange={(e) => setDateRange(e.target.value)}
+            >
+              <option value="all">Creation Date</option>
+              <option value="today">Today</option>
+              <option value="7days">Last 7 Days</option>
+              <option value="custom">Custom Range</option>
+            </select>
+            <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={10} />
+          </div>
 
-                  {editCategoryId === category._id ? (
-                    <div className="manage-category-edit-grid">
-                      <input
-                        type="text"
-                        className="form-control"
-                        value={editCategoryName}
-                        onChange={(e) => setEditCategoryName(e.target.value)}
-                      />
-                      <div>
-                        {renderSubCategoryEditor({
-                          items: editSubCategories,
-                          inputValue: editSubCategoryInput,
-                          setInputValue: setEditSubCategoryInput,
-                          onAdd: handleEditSubCategoryAdd,
-                          onRemove: (value) => removeSubCategoryItem(value, setEditSubCategories),
-                          placeholder: "Type subcategory and click Add",
-                        })}
-                      </div>
-                      <input
-                        type="file"
-                        className="form-control"
-                        onChange={(e) => setEditCategoryImage(e.target.files[0])}
-                      />
-                    </div>
-                  ) : (
-                    <div className="manage-category-copy">
-                      <div className="manage-category-title">{category.name}</div>
-                      {Array.isArray(category.subCategories) && category.subCategories.length > 0 && (
-                        <div className="manage-category-chip-preview">
-                          {category.subCategories.map((subCategory) => (
-                            <span key={subCategory} className="manage-category-preview-chip">
-                              {subCategory}
-                            </span>
-                          ))}
-                        </div>
+          <button 
+            onClick={() => {
+              setSearch("");
+              setDateRange("all");
+              fetchCategories();
+            }}
+            className="px-6 py-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+
+      {/* Professional High-Density Data Grid */}
+      <div className="bg-white dark:bg-slate-900/60 rounded-3xl border shadow-xl overflow-hidden" style={{ borderColor: 'var(--border-color)' }}>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse table-fixed min-w-[900px]">
+            <thead>
+              <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b" style={{ borderColor: 'var(--border-color)' }}>
+                <th className="w-[12%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Asset</th>
+                <th className="w-[28%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Classification</th>
+                <th className="w-[40%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Sub-Categories</th>
+                <th className="w-[20%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 text-right">Operations</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y dark:divide-slate-800" style={{ borderColor: 'var(--border-color)' }}>
+              {paginatedCategories.map((category, idx) => (
+                <tr 
+                  key={category._id || idx} 
+                  className={`group transition-all duration-200 ${idx % 2 === 0 ? 'bg-transparent' : 'bg-slate-50/30 dark:bg-slate-800/20'} hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5`}
+                >
+                  <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800 text-center">
+                    <div className="w-14 h-14 mx-auto rounded-2xl border bg-slate-50 dark:bg-slate-800 overflow-hidden flex items-center justify-center shadow-sm">
+                      {category.image ? (
+                        <img src={getImageUrl(category.image)} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                      ) : (
+                        <FaLayerGroup className="text-slate-200" size={18} />
                       )}
                     </div>
-                  )}
-                </div>
-
-                <div className="manage-category-actions">
-                  {editCategoryId === category._id ? (
-                    <>
-                      <button className="btn btn-success btn-sm" onClick={updateCategory} disabled={editLoading}>
-                        {editLoading ? "Updating..." : "Update"}
+                  </td>
+                  <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800">
+                    <div className="truncate">
+                      <p className="font-bold text-base truncate" style={{ color: 'var(--page-text)' }}>{category.name}</p>
+                      <p className="text-[9px] font-bold opacity-30 uppercase tracking-widest truncate mt-0.5">Primary Taxonomy</p>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800">
+                    <div className="flex flex-wrap gap-1.5 max-h-[60px] overflow-y-auto pr-2 custom-scrollbar">
+                      {Array.isArray(category.subCategories) && category.subCategories.length > 0 ? (
+                        category.subCategories.map((sub) => (
+                          <span key={sub} className="inline-flex items-center px-2 py-0.5 bg-indigo-500/10 text-indigo-600 rounded-md text-[9px] font-black uppercase tracking-tighter">
+                            {sub}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-[10px] font-bold opacity-20 uppercase">No Sub-categories</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button 
+                        onClick={() => openEditModal(category)}
+                        className="p-2.5 hover:bg-indigo-600 hover:text-white rounded-xl transition-all text-slate-400 shadow-sm"
+                        title="Edit"
+                      >
+                        <FaEdit size={14} />
                       </button>
-                      <button className="btn btn-outline-secondary btn-sm" onClick={cancelEdit}>
-                        Cancel
+                      <button 
+                        onClick={() => deleteCategory(category._id)}
+                        className="p-2.5 hover:bg-rose-600 hover:text-white rounded-xl transition-all text-slate-400 shadow-sm"
+                        title="Delete"
+                      >
+                        <FaTrash size={14} />
                       </button>
-                    </>
-                  ) : (
-                    <>
-                      <button className="btn btn-warning btn-sm" onClick={() => startEdit(category)}>
-                        Edit
-                      </button>
-                      <button className="btn btn-danger btn-sm" onClick={() => deleteCategory(category._id)}>
-                        Delete
-                      </button>
-                    </>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
+
       <Pagination currentPage={categoryPage} totalPages={totalCategoryPages} onPageChange={setCategoryPage} />
+
+      <CategoryFormModal 
+        isOpen={showModal}
+        onClose={resetModal}
+        initialData={editingCategory}
+        onSuccess={fetchCategories}
+      />
+
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        onClose={() => setConfirmConfig({ isOpen: false, categoryId: null })}
+        onConfirm={handleConfirmDelete}
+        title="Delete Category"
+        message="Are you sure you want to delete this category? This will affect all linked products and cannot be undone."
+        confirmText="Delete Category"
+      />
     </div>
   );
 };

@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import API, { getImageUrl } from "../api";
 import { CartContext } from "../context/CartContext";
 import { AuthContext } from "../context/AuthContext";
-import { FaChevronDown, FaChevronUp, FaStar } from "react-icons/fa";
+import { FaChevronDown, FaChevronUp, FaStar, FaShoppingCart, FaBolt, FaShieldAlt, FaTruck, FaArrowLeft, FaMinus, FaPlus } from "react-icons/fa";
 import ProductCard from "../components/ProductCard";
 import {
   buildSmartRecommendations,
@@ -12,6 +12,8 @@ import {
 } from "../utils/productInsights";
 import "./ProductDetails.css";
 import { ensureLoggedIn } from "../utils/authGuards";
+
+const FALLBACK_IMAGE = "https://placehold.co/800x800/f1f5f9/64748b?text=No+Image";
 
 const ProductDetails = () => {
   const { id } = useParams();
@@ -24,10 +26,11 @@ const ProductDetails = () => {
   const [catalogProducts, setCatalogProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [activeImage, setActiveImage] = useState(null);
   const [buyQty, setBuyQty] = useState(1);
   const [reviews, setReviews] = useState([]);
   const [reviewLoading, setReviewLoading] = useState(false);
-  const [reviewsExpanded, setReviewsExpanded] = useState(false);
+  const [reviewsExpanded, setReviewsExpanded] = useState(false); // Default to collapsed to save space
   const [recentlyViewed, setRecentlyViewed] = useState([]);
 
   const loadProduct = useCallback(async () => {
@@ -35,6 +38,7 @@ const ProductDetails = () => {
       setLoading(true);
       const { data } = await API.get(`/products/${id}`);
       setProduct(data);
+      setActiveImage(data.image || (data.images && data.images[0]) || null);
     } catch (err) {
       console.error("Product details error:", err);
       setError(err.response?.data?.message || "Product not found");
@@ -67,6 +71,7 @@ const ProductDetails = () => {
 
   useEffect(() => {
     loadProduct();
+    window.scrollTo(0, 0);
   }, [loadProduct]);
 
   useEffect(() => {
@@ -101,6 +106,7 @@ const ProductDetails = () => {
     () => buildSmartRecommendations(catalogProducts, product, recentlyViewed).slice(0, 8),
     [catalogProducts, product, recentlyViewed]
   );
+  
   const recentlyViewedProducts = useMemo(
     () => recentlyViewed.filter((item) => item?._id !== product?._id).slice(0, 8),
     [recentlyViewed, product]
@@ -112,265 +118,363 @@ const ProductDetails = () => {
     setBuyQty(safeQty);
   };
 
-  const renderStars = (value) => {
+  const renderStars = (value, size = "1rem") => {
     const rounded = Math.min(5, Math.max(0, Math.round(value || 0)));
-    return Array.from({ length: 5 }, (_, index) => {
-      const starValue = index + 1;
-      const filled = starValue <= rounded;
-      return (
-        <FaStar
-          key={`star-${starValue}`}
-          className={`me-1 ${filled ? "text-warning" : "text-muted"}`}
-        />
-      );
+    return (
+      <div className="d-flex align-items-center gap-1">
+        {Array.from({ length: 5 }, (_, index) => {
+          const starValue = index + 1;
+          const filled = starValue <= rounded;
+          return (
+            <FaStar
+              key={`star-${starValue}`}
+              style={{ fontSize: size }}
+              className={filled ? "text-warning" : "text-muted opacity-30"}
+            />
+          );
+        })}
+      </div>
+    );
+  };
+
+  const [zoomStyle, setZoomStyle] = useState({ display: "none" });
+
+  const handleMouseMove = (e) => {
+    const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+    const x = ((e.pageX - left - window.scrollX) / width) * 100;
+    const y = ((e.pageY - top - window.scrollY) / height) * 100;
+    setZoomStyle({
+      display: "block",
+      backgroundPosition: `${x}% ${y}%`,
+      backgroundImage: `url(${activeImage ? getImageUrl(activeImage) : FALLBACK_IMAGE})`,
     });
+  };
+
+  const handleMouseLeave = () => {
+    setZoomStyle({ display: "none" });
   };
 
   if (loading) {
     return (
-      <div className="container py-5 text-center">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
+      <div className="product-details-page d-flex align-items-center justify-content-center">
+        <div className="text-center">
+          <div className="spinner-grow text-primary mb-3" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="text-muted font-bold tracking-widest uppercase text-[12px]">Preparing Experience...</p>
         </div>
-        <p className="mt-3">Loading product details...</p>
       </div>
     );
   }
 
   if (error || !product) {
     return (
-      <div className="container py-5">
-        <div className="alert alert-danger">{error || "Product not found"}</div>
-        <Link to="/shop" className="btn btn-outline-primary">
-          Back to Shop
-        </Link>
+      <div className="product-details-page d-flex align-items-center justify-content-center">
+        <div className="text-center p-5 reviews-glass-card">
+          <h2 className="font-black mb-4">{error || "Product Not Found"}</h2>
+          <Link to="/shop" className="btn btn-primary px-4 rounded-pill">
+            Explore Collection
+          </Link>
+        </div>
       </div>
     );
   }
 
   const averageRating = Number(product.averageRating || 0);
   const reviewCount = Number(product.numReviews || 0);
-  const maxStock = Math.max(1, Number(product.stock || 1));
+  const maxStock = Math.max(1, Number(product.stock || 0));
 
   return (
-    <div className="product-details-page min-h-screen transition-colors duration-400">
-      <div className="container py-5">
-      <button type="button" className="btn btn-sm btn-outline-secondary mb-4" onClick={() => navigate(-1)}>
-        Back
-      </button>
+    <div className="product-details-page bg-white">
+      <div className="container py-4">
+        {/* Breadcrumb / Back button */}
+        <nav className="mb-4">
+          <button 
+            className="flex items-center gap-2 text-gray-500 hover:text-black transition-colors font-medium text-sm"
+            onClick={() => navigate(-1)}
+          >
+            <FaArrowLeft size={12} />
+            <span>Back to Products</span>
+          </button>
+        </nav>
 
-      <div className="row g-4 align-items-start">
-        <div className="col-md-5">
-          <div className="card border-theme shadow-sm overflow-hidden rounded-[32px]">
-            {product.image ? (
-              <img
-                src={getImageUrl(product.image)}
-                alt={product.name}
-                className="card-img-top"
-                style={{ maxHeight: "460px", objectFit: "cover" }}
-                loading="eager"
-                decoding="async"
-              />
-            ) : (
-              <div className="p-5 text-center text-muted-text">No image available</div>
-            )}
-          </div>
-        </div>
-
-        <div className="col-md-7">
-          <h2 className="fw-bold mb-2 text-primary-text">{product.name}</h2>
-          <p className="text-muted-text mb-2 font-bold">Category: {product.category || "-"}</p>
-          <h4 className="text-primary fw-bold mb-3">INR {product.price}</h4>
-
-          <p className="mb-4 text-muted-text leading-relaxed" style={{ whiteSpace: "pre-line" }}>
-            {product.description || "No description available."}
-          </p>
-
-          <div className="buy-qty-wrap mb-3">
-            <label className="form-label mb-1 text-primary-text font-bold uppercase text-[10px] tracking-widest">Quantity</label>
-            <div className="buy-qty-controls">
-              <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => updateBuyQty(buyQty - 1)}>
-                -
-              </button>
-              <input
-                type="number"
-                min="1"
-                max={maxStock}
-                className="form-control form-control-sm"
-                value={buyQty}
-                onChange={(e) => updateBuyQty(e.target.value)}
-              />
-              <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => updateBuyQty(buyQty + 1)}>
-                +
-              </button>
-            </div>
-          </div>
-
-          <div className="d-flex flex-wrap gap-2">
-            <button
-              className="btn btn-cart-action"
-              onClick={() => {
-                if (!ensureLoggedIn({ user, navigate, location, message: "Please login to add to cart" })) return;
-                addToCart(product);
-              }}
-            >
-              Add to Cart
-            </button>
-            <button className="btn btn-outline-primary" onClick={() => navigate("/shop")}>
-              Continue Shopping
-            </button>
-            <button
-              className="btn btn-buy-action"
-              disabled={Number(product.stock || 0) <= 0}
-              onClick={() => {
-                if (!ensureLoggedIn({ user, navigate, location, message: "Please login to buy now" })) return;
-                navigate("/checkout", {
-                  state: {
-                    buyNowItem: {
-                      product,
-                      quantity: buyQty,
-                    },
-                  },
-                });
-              }}
-            >
-              Buy Now
-            </button>
-          </div>
-
-          <hr className="my-4" />
-
-          <div className="row g-2">
-            <div className="col-sm-6">
-              <div className="p-4 border rounded-[20px] product-stat-card border-theme">
-                <small className="d-block product-stat-label font-bold uppercase tracking-widest text-[10px] mb-1">Availability Status</small>
-                <strong className={product.stock > 0 ? "product-stock-in" : "product-stock-out"}>
-                  {product.stock > 0 ? `${product.stock} available` : "Out of stock"}
-                </strong>
+        <div className="row g-5">
+          {/* Left: Gallery Column (Thumbnails + Main Image) */}
+          <div className="col-lg-7">
+            <div className="row g-3">
+              {/* Vertical Thumbnails (Desktop) */}
+              <div className="col-2 d-none d-md-block">
+                <div className="flex flex-col gap-2 custom-scrollbar overflow-y-auto max-h-[500px] pr-2">
+                  {[product.image, ...(product.images || [])].filter(Boolean).map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setActiveImage(img)}
+                      className={`w-full aspect-square rounded-lg overflow-hidden border-2 transition-all duration-300 bg-gray-50 p-1 ${
+                        activeImage === img ? 'border-blue-600 shadow-sm scale-105' : 'border-transparent hover:border-gray-100'
+                      }`}
+                    >
+                      <img 
+                        src={getImageUrl(img)} 
+                        alt={`Thumbnail ${idx}`} 
+                        className="w-full h-full object-contain"
+                        onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }}
+                      />
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="col-sm-6">
-            
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="row g-4 mt-5">
-        <div className="col-lg-7">
-          <div className="card shadow-sm border-theme rounded-[32px] overflow-hidden">
-            <div className="card-header d-flex flex-column align-items-start gap-2 py-4">
-              <div className="d-flex align-items-center gap-3 w-100 flex-wrap">
-                <h5 className="mb-0 text-primary-text font-black">Customer Reviews</h5>
-                <div className="text-muted-text small font-bold">{reviews.length} review{reviews.length === 1 ? "" : "s"}</div>
-              </div>
-              <div className="d-flex align-items-center gap-3 flex-wrap">
-                {reviewCount > 0 ? (
-                  <>
-                    <span className="fw-semibold">Rating {averageRating.toFixed(1)} / 5</span>
-                    <span className="text-muted small">({reviewCount} review{reviewCount === 1 ? "" : "s"})</span>
-                    <div className="d-flex align-items-center">
-                      {renderStars(averageRating)}
-                    </div>
-                  </>
-                ) : (
-                  <span className="text-muted fw-semibold">No reviews yet</span>
-                )}
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
-                  onClick={() => setReviewsExpanded((prev) => !prev)}
+              {/* Main Image View */}
+              <div className="col-12 col-md-10">
+                <div 
+                  className="product-main-image-container relative bg-white border border-gray-100 rounded-[24px] overflow-hidden cursor-zoom-in group shadow-sm max-h-[500px]"
+                  style={{ aspectRatio: "1/1" }}
+                  onMouseMove={handleMouseMove}
+                  onMouseLeave={handleMouseLeave}
                 >
-                  {reviewsExpanded ? (
-                    <>
-                      <FaChevronUp />
-                      Hide reviews
-                    </>
-                  ) : (
-                    <>
-                      <FaChevronDown />
-                      Show reviews
-                    </>
+                  <img
+                    src={activeImage ? getImageUrl(activeImage) : FALLBACK_IMAGE}
+                    alt={product.name}
+                    className="w-full h-full object-contain mix-blend-mode-multiply transition-opacity duration-500 p-6"
+                    key={activeImage}
+                    onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }}
+                  />
+                  
+                  {/* Zoom Overlay */}
+                  <div 
+                    className="absolute inset-0 z-20 pointer-events-none transition-opacity duration-300 opacity-0 group-hover:opacity-100"
+                    style={{
+                      ...zoomStyle,
+                      backgroundSize: '250%',
+                      backgroundRepeat: 'no-repeat',
+                      backgroundColor: '#fff'
+                    }}
+                  />
+
+                  {/* Discount Badge */}
+                  {product.compareAtPrice > product.price && (
+                    <div className="absolute top-6 left-6 bg-red-600 text-white px-4 py-1.5 rounded-full text-xs font-black shadow-lg z-10 uppercase tracking-widest">
+                      {Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)}% OFF
+                    </div>
                   )}
+                </div>
+
+                {/* Mobile Thumbnails (Visible only on small screens) */}
+                <div className="d-md-none mt-4 flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
+                  {[product.image, ...(product.images || [])].filter(Boolean).map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setActiveImage(img)}
+                      className={`flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition-all ${
+                        activeImage === img ? 'border-blue-600' : 'border-gray-100'
+                      }`}
+                    >
+                      <img src={getImageUrl(img)} alt="thumb" className="w-full h-full object-contain bg-gray-50" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Product Info */}
+          <div className="col-lg-5">
+            <div className="product-info-sticky top-24">
+              <div className="mb-2">
+                <span className="text-blue-600 font-bold text-xs uppercase tracking-widest">{product.category}</span>
+              </div>
+              <h1 className="text-3xl font-black text-gray-900 mb-3 leading-tight">{product.name}</h1>
+              
+              <div className="flex items-center gap-4 mb-3">
+                <div className="flex items-center gap-1">
+                  {renderStars(averageRating, "0.9rem")}
+                </div>
+                <span className="text-gray-400 text-xs font-bold uppercase tracking-wider">
+                  {averageRating.toFixed(1)} • {reviewCount} Reviews
+                </span>
+                <div className="h-4 w-px bg-gray-200"></div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                  <span className="text-green-600 text-xs font-black uppercase tracking-widest">In Stock</span>
+                </div>
+              </div>
+
+              <div className="mb-6 p-3 bg-gray-50 rounded-2xl border border-gray-100 inline-block min-w-[180px]">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-black text-gray-900">₹{Number(product.price).toLocaleString("en-IN")}</span>
+                  {product.compareAtPrice > product.price && (
+                    <span className="text-lg text-gray-400 line-through font-medium">₹{Number(product.compareAtPrice).toLocaleString("en-IN")}</span>
+                  )}
+                </div>
+                <p className="text-gray-400 text-[9px] font-black uppercase tracking-widest mt-0.5">Inclusive of all taxes & shipping</p>
+              </div>
+
+              <div className="mb-6">
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Description</h3>
+                <p className="text-gray-600 leading-relaxed text-xs lg:text-sm">
+                  {product.description || "No description available for this product."}
+                </p>
+              </div>
+
+              <div className="space-y-3 mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="qty-selector-modern flex items-center border-2 border-gray-100 rounded-xl overflow-hidden bg-gray-50">
+                    <button 
+                      className="p-2 hover:bg-white transition-colors disabled:opacity-30" 
+                      onClick={() => updateBuyQty(buyQty - 1)} 
+                      disabled={buyQty <= 1}
+                    >
+                      <FaMinus size={10} />
+                    </button>
+                    <input 
+                      type="number" 
+                      className="w-10 text-center bg-transparent font-bold text-gray-900 border-none focus:ring-0 text-sm" 
+                      value={buyQty} 
+                      onChange={(e) => updateBuyQty(e.target.value)}
+                    />
+                    <button 
+                      className="p-2 hover:bg-white transition-colors disabled:opacity-30" 
+                      onClick={() => updateBuyQty(buyQty + 1)} 
+                      disabled={buyQty >= maxStock}
+                    >
+                      <FaPlus size={10} />
+                    </button>
+                  </div>
+                  
+                  <button
+                    className="flex-grow py-3 bg-gray-900 text-white rounded-xl font-bold uppercase tracking-wider hover:bg-black transition-all active:scale-95 flex items-center justify-center gap-2 text-xs shadow-lg shadow-gray-200"
+                    onClick={() => {
+                      if (!ensureLoggedIn({ user, navigate, location, message: "Please login to add to cart" })) return;
+                      addToCart({ ...product, quantity: buyQty });
+                    }}
+                    disabled={maxStock <= 0}
+                  >
+                    <FaShoppingCart size={14} /> Add to Cart
+                  </button>
+                </div>
+
+                <button
+                  className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold uppercase tracking-wider hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-2 text-xs shadow-lg shadow-blue-50"
+                  disabled={maxStock <= 0}
+                  onClick={() => {
+                    if (!ensureLoggedIn({ user, navigate, location, message: "Please login to buy now" })) return;
+                    navigate("/checkout", {
+                      state: {
+                        buyNowItem: { product, quantity: buyQty },
+                      },
+                    });
+                  }}
+                >
+                  <FaBolt size={12} /> Buy It Now
+                </button>
+              </div>
+
+              {/* Trust Badges */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-600 shadow-sm"><FaShieldAlt /></div>
+                  <span className="text-[11px] font-bold uppercase text-gray-500">Secure Payment</span>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-600 shadow-sm"><FaTruck /></div>
+                  <span className="text-[11px] font-bold uppercase text-gray-500">Free Shipping</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Reviews Section */}
+        <section className="reviews-section animate-fade-in-up delay-2">
+          <div className="reviews-glass-card">
+            <div className="row align-items-center mb-5">
+              <div className="col-md-6">
+                <h2 className="shelf-title mb-0">Experience Hub</h2>
+                <p className="text-muted mt-2">Discover what our community has to say about this excellence.</p>
+              </div>
+              <div className="col-md-6 text-md-end">
+                <button 
+                  className="btn btn-outline-primary rounded-pill px-4 py-2 font-bold"
+                  onClick={() => setReviewsExpanded(!reviewsExpanded)}
+                >
+                  {reviewsExpanded ? "Condense Reviews" : `Read ${reviews.length} Stories`}
                 </button>
               </div>
             </div>
-            <div className="card-body">
-              {!reviewsExpanded ? (
-                <p className="text-muted mb-0">Click "Show reviews" to read customer feedback.</p>
-              ) : reviewLoading ? (
-                <p className="text-muted mb-0">Loading reviews...</p>
-              ) : reviews.length === 0 ? (
-                <p className="text-muted mb-0">No reviews yet.</p>
-              ) : (
-                reviews.map((review) => (
-                  <div key={review._id} className="border-bottom pb-3 mb-3 last-child-border-0">
-                    <div className="d-flex justify-content-between align-items-start">
-                      <div>
-                        <strong>{review.user?.name || "Anonymous"}</strong>
-                        <div className="d-flex align-items-center mt-1">
-                          {renderStars(review.rating)}
-                          <span className="ms-2 text-muted">{review.rating}</span>
+
+            {reviewsExpanded && (
+              <div className="reviews-list">
+                {reviewLoading ? (
+                  <div className="text-center py-5">
+                    <div className="spinner-border text-primary" />
+                  </div>
+                ) : reviews.length === 0 ? (
+                  <div className="text-center py-5">
+                    <p className="text-muted italic">Be the first to share your journey with this product.</p>
+                  </div>
+                ) : (
+                  reviews.map((review) => (
+                    <div key={review._id} className="review-item">
+                      <div className="d-flex align-items-center gap-3 mb-3">
+                        <div className="review-avatar">
+                          {(review.user?.name || "A")[0].toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="font-black text-lg">{review.user?.name || "Anonymous User"}</div>
+                          <div className="d-flex align-items-center gap-2">
+                            {renderStars(review.rating, "0.8rem")}
+                            <span className="text-muted text-xs font-bold">{new Date(review.createdAt).toLocaleDateString()}</span>
+                          </div>
                         </div>
                       </div>
-                      <small className="text-muted">{new Date(review.createdAt).toLocaleDateString()}</small>
+                      <p className="mb-0 text-muted-text leading-relaxed">
+                        {review.comment || "An exceptional choice with outstanding performance."}
+                      </p>
                     </div>
-                    <p className="mb-0 mt-2 text-wrap">
-                      {review.comment || <span className="text-muted">No comment provided.</span>}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
-        </div>
-      </div>
-
-      <div className="product-details-shelves mt-5">
-        <section className="product-details-shelf">
-          <div className="product-details-shelf-head">
-            <div>
-              <span className="product-details-kicker">AI Recommendations</span>
-              <h3>Products matched to this one</h3>
-              <p>These suggestions use category, rating, price, and browsing history signals.</p>
-            </div>
-          </div>
-
-          {recommendationProducts.length === 0 ? (
-            <p className="text-muted mb-0">No recommendations available yet.</p>
-          ) : (
-            <div className="row g-4">
-              {recommendationProducts.slice(0, 4).map((item) => (
-                <div className="col-sm-6 col-xl-3" key={`ai-${item._id}`}>
-                  <ProductCard product={item} />
-                </div>
-              ))}
-            </div>
-          )}
         </section>
 
-        <section className="product-details-shelf mt-5">
-          <div className="product-details-shelf-head">
-            <div>
-              <span className="product-details-kicker">Recently Viewed</span>
-              <h3>Continue from your last session</h3>
-              <p>The last products you checked stay close by, so discovery feels seamless.</p>
-            </div>
+        {/* AI Recommendations Shelf */}
+        <section className="modern-shelf animate-fade-in-up delay-3">
+          <div className="text-center mb-5">
+            <span className="shelf-kicker">Curated for you</span>
+            <h2 className="shelf-title">You might also desire</h2>
           </div>
+          
+          <div className="row g-4">
+            {recommendationProducts.length === 0 ? (
+              <div className="col-12 text-center text-muted">Analyzing your preferences...</div>
+            ) : (
+              recommendationProducts.slice(0, 4).map((item) => (
+                <div className="col-sm-6 col-lg-3" key={`ai-${item._id}`}>
+                  <ProductCard product={item} />
+                </div>
+              ))
+            )}
+          </div>
+        </section>
 
-          {recentlyViewedProducts.length === 0 ? (
-            <p className="text-muted mb-0">Your recently viewed products will appear here.</p>
-          ) : (
+        {/* Recently Viewed Shelf */}
+        {recentlyViewedProducts.length > 0 && (
+          <section className="modern-shelf">
+            <div className="text-center mb-5">
+              <span className="shelf-kicker">Continue Discovery</span>
+              <h2 className="shelf-title">Your Browsing Sanctuary</h2>
+            </div>
+            
             <div className="row g-4">
               {recentlyViewedProducts.slice(0, 4).map((item) => (
-                <div className="col-sm-6 col-xl-3" key={`recent-${item._id}`}>
+                <div className="col-sm-6 col-lg-3" key={`recent-${item._id}`}>
                   <ProductCard product={item} />
                 </div>
               ))}
             </div>
-          )}
-        </section>
-      </div>
+          </section>
+        )}
       </div>
     </div>
   );

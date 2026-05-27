@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useState } from "react";
 import API from "../../api";
 import { AuthContext } from "../../context/AuthContext";
 import { toast } from "react-toastify";
+import { FaUserCircle, FaEnvelope, FaPhone, FaMapMarkerAlt, FaLock, FaCamera, FaSave, FaSync, FaShieldAlt, FaKey } from "react-icons/fa";
 
 const AdminProfile = () => {
   const { user, updateUser } = useContext(AuthContext);
@@ -64,11 +65,11 @@ const AdminProfile = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name.trim() || !form.email.trim()) {
-      toast.warning("Name and email are required");
+      toast.warning("Core credentials are required");
       return;
     }
     if (form.password && form.password !== form.confirmPassword) {
-      toast.warning("Password and confirm password do not match");
+      toast.warning("Password parity check failed");
       return;
     }
 
@@ -88,7 +89,7 @@ const AdminProfile = () => {
       const { data } = await API.put("/users/me", payload);
       updateUser(data);
       setForm((prev) => ({ ...prev, password: "", confirmPassword: "" }));
-      toast.success("Profile updated");
+      toast.success("Security profile updated");
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to update profile");
     } finally {
@@ -96,138 +97,144 @@ const AdminProfile = () => {
     }
   };
 
-  if (loading) return <p>Loading profile...</p>;
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center h-64 opacity-30">
+      <FaSync className="animate-spin text-indigo-600 mb-4" size={30} />
+      <p className="text-sm font-black uppercase tracking-widest">Retrieving Credentials...</p>
+    </div>
+  );
 
   return (
-    <div className="container-fluid">
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h3 className="mb-0">Admin Profile</h3>
-        <span className="badge bg-primary-subtle text-primary-emphasis">
-          {user?.isSuperAdmin ? "Super Admin" : "Admin"}
-        </span>
+    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-700">
+      {/* V3 Premium Module Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 relative">
+        <div className="relative group">
+          <div className="absolute -left-8 -top-8 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-all duration-700" />
+          <div className="flex items-start gap-4 relative">
+            <div className="w-1.5 h-12 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full shadow-lg shadow-indigo-500/20" />
+            <div>
+              <h1 className="text-4xl font-black tracking-tight flex items-center gap-3" style={{ color: 'var(--page-text)' }}>
+                Security Profile
+                <span className="text-[10px] uppercase tracking-[0.3em] font-black px-2 py-1 bg-indigo-500/10 text-indigo-600 rounded-lg ml-2">
+                  Verified
+                </span>
+              </h1>
+              <p className="text-sm font-bold opacity-40 uppercase tracking-[0.1em] mt-1.5">
+                Manage your administrative identity and security parameters
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <form className="card p-3" onSubmit={handleSubmit} style={{ maxWidth: "720px" }}>
-        <div className="d-flex align-items-center gap-3 mb-3">
-          <img
-            src={capturedImage || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
-            alt="Admin profile"
-            style={{ width: "84px", height: "84px", borderRadius: "50%", objectFit: "cover", border: "1px solid #d1d5db" }}
-            loading="eager"
-            decoding="async"
-          />
-          <div>
-            <div className="fw-semibold">{form.name || "Admin User"}</div>
-            <small className="text-muted d-block">{form.email}</small>
-            <small className="text-muted">
-              Joined: {createdAt ? new Date(createdAt).toLocaleDateString() : "-"}
-            </small>
-          </div>
-        </div>
-
-        <div className="row g-3">
-          <div className="col-md-6">
-            <label className="form-label mb-1">Name</label>
-            <input
-              className="form-control"
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          <div className="col-md-6">
-            <label className="form-label mb-1">Email</label>
-            <input
-              type="email"
-              className="form-control"
-              name="email"
-              value={form.email}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          <div className="col-md-6">
-            <label className="form-label mb-1">Phone</label>
-            <input
-              className="form-control"
-              name="phone"
-              value={form.phone}
-              onChange={handleChange}
-              placeholder="Enter phone number"
-            />
-          </div>
-          <div className="col-12">
-            <label className="form-label mb-1">Address</label>
-            <textarea
-              className="form-control"
-              name="address"
-              value={form.address}
-              onChange={handleChange}
-              rows={2}
-              placeholder="Enter address"
-            />
-          </div>
-          <div className="col-md-6">
-            <label className="form-label mb-1">New Password</label>
-            <input
-              type="password"
-              className="form-control"
-              name="password"
-              value={form.password}
-              onChange={handleChange}
-              placeholder="Leave blank to keep current password"
-            />
-          </div>
-          <div className="col-md-6">
-            <label className="form-label mb-1">Confirm Password</label>
-            <input
-              type="password"
-              className="form-control"
-              name="confirmPassword"
-              value={form.confirmPassword}
-              onChange={handleChange}
-              placeholder="Re-enter new password"
-            />
-          </div>
-          <div className="col-md-6">
-            <label className="form-label mb-1">Role</label>
-            <input
-              className="form-control"
-              value={user?.isSuperAdmin ? "Super Admin" : "Admin"}
-              readOnly
-            />
-          </div>
-        </div>
-        <div className="mt-3">
-          <div className="mb-3">
-            <label className="form-label mb-2 d-block">Upload Profile Picture</label>
-            <input
-              type="file"
-              accept="image/*"
-              className="form-control"
-              onChange={handleProfileImageUpload}
-            />
-          </div>
-
-          {capturedImage && (
-            <div className="mb-3">
-              <p className="mb-1">Profile Picture Preview</p>
-              <img
-                src={capturedImage}
-                alt="Profile preview"
-                style={{ width: "100%", maxWidth: "220px", borderRadius: "10px", border: "1px solid #d1d5db" }}
-                loading="lazy"
-                decoding="async"
-              />
+      <div className="bg-white dark:bg-slate-900/60 rounded-[2.5rem] border shadow-2xl overflow-hidden" style={{ borderColor: 'var(--border-color)' }}>
+        <form onSubmit={handleSubmit} className="p-8 md:p-12 space-y-12">
+          
+          <div className="flex flex-col md:flex-row items-center gap-10">
+            <div className="relative group">
+              <div className="w-32 h-32 rounded-[2.5rem] bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden border-4 border-white dark:border-slate-900 shadow-2xl transition-all group-hover:scale-105 duration-500">
+                {capturedImage ? (
+                  <img src={capturedImage} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <FaUserCircle className="text-slate-300" size={80} />
+                )}
+              </div>
+              <label className="absolute -right-2 -bottom-2 w-10 h-10 bg-indigo-600 text-white rounded-xl shadow-xl flex items-center justify-center cursor-pointer hover:bg-indigo-700 transition-all active:scale-90 group-hover:rotate-12">
+                <FaCamera size={14} />
+                <input type="file" accept="image/*" className="hidden" onChange={handleProfileImageUpload} />
+              </label>
             </div>
-          )}
+            <div className="text-center md:text-left space-y-2">
+              <h3 className="text-2xl font-black" style={{ color: 'var(--page-text)' }}>{form.name || "Anonymous Admin"}</h3>
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+                <span className="px-3 py-1 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-lg shadow-indigo-600/20">
+                  {user?.isSuperAdmin ? "Super Administrator" : "Regional Manager"}
+                </span>
+                <span className="text-[10px] font-bold opacity-30 uppercase tracking-widest">
+                  Active since {createdAt ? new Date(createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) : "Initial Epoch"}
+                </span>
+              </div>
+            </div>
+          </div>
 
-          <button className="btn btn-primary" type="submit" disabled={saving}>
-            {saving ? "Updating..." : "Update Profile"}
-          </button>
-        </div>
-      </form>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Display Name</label>
+                <div className="relative">
+                  <FaUserCircle className="absolute left-5 top-1/2 -translate-y-1/2 text-indigo-500/30" size={14} />
+                  <input name="name" value={form.name} onChange={handleChange} className="w-full pl-12 pr-6 py-4 bg-slate-50 dark:bg-slate-800/50 border border-transparent rounded-2xl text-sm font-bold focus:ring-4 ring-indigo-500/10 transition-all outline-none" required />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Email Endpoint</label>
+                <div className="relative">
+                  <FaEnvelope className="absolute left-5 top-1/2 -translate-y-1/2 text-indigo-500/30" size={14} />
+                  <input type="email" name="email" value={form.email} onChange={handleChange} className="w-full pl-12 pr-6 py-4 bg-slate-50 dark:bg-slate-800/50 border border-transparent rounded-2xl text-sm font-bold focus:ring-4 ring-indigo-500/10 transition-all outline-none" required />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Secure Mobile</label>
+                <div className="relative">
+                  <FaPhone className="absolute left-5 top-1/2 -translate-y-1/2 text-indigo-500/30" size={14} />
+                  <input name="phone" value={form.phone} onChange={handleChange} className="w-full pl-12 pr-6 py-4 bg-slate-50 dark:bg-slate-800/50 border border-transparent rounded-2xl text-sm font-bold focus:ring-4 ring-indigo-500/10 transition-all outline-none" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Primary Worksite</label>
+                <div className="relative">
+                  <FaMapMarkerAlt className="absolute left-5 top-4 text-indigo-500/30" size={14} />
+                  <textarea name="address" value={form.address} onChange={handleChange} className="w-full pl-12 pr-6 py-4 bg-slate-50 dark:bg-slate-800/50 border border-transparent rounded-2xl text-sm font-bold focus:ring-4 ring-indigo-500/10 transition-all outline-none min-h-[100px]" />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="p-8 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-transparent space-y-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <FaShieldAlt className="text-indigo-600" size={16} />
+                  <h4 className="text-xs font-black uppercase tracking-widest" style={{ color: 'var(--page-text)' }}>Security Credentials</h4>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">New Access Token</label>
+                  <div className="relative">
+                    <FaKey className="absolute left-5 top-1/2 -translate-y-1/2 text-indigo-500/30" size={14} />
+                    <input type="password" name="password" value={form.password} onChange={handleChange} placeholder="••••••••" className="w-full pl-12 pr-6 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold focus:ring-4 ring-indigo-500/10 transition-all outline-none" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Re-verify Token</label>
+                  <div className="relative">
+                    <FaLock className="absolute left-5 top-1/2 -translate-y-1/2 text-indigo-500/30" size={14} />
+                    <input type="password" name="confirmPassword" value={form.confirmPassword} onChange={handleChange} placeholder="••••••••" className="w-full pl-12 pr-6 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold focus:ring-4 ring-indigo-500/10 transition-all outline-none" />
+                  </div>
+                </div>
+                <p className="text-[10px] font-bold opacity-30 uppercase tracking-tighter text-center">Leave blank to maintain existing security key</p>
+              </div>
+              
+              <div className="flex flex-col gap-3 pt-6">
+                <button 
+                  type="submit" 
+                  disabled={saving}
+                  className="w-full px-8 py-5 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl shadow-indigo-600/30 hover:bg-indigo-700 transition-all active:scale-95 flex items-center justify-center gap-3 group"
+                >
+                  <FaSave size={16} className={saving ? "animate-spin" : "group-hover:scale-110 transition-transform"} />
+                  <span>{saving ? "Synchronizing..." : "Update Security Profile"}</span>
+                </button>
+                <button 
+                  type="button" 
+                  onClick={loadProfile}
+                  className="w-full px-8 py-4 bg-slate-100 dark:bg-slate-800 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3"
+                >
+                  <FaSync size={14} />
+                  <span>Reset Changes</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </form>
+      </div>
     </div>
   );
 };

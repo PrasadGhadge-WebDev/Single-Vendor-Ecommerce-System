@@ -1,49 +1,67 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { AuthContext } from "../context/AuthContext";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import API from "../api";
 import "./Login.css";
 import { toast } from "react-toastify";
+import { FaRegEye, FaRegEyeSlash, FaTimes } from "react-icons/fa";
+import { isValidEmail, isValidPhone, normalizeDigits } from "../utils/validation";
 
 const Login = () => {
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [step, setStep] = useState(1); // 1: Mobile, 2: OTP
-  const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
+  const [formData, setFormData] = useState({
+    identifier: "",
+    password: "",
+  });
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSendOtp = async (e) => {
-    e.preventDefault();
-    if (!phone) return toast.error("Please enter mobile number");
-    if (phone.length !== 10) return toast.error("Mobile number must be exactly 10 digits");
-    
-    setLoading(true);
-    setError("");
-    try {
-      await API.post("/auth/send-otp", { phone });
-      toast.info("OTP sent to your mobile (use 123456)");
-      setStep(2);
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to send OTP");
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("expired")) {
+      setError("Your session has expired. Please log in again.");
     }
+  }, [location.search]);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (error) setError("");
   };
 
-  const handleVerifyOtp = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (!otp) return toast.error("Please enter OTP");
+    const identifier = String(formData.identifier || "").trim();
+
+    if (!identifier || !formData.password) {
+      return setError("Please enter both email/mobile and password");
+    }
+
+    const isEmail = identifier.includes("@");
+    if (isEmail) {
+      if (!isValidEmail(identifier)) {
+        return setError("Please enter a valid email address");
+      }
+    } else {
+      if (!isValidPhone(identifier)) {
+        return setError("Please enter a valid mobile number");
+      }
+    }
 
     setLoading(true);
     setError("");
     try {
-      const { data } = await API.post("/auth/verify-otp", { phone, otp });
+      const payload = {
+        identifier: isEmail ? identifier : normalizeDigits(identifier),
+        password: formData.password,
+      };
+      const { data } = await API.post("/auth/login", payload);
       if (data.success) {
-        toast.success("Login successful");
+        toast.success("Welcome back!");
         login(data);
         
         if (data.isAdmin) {
@@ -54,7 +72,7 @@ const Login = () => {
         }
       }
     } catch (err) {
-      setError(err.response?.data?.message || "Invalid OTP");
+      setError(err.response?.data?.message || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -62,65 +80,60 @@ const Login = () => {
 
   return (
     <div className="login-wrapper">
-      <div className="background-bubbles">
-        {[...Array(10)].map((_, i) => (
-          <span key={i} className={`bubble bubble-${i}`}></span>
-        ))}
-      </div>
-
       <div className="login-card">
+        <button className="close-btn" onClick={() => navigate("/")}>
+          <FaTimes />
+        </button>
+
         <div className="logo-section">
-          <h2>ElectroHub</h2>
-          <p className="sub-text">
-            {step === 1 ? "Step 1: Mobile Number" : "Step 2: OTP Verification"}
-          </p>
+          <h2>Welcome Back</h2>
         </div>
 
-        {error && <div className="alert">{error}</div>}
+        {error && <div className="alert-box">{error}</div>}
 
-        {step === 1 ? (
-          <form onSubmit={handleSendOtp}>
-            <div className="input-group">
+        <form onSubmit={handleLogin} className="login-form" autoComplete="off">
+          <div className="input-row">
+            <label>Email or Mobile</label>
+            <input
+              type="text"
+              name="identifier"
+              value={formData.identifier}
+              onChange={handleInputChange}
+              required
+              placeholder="Enter email or phone"
+              autoComplete="off"
+            />
+          </div>
+
+          <div className="input-row">
+            <label>Password</label>
+            <div className="password-input-wrapper">
               <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+                type={showPassword ? "text" : "password"}
+                name="password"
+                value={formData.password}
+                onChange={handleInputChange}
                 required
-                placeholder=" "
-                maxLength="10"
-                pattern="[0-9]{10}"
+                placeholder="Enter your password"
+                autoComplete="new-password"
               />
-              <label>Mobile Number</label>
-            </div>
-            <button type="submit" className="btn-gradient" disabled={loading}>
-              {loading ? "Sending..." : "Continue"}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleVerifyOtp}>
-            <div className="input-group">
-              <input
-                type="text"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                required
-                placeholder=" "
-                maxLength="6"
-              />
-              <label>Enter OTP</label>
-              <div className="resend-link" onClick={() => setStep(1)}>
-                Change Number?
+              <div className="eye-icon" onClick={() => setShowPassword(!showPassword)}>
+                {showPassword ? <FaRegEyeSlash /> : <FaRegEye />}
               </div>
             </div>
-            <button type="submit" className="btn-gradient" disabled={loading}>
-              {loading ? "Verifying..." : "Verify"}
-            </button>
-          </form>
-        )}
+            <div className="forgot-link-box">
+               <Link to="/forgot-password">Forgot Password?</Link>
+            </div>
+          </div>
 
-        <div className="login-footer">
-          <small>© {new Date().getFullYear()} ElectroHub Store</small>
-        </div>
+          <button type="submit" className="btn-gradient" disabled={loading}>
+            {loading ? "Logging in..." : "Login"}
+          </button>
+          
+          <div className="auth-switch">
+            Don't have an account? <Link to="/register">Sign up</Link>
+          </div>
+        </form>
       </div>
     </div>
   );

@@ -8,7 +8,7 @@ const reviewSchema = new mongoose.Schema(
       required: true,
     },
     product: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: String,
       ref: "Product",
       required: true,
     },

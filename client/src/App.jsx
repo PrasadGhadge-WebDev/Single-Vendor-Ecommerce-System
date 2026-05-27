@@ -23,7 +23,9 @@ import Contact from "./pages/Contact";
 import ProductDetails from "./pages/ProductDetails";
 import Offers from "./pages/Offers";
 import ReplacementPolicy from "./pages/ReplacementPolicy";
-import FAQ from "./pages/FAQ";
+
+import ForgotPassword from "./pages/ForgotPassword";
+import Wishlist from "./pages/Wishlist";
 
 import Dashboard from "./pages/Admin/Dashboard";
 import AddProduct from "./pages/Admin/AddProduct";
@@ -33,7 +35,6 @@ import ManageCategories from "./pages/Admin/ManageCategories";
 import ManageUsers from "./pages/Admin/ManageUsers";
 import ManageOffers from "./pages/Admin/ManageOffers";
 import ManageSuppliers from "./pages/Admin/ManageSuppliers";
-import BusinessSettings from "./pages/Admin/BusinessSettings";
 import AdminProfile from "./pages/Admin/AdminProfile";
 import StockHistory from "./pages/Admin/StockHistory";
 import ManageReviews from "./pages/Admin/ManageReviews";
@@ -63,12 +64,20 @@ const AdminRoute = ({ children }) => {
 const LayoutWrapper = ({ children }) => {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith("/admin");
+  const isAuthRoute = ["/login", "/register", "/forgot-password"].includes(location.pathname);
 
   return (
-    <div className="d-flex flex-column min-vh-100">
+    <div className="d-flex flex-column min-vh-100" style={{ position: 'relative', overflowX: 'hidden' }}>
       {!isAdminRoute && <Navbar />}
 
-      <div className="flex-grow-1">{children}</div>
+      <div className="flex-grow-1 global-page-frame" style={{ position: 'relative' }}>
+        {isAuthRoute && (
+          <div style={{ filter: 'blur(4px)', pointerEvents: 'none', userSelect: 'none' }}>
+            <Home />
+          </div>
+        )}
+        {children}
+      </div>
       {!isAdminRoute && <BottomNav />}
       {!isAdminRoute && <Footer />}
     </div>
@@ -102,7 +111,8 @@ function App() {
                     <Route path="/checkout" element={<Checkout />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
-                    <Route path="/faq" element={<FAQ />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+
 
                     <Route
                       path="/admin"
@@ -120,7 +130,6 @@ function App() {
                       <Route path="offers" element={<ManageOffers />} />
                       <Route path="suppliers" element={<ManageSuppliers />} />
                       <Route path="reviews" element={<ManageReviews />} />
-                      <Route path="business-settings" element={<BusinessSettings />} />
                       <Route path="stock-history" element={<StockHistory />} />
                       <Route path="profile" element={<AdminProfile />} />
                       <Route path="add-product" element={<AddProduct />} />
@@ -137,6 +146,7 @@ function App() {
                       }
                     />
 
+                    <Route path="/wishlist" element={<Wishlist />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </LayoutWrapper>

@@ -1,5 +1,6 @@
 const Cart = require("../models/Cart");
 const Product = require("../models/Product");
+const { buildProductQuery } = require("./productController");
 
 const extractProductId = (raw) => {
   if (!raw) return null;
@@ -41,7 +42,8 @@ exports.addToCart = async (req, res) => {
 
     if (!normalizedProductId) return res.status(400).json({ message: "productId is required" });
 
-    const product = await Product.findById(normalizedProductId);
+    const product = await Product.findOne(buildProductQuery(normalizedProductId));
+
     if (!product) return res.status(404).json({ message: "Product not found" });
 
     const qty = Math.max(1, Number(quantity));

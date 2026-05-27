@@ -5,6 +5,7 @@ const {
   verifyRazorpayPayment,
   getPaymentsByOrder,
   getAllPayments,
+  deletePayment,
 } = require("../controllers/paymentController");
 const { requireSignIn, isAdmin } = require("../middlewares/authMiddleware");
 
@@ -15,5 +16,6 @@ router.post("/cod", requireSignIn, createCodPayment);
 router.post("/razorpay/order", requireSignIn, createRazorpayOrder);
 router.post("/razorpay/verify", requireSignIn, verifyRazorpayPayment);
 router.get("/:orderId", requireSignIn, getPaymentsByOrder);
+router.delete("/:id", requireSignIn, isAdmin, deletePayment);
 
 module.exports = router;

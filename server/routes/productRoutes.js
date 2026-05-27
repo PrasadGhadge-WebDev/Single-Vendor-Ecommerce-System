@@ -14,8 +14,8 @@ const router = express.Router();
 router.get("/", getProducts);
 router.get("/:id", getProductById);
 
-router.post("/", requireSignIn, isAdmin, upload.single("image"), addProduct);
-router.put("/:id", requireSignIn, isAdmin, upload.single("image"), updateProduct);
+router.post("/", requireSignIn, isAdmin, upload.fields([{ name: "image", maxCount: 1 }, { name: "images", maxCount: 5 }]), addProduct);
+router.put("/:id", requireSignIn, isAdmin, upload.fields([{ name: "image", maxCount: 1 }, { name: "images", maxCount: 5 }]), updateProduct);
 router.delete("/:id", requireSignIn, isAdmin, deleteProduct);
 
 module.exports = router;

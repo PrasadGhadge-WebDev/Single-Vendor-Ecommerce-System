@@ -52,6 +52,10 @@ const businessSettingSchema = new mongoose.Schema(
     termsAndConditions: { type: String, default: "", trim: true },
     refundPolicy: { type: String, default: "", trim: true },
 
+    // Dynamic About Page Information
+    aboutStory: { type: String, default: "", trim: true },
+    aboutMission: { type: String, default: "", trim: true },
+
     // Legacy fields (optional support)
     invoicePrefix: { type: String, default: "INV", trim: true, uppercase: true },
     invoiceFooter: { type: String, default: "Thank you for your purchase.", trim: true },

@@ -1,39 +1,38 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { FaHeart, FaList, FaRegHeart, FaRegStar, FaSearch, FaShoppingCart, FaSortAmountDown, FaStar, FaThLarge } from "react-icons/fa";
+import { 
+  FaChevronDown, 
+  FaList, 
+  FaThLarge, 
+  FaCheckCircle, 
+  FaTag, 
+  FaFilter, 
+  FaTimes, 
+  FaSearch, 
+  FaChevronRight,
+  FaRedo
+} from "react-icons/fa";
 import API, { getImageUrl } from "../api";
 import { CartContext } from "../context/CartContext";
 import { AuthContext } from "../context/AuthContext";
-import { buildSearchSuggestions } from "../utils/productInsights";
+import ProductCard from "../components/ProductCard";
 import "./Shop.css";
 import { ensureLoggedIn } from "../utils/authGuards";
 
 const FALLBACK_IMAGE = "https://placehold.co/420x320/f1f5f9/64748b?text=No+Image";
 
-const CATEGORY_STYLE_MAP = {
-  "Mobiles": { emoji: "📱", accent: "category-card-phones", description: "Phones & Accessories" },
-  "Laptops": { emoji: "💻", accent: "category-card-laptops", description: "Work & Gaming Laptops" },
-  "Audio": { emoji: "🎧", accent: "category-card-audio", description: "Speakers & Headphones" },
-  "Wearables": { emoji: "⌚", accent: "category-card-wearables", description: "Smart Watches" },
-  "Tablets": { emoji: "📱", accent: "category-card-tablets", description: "iPad & Tablets" },
-  "Accessories": { emoji: "🔌", accent: "category-card-accessories", description: "Tech Essentials" },
-  "Peripherals": { emoji: "⌨️", accent: "category-card-peripherals", description: "Keyboards & Mice" },
-};
-
 const SORT_TABS = [
   { key: "recommended", label: "Recommended" },
-  { key: "best-rated", label: "Best rated" },
+  { key: "best-rated", label: "Best Rated" },
   { key: "latest", label: "Latest" },
 ];
 
 const VIEW_MODES = [
-  { key: "list", label: "List view", icon: FaList },
-  { key: "grid", label: "Grid view", icon: FaThLarge },
+  { key: "grid", icon: FaThLarge },
+  { key: "list", icon: FaList },
 ];
 
-const RATING_OPTIONS = [4.5, 4, 3.5, 3];
-
-const toCurrency = (value) => `INR ${Number(value || 0).toLocaleString("en-IN")}`;
+const toCurrency = (value) => `₹${Number(value || 0).toLocaleString("en-IN")}`;
 
 const getPriceMeta = (product) => {
   const salePrice = Number(product?.price || 0);
@@ -41,7 +40,6 @@ const getPriceMeta = (product) => {
     product?.compareAtPrice ||
     product?.originalPrice ||
     product?.mrp ||
-    product?.listPrice ||
     0
   );
 
@@ -64,663 +62,371 @@ const getProductImage = (product) => {
   return getImageUrl(product.image);
 };
 
-const getRatingValue = (product) => Number(product?.averageRating || 0);
-
-const matchesKeyword = (product, keywords) => {
-  const haystack = `${product?.name || ""} ${product?.category || ""} ${product?.description || ""} ${product?.brand || ""}`.toLowerCase();
-  return keywords.some((keyword) => haystack.includes(keyword));
-};
-
-const StarRow = ({ value }) => {
-  const rounded = Math.max(0, Math.min(5, value));
-  return Array.from({ length: 5 }, (_, index) => {
-    const filled = index + 1 <= rounded;
-    return filled ? (
-      <FaStar key={`star-${index}`} className="shop-star shop-star-filled" />
-    ) : (
-      <FaRegStar key={`star-${index}`} className="shop-star" />
-    );
-  });
-};
-
 const Shop = () => {
   const [products, setProducts] = useState([]);
-  const [allProductsForStats, setAllProductsForStats] = useState([]);
+  const [adminCategories, setAdminCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("recommended");
-  const [viewMode, setViewMode] = useState("list");
-  const [wishlist, setWishlist] = useState([]);
+  const [viewMode, setViewMode] = useState("grid");
   const [brandFilter, setBrandFilter] = useState("all");
-  const [minRating, setMinRating] = useState(0);
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
-  const [searchInput, setSearchInput] = useState("");
-  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
-  const searchBlurTimeout = useRef(null);
+  const [onlyInStock, setOnlyInStock] = useState(false);
+  const [onlyOnSale, setOnlyOnSale] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const { addToCart } = useContext(CartContext);
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
   const { categoryName } = useParams();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const search = searchParams.get("search") || "";
+  const [searchParams] = useSearchParams();
   const subCategory = searchParams.get("sub") || "";
+  const searchTerm = searchParams.get("search") || "";
 
   useEffect(() => {
-    setSearchInput(search);
-  }, [search]);
-
-  useEffect(() => {
-    const fetchAllProducts = async () => {
+    const fetchAdminCategories = async () => {
       try {
-        const { data } = await API.get("/products");
-        setAllProductsForStats(Array.isArray(data) ? data : []);
+        const { data } = await API.get("/categories");
+        setAdminCategories(Array.isArray(data) ? data : data?.categories || []);
       } catch (err) {
-        console.error("Error fetching all products for stats:", err);
+        console.error("Error fetching categories:", err);
       }
     };
-    fetchAllProducts();
+    fetchAdminCategories();
   }, []);
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-
         const params = new URLSearchParams();
         if (categoryName) params.set("category", categoryName);
         if (subCategory) params.set("subCategory", subCategory);
+        if (searchTerm) params.set("search", searchTerm);
 
         const url = params.toString() ? `/products?${params.toString()}` : "/products";
         const { data } = await API.get(url);
         setProducts(Array.isArray(data) ? data : []);
-
-        // Reset price and brand filters when category changes to ensure products are visible
-        setBrandFilter("all");
-        setPriceMin("");
-        setPriceMax("");
       } catch (err) {
         console.error("Error fetching products:", err);
       } finally {
         setLoading(false);
       }
     };
-
     fetchProducts();
-  }, [categoryName, subCategory]);
+  }, [categoryName, subCategory, searchTerm]);
 
   const productStats = useMemo(() => {
-    const allPrices = products
-      .map((product) => Number(product?.price || 0))
-      .filter((price) => Number.isFinite(price));
-
-    const min = allPrices.length ? Math.min(...allPrices) : 0;
-    const max = allPrices.length ? Math.max(...allPrices) : 0;
-
-    return { min, max };
-  }, [products]);
-
-  useEffect(() => {
-    if (priceMin === "") setPriceMin(productStats.min ? String(productStats.min) : "");
-    if (priceMax === "") setPriceMax(productStats.max ? String(productStats.max) : "");
-  }, [priceMax, priceMin, productStats.max, productStats.min]);
-
-  const categoryCards = useMemo(() => {
-    // 1. Get all unique subcategories from products
-    const subCats = {};
-    allProductsForStats.forEach(p => {
-      if (p.subCategory) {
-        subCats[p.subCategory] = (subCats[p.subCategory] || 0) + 1;
-      }
-    });
-
-    // 2. Map them to card objects
-    return Object.keys(subCats).map(name => {
-      const style = CATEGORY_STYLE_MAP[name] || { 
-        emoji: "📦", 
-        accent: "category-card-default", 
-        description: `Explore our range of ${name}` 
-      };
-      return {
-        label: name,
-        sub: name,
-        count: subCats[name],
-        ...style
-      };
-    });
-  }, [allProductsForStats]);
-
-  const sidebarCategories = useMemo(() => {
-    const names = Array.from(
-      new Set(
-        products
-          .map((product) => product?.category?.trim())
-          .filter(Boolean)
-      )
-    );
-
-    return names.slice(0, 8);
+    const prices = products.map(p => Number(p.price || 0)).filter(p => p > 0);
+    return {
+      min: prices.length ? Math.min(...prices) : 0,
+      max: prices.length ? Math.max(...prices) : 0
+    };
   }, [products]);
 
   const brands = useMemo(() => {
     const names = products
-      .map((product) => product?.brand || product?.supplier?.name || product?.manufacturer)
+      .map((p) => p?.brand || p?.supplier?.name || p?.manufacturer)
       .filter(Boolean);
-
-    return Array.from(new Set(names)).slice(0, 8);
+    return Array.from(new Set(names));
   }, [products]);
 
   const filteredProducts = useMemo(() => {
-    const min = Number(priceMin || 0);
-    const max = Number(priceMax || Number.MAX_SAFE_INTEGER);
-    const term = searchInput.trim().toLowerCase();
-
-    return products.filter((product) => {
-      const price = Number(product?.price || 0);
-      const rating = getRatingValue(product);
-      const brand = product?.brand || product?.supplier?.name || product?.manufacturer || "";
-      const searchable = `${product?.name || ""} ${product?.category || ""} ${product?.description || ""} ${brand}`.toLowerCase();
-
+    return products.filter((p) => {
+      const price = Number(p.price || 0);
+      const brand = p.brand || p.supplier?.name || p.manufacturer || "";
+      
       if (brandFilter !== "all" && brand !== brandFilter) return false;
-      if (minRating > 0 && rating < minRating) return false;
-      if (price < min || price > max) return false;
-      if (term && !searchable.includes(term)) return false;
+      if (onlyInStock && Number(p.stock || 0) <= 0) return false;
+      if (onlyOnSale && !getPriceMeta(p).hasDiscount) return false;
+      if (priceMin && price < Number(priceMin)) return false;
+      if (priceMax && price > Number(priceMax)) return false;
+      
       return true;
     });
-  }, [brandFilter, minRating, priceMax, priceMin, products, searchInput]);
+  }, [products, brandFilter, onlyInStock, onlyOnSale, priceMin, priceMax]);
 
-  const visibleProducts = useMemo(() => {
+  const sortedProducts = useMemo(() => {
     const list = [...filteredProducts];
-
-    const score = (product) => {
-      const rating = getRatingValue(product);
-      const reviews = Number(product?.numReviews || 0);
-      const price = Number(product?.price || 0);
-
-      if (activeTab === "best-rated") return rating * 1000 + reviews;
-      if (activeTab === "latest") return new Date(product?.createdAt || 0).getTime() || 0;
-      return rating * 100 + reviews + Math.max(0, 100000 - price);
-    };
-
-    list.sort((a, b) => score(b) - score(a));
+    if (activeTab === "best-rated") {
+      list.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
+    } else if (activeTab === "latest") {
+      list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
     return list;
-  }, [activeTab, filteredProducts]);
+  }, [filteredProducts, activeTab]);
 
-  const statsLabel = useMemo(() => {
-    if (categoryName) return `Category: ${categoryName}`;
-    if (searchInput) return `Search results for "${searchInput}"`;
-    if (subCategory) return `Subcategory: ${subCategory}`;
-    return "Shop";
-  }, [categoryName, searchInput, subCategory]);
-
-  const searchSuggestions = useMemo(() => buildSearchSuggestions(products, searchInput, 6), [products, searchInput]);
-
-  const updateSearch = (value) => {
-    setSearchInput(value);
-
-    const next = new URLSearchParams(searchParams);
-    if (value.trim()) {
-      next.set("search", value.trim());
-    } else {
-      next.delete("search");
-    }
-    setSearchParams(next, { replace: true });
-  };
-
-  const handleSearchFocus = () => {
-    if (searchBlurTimeout.current) {
-      clearTimeout(searchBlurTimeout.current);
-      searchBlurTimeout.current = null;
-    }
-    setShowSearchSuggestions(true);
-  };
-
-  const handleSearchBlur = () => {
-    searchBlurTimeout.current = window.setTimeout(() => {
-      setShowSearchSuggestions(false);
-      searchBlurTimeout.current = null;
-    }, 120);
-  };
-
-  const handleSuggestionSelect = (suggestion) => {
-    if (suggestion.query) {
-      updateSearch(suggestion.query);
-    }
-
-    setShowSearchSuggestions(false);
-
-    if (suggestion.productId) {
-      navigate(`/product/${suggestion.productId}`);
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (searchBlurTimeout.current) {
-        clearTimeout(searchBlurTimeout.current);
-      }
-    };
-  }, []);
-
-  const toggleWishlist = (productId) => {
-    setWishlist((current) =>
-      current.includes(productId)
-        ? current.filter((id) => id !== productId)
-        : [...current, productId]
-    );
+  const clearFilters = () => {
+    setBrandFilter("all");
+    setPriceMin("");
+    setPriceMax("");
+    setOnlyInStock(false);
+    setOnlyOnSale(false);
+    setActiveTab("recommended");
   };
 
   if (loading) {
     return (
-      <div className="shop-page">
-        <div className="container py-5 text-center">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
-          <p className="mt-3 mb-0">Loading products...</p>
+      <div className="shop-page d-flex align-items-center justify-content-center">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
         </div>
       </div>
     );
   }
 
-  const effectiveProducts = visibleProducts;
-
   return (
     <div className="shop-page">
-      <section className="shop-hero">
-        <div className="shop-hero-glow shop-hero-glow-left" />
-        <div className="shop-hero-glow shop-hero-glow-right" />
+      <div className="shop-main-layout">
+        {/* Overlay for mobile */}
+        <div 
+          className={`sidebar-overlay ${isMobileSidebarOpen ? "show" : ""}`} 
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
 
-        <div className="container position-relative">
-
-
-          <div className="shop-hero-copy">
-            <h1 className="text-white font-bold text-4xl md:text-6xl mb-4">
-              {searchInput || subCategory || categoryName || "All Products"}
-            </h1>
-            <p className="text-white/80 text-lg md:text-xl max-w-2xl">
-              Explore our premium selection of electronics and gadgets.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="container shop-featured-categories">
-        <div className="row g-3">
-          {categoryCards.map((item) => (
-            <div className="col-md-4" key={item.label}>
-              <Link to={`/shop?sub=${encodeURIComponent(item.sub)}`} 
-                className={`shop-category-card relative overflow-hidden rounded-[24px] p-6 min-h-[160px] group transition-all duration-500 hover:-translate-y-1 hover:shadow-xl flex flex-col justify-between ${
-                  item.accent === 'category-card-phones' ? 'bg-gradient-to-br from-orange-600 to-red-800 text-white' :
-                  item.accent === 'category-card-laptops' ? 'bg-gradient-to-br from-blue-700 to-indigo-950 text-white' :
-                  item.accent === 'category-card-wearables' ? 'bg-gradient-to-br from-purple-600 to-indigo-900 text-white' :
-                  item.accent === 'category-card-tablets' ? 'bg-gradient-to-br from-pink-600 to-rose-900 text-white' :
-                  item.accent === 'category-card-audio' ? 'bg-gradient-to-br from-teal-600 to-emerald-950 text-white' :
-                  'bg-gradient-to-br from-slate-700 to-slate-900 text-white'
-                }`}
+        <aside className={`shop-sidebar-wrapper ${isMobileSidebarOpen ? "show" : ""}`}>
+          {/* Categories Section */}
+          <div className="shop-sidebar-card">
+            <div className="shop-sidebar-title">
+              <span>Categories</span>
+              <FaFilter size={10} />
+            </div>
+            <div className="shop-category-list">
+              <Link 
+                to="/shop" 
+                className={`shop-category-link ${!categoryName && !subCategory ? 'active' : ''}`}
+                onClick={() => setIsMobileSidebarOpen(false)}
               >
-                <div className="relative z-10 flex justify-between items-start">
-                  <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-2xl shadow-inner border border-white/20">
-                    {item.emoji}
-                  </div>
-                  <span className="text-xs font-bold bg-black/20 px-2 py-1 rounded-full backdrop-blur-sm">
-                    {item.count} items
-                  </span>
-                </div>
-
-                <div className="relative z-10 mt-3">
-                  <h3 className="text-xl font-black mb-1">{item.label}</h3>
-                  <p className="text-[10px] opacity-80 font-medium line-clamp-1">{item.description}</p>
-                </div>
+                <span>All Products</span>
+                <FaChevronRight size={10} />
               </Link>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="container shop-main">
-        <div className="row g-4">
-          <aside className="col-lg-3">
-            <div className="shop-sidebar">
-              <div className="shop-sidebar-card">
-                <div className="shop-sidebar-title">
-                  <span>Other category</span>
-                </div>
-                <div className="shop-category-list">
-                  {sidebarCategories.length > 0 ? (
-                    sidebarCategories.map((name) => (
-                      <Link key={name} to={`/shop/category/${encodeURIComponent(name)}`} className="shop-category-link">
-                        {name}
-                      </Link>
-                    ))
-                  ) : (
-                    <div className="shop-empty-note">No categories available yet.</div>
-                  )}
-                </div>
-              </div>
-
-              {brands.length > 0 && (
-                <div className="shop-sidebar-card">
-                  <div className="shop-sidebar-title">
-                    <span>Brands</span>
-                  </div>
-                  <div className="shop-chip-list">
-                    <button type="button" className={`shop-chip ${brandFilter === "all" ? "active" : ""}`} onClick={() => setBrandFilter("all")}>
-                      All
-                    </button>
-                    {brands.map((brand) => (
-                      <button
-                        type="button"
-                        key={brand}
-                        className={`shop-chip ${brandFilter === brand ? "active" : ""}`}
-                        onClick={() => setBrandFilter(brand)}
-                      >
-                        {brand}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="shop-sidebar-card">
-                <div className="shop-sidebar-title">
-                  <span>Prices</span>
-                </div>
-                <div className="shop-price-grid">
-                  <label>
-                    <span>Min</span>
-                    <input
-                      type="number"
-                      min="0"
-                      className="form-control"
-                      value={priceMin}
-                      onChange={(e) => setPriceMin(e.target.value)}
-                      placeholder={productStats.min ? String(productStats.min) : "0"}
-                    />
-                  </label>
-                  <label>
-                    <span>Max</span>
-                    <input
-                      type="number"
-                      min="0"
-                      className="form-control"
-                      value={priceMax}
-                      onChange={(e) => setPriceMax(e.target.value)}
-                      placeholder={productStats.max ? String(productStats.max) : "0"}
-                    />
-                  </label>
-                </div>
-                <div className="shop-price-summary">
-                  {productStats.min || productStats.max ? (
-                    <span>
-                      Range {toCurrency(productStats.min)} - {toCurrency(productStats.max)}
-                    </span>
-                  ) : (
-                    <span>No price data yet</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="shop-sidebar-card">
-                <div className="shop-sidebar-title">
-                  <span>Rating</span>
-                </div>
-                <div className="shop-rating-list">
-                  <button type="button" className={`shop-rating-row ${minRating === 0 ? "active" : ""}`} onClick={() => setMinRating(0)}>
-                    All ratings
-                  </button>
-                  {RATING_OPTIONS.map((rating) => (
-                    <button
-                      type="button"
-                      key={rating}
-                      className={`shop-rating-row ${minRating === rating ? "active" : ""}`}
-                      onClick={() => setMinRating(rating)}
-                    >
-                      <span className="shop-rating-stars">
-                        {Array.from({ length: 5 }, (_, index) => (
-                          <FaStar key={`${rating}-${index}`} className={index < Math.floor(rating) ? "shop-star shop-star-filled" : "shop-star"} />
-                        ))}
-                      </span>
-                      <span>{rating.toFixed(1)} &amp; up</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </aside>
-
-          <div className="col-lg-9">
-            <div className="shop-toolbar">
-              <div className="shop-tabs" role="tablist" aria-label="Product sorting tabs">
-                {SORT_TABS.map((tab) => (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    className={`shop-tab ${activeTab === tab.key ? "active" : ""}`}
-                    onClick={() => setActiveTab(tab.key)}
+              {adminCategories.map((cat) => (
+                <div key={cat._id} className="shop-category-group">
+                  <Link
+                    to={`/shop/category/${encodeURIComponent(cat.name)}`}
+                    className={`shop-category-link ${categoryName === cat.name ? 'active' : ''}`}
+                    onClick={() => setIsMobileSidebarOpen(false)}
                   >
-                    {tab.label}
+                    <span>{cat.name}</span>
+                    <FaChevronRight size={10} />
+                  </Link>
+                  {categoryName === cat.name && Array.isArray(cat.subCategories) && cat.subCategories.length > 0 && (
+                    <div className="ms-4 my-2 d-grid gap-1 border-start ps-3">
+                      {cat.subCategories.map((sub) => (
+                        <Link
+                          key={sub}
+                          to={`/shop/category/${encodeURIComponent(cat.name)}?sub=${encodeURIComponent(sub)}`}
+                          className={`text-xs py-1 transition-colors ${subCategory === sub ? "text-primary font-black" : "text-muted hover:text-primary"}`}
+                          onClick={() => setIsMobileSidebarOpen(false)}
+                        >
+                          {sub}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Preferences Section */}
+          <div className="shop-sidebar-card">
+            <div className="shop-sidebar-title">
+              <span>Preferences</span>
+            </div>
+            <div className="filter-chip-group">
+              <button 
+                className={`filter-chip ${onlyInStock ? 'active' : ''}`}
+                onClick={() => setOnlyInStock(!onlyInStock)}
+              >
+                In Stock Only
+              </button>
+              <button 
+                className={`filter-chip ${onlyOnSale ? 'active' : ''}`}
+                onClick={() => setOnlyOnSale(!onlyOnSale)}
+              >
+                On Sale
+              </button>
+            </div>
+          </div>
+
+          {/* Brands Section */}
+          {brands.length > 0 && (
+            <div className="shop-sidebar-card">
+              <div className="shop-sidebar-title">
+                <span>Brands</span>
+              </div>
+              <div className="filter-chip-group">
+                <button 
+                  className={`filter-chip ${brandFilter === 'all' ? 'active' : ''}`}
+                  onClick={() => setBrandFilter('all')}
+                >
+                  All
+                </button>
+                {brands.map((brand) => (
+                  <button
+                    key={brand}
+                    className={`filter-chip ${brandFilter === brand ? 'active' : ''}`}
+                    onClick={() => setBrandFilter(brand)}
+                  >
+                    {brand}
                   </button>
                 ))}
               </div>
-
-              <div className="shop-toolbar-controls">
-                <label className="shop-sort-select">
-                  <FaSortAmountDown />
-                  <select
-                    value={activeTab}
-                    onChange={(e) => setActiveTab(e.target.value)}
-                    aria-label="Sort products"
-                  >
-                    {SORT_TABS.map((tab) => (
-                      <option key={tab.key} value={tab.key}>
-                        {tab.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <div className="shop-view-toggle" role="group" aria-label="View mode">
-                  {VIEW_MODES.map((mode) => {
-                    const Icon = mode.icon;
-                    return (
-                      <button
-                        key={mode.key}
-                        type="button"
-                        className={`shop-view-btn ${viewMode === mode.key ? "active" : ""}`}
-                        onClick={() => setViewMode(mode.key)}
-                        aria-label={mode.label}
-                      >
-                        <Icon />
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
             </div>
+          )}
 
-            <div className="shop-results-meta">
-              <div>
-                <span className="shop-results-label">{statsLabel}</span>
-                <h2 className="shop-results-title">Browse products in cards, not plain text</h2>
-              </div>
-              <div className="shop-results-count">
-                {effectiveProducts.length} product{effectiveProducts.length === 1 ? "" : "s"}
-              </div>
+          {/* Price Range Section */}
+          <div className="shop-sidebar-card">
+            <div className="shop-sidebar-title">
+              <span>Price Range</span>
             </div>
+            <div className="d-flex gap-2 mb-3">
+              <input
+                type="number"
+                placeholder="Min"
+                className="form-control form-control-sm border-0 bg-light rounded-pill px-3"
+                value={priceMin}
+                onChange={(e) => setPriceMin(e.target.value)}
+              />
+              <input
+                type="number"
+                placeholder="Max"
+                className="form-control form-control-sm border-0 bg-light rounded-pill px-3"
+                value={priceMax}
+                onChange={(e) => setPriceMax(e.target.value)}
+              />
+            </div>
+            <div className="text-[10px] font-bold text-muted text-uppercase tracking-wider">
+              {toCurrency(productStats.min)} - {toCurrency(productStats.max)}
+            </div>
+          </div>
 
-            {effectiveProducts.length === 0 ? (
-              <div className="shop-empty-state">
-                <FaSearch size={28} />
-                <h4>No products found</h4>
-                <p>Try clearing a filter or using a different category card.</p>
+          {/* Reset Filters */}
+          <button 
+            className="btn btn-link text-danger text-decoration-none p-0 mt-4 font-bold text-xs d-flex align-items-center gap-2"
+            onClick={clearFilters}
+          >
+            <FaRedo size={10} /> CLEAR ALL FILTERS
+          </button>
+        </aside>
+
+        <main className="shop-content-area">
+          <div className="shop-toolbar">
+            <div className="shop-tabs">
+              {SORT_TABS.map((tab) => (
                 <button
-                  type="button"
-                  className="shop-reset-btn"
-                  onClick={() => {
-                    setBrandFilter("all");
-                    setMinRating(0);
-                    setPriceMin(productStats.min ? String(productStats.min) : "");
-                    setPriceMax(productStats.max ? String(productStats.max) : "");
-                    setActiveTab("recommended");
-                    setViewMode("list");
-                  }}
+                  key={tab.key}
+                  className={`shop-tab-btn ${activeTab === tab.key ? 'active' : ''}`}
+                  onClick={() => setActiveTab(tab.key)}
                 >
-                  Reset filters
+                  {tab.label}
                 </button>
+              ))}
+            </div>
+
+            <div className="shop-view-controls">
+              <div className="shop-results-count">
+                {sortedProducts.length} Items Found
               </div>
-            ) : viewMode === "grid" ? (
-              <div className="row g-4">
-                {effectiveProducts.map((product) => (
-                  <div className="col-md-6 col-xxl-4" key={product._id}>
-                    <div className="shop-grid-product-card">
-                      <Link to={`/product/${product._id}`} className="shop-grid-media">
-                        <img
-                          src={getProductImage(product)}
-                          alt={product.name}
-                          loading="lazy"
-                          decoding="async"
-                          onError={(e) => {
-                            e.currentTarget.src = FALLBACK_IMAGE;
-                          }}
-                        />
-                      </Link>
-                      <div className="shop-grid-body">
-                        <div className="shop-grid-topline">
-                          <span>{product.category || "General"}</span>
-                          <button
-                            type="button"
-                            className={`shop-wishlist-btn ${wishlist.includes(product._id) ? "active" : ""}`}
-                            onClick={() => toggleWishlist(product._id)}
-                            aria-label="Wishlist"
-                          >
-                            {wishlist.includes(product._id) ? <FaHeart /> : <FaRegHeart />}
-                          </button>
+              <div className="shop-view-toggle">
+                {VIEW_MODES.map((mode) => {
+                  const Icon = mode.icon;
+                  return (
+                    <button
+                      key={mode.key}
+                      className={`view-toggle-btn ${viewMode === mode.key ? 'active' : ''}`}
+                      onClick={() => setViewMode(mode.key)}
+                    >
+                      <Icon size={14} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {sortedProducts.length === 0 ? (
+            <div className="shop-empty-state">
+              <FaSearch size={48} className="text-light mb-4" />
+              <h3 className="font-black">No products found</h3>
+              <p className="text-muted">Try adjusting your filters or search terms.</p>
+              <button className="btn btn-dark mt-4 rounded-pill px-4" onClick={clearFilters}>
+                Reset Filters
+              </button>
+            </div>
+          ) : (
+            <div className={`shop-products-grid ${viewMode === 'grid' ? 'grid-view' : 'list-view'}`}>
+              {sortedProducts.map((product) => (
+                <div key={product._id} className="shop-product-item">
+                  {viewMode === "grid" ? (
+                    <ProductCard product={product} />
+                  ) : (
+                    <div className="bg-white p-4 rounded-[24px] shadow-sm border border-light transition-all hover:shadow-xl group">
+                      <div className="row g-4 align-items-center">
+                        <div className="col-md-3">
+                          <Link to={`/product/${product._id}`} className="overflow-hidden rounded-[20px] d-block aspect-square bg-light p-3">
+                            <img
+                              src={getProductImage(product)}
+                              alt={product.name}
+                              className="w-100 h-100 object-contain transition-transform duration-500 group-hover:scale-110"
+                            />
+                          </Link>
                         </div>
-                        <Link to={`/product/${product._id}`} className="shop-grid-title-link">
-                          <h5>{product.name}</h5>
-                        </Link>
-                        {Number(product?.numReviews || 0) > 0 && (
-                          <div className="shop-grid-rating">
-                            <StarRow value={Math.round(getRatingValue(product))} />
-                            <span>{getRatingValue(product).toFixed(1)}</span>
+                        <div className="col-md-6">
+                          <div className="text-primary font-bold text-[10px] uppercase tracking-widest mb-2">
+                            {product.category || "General"}
                           </div>
-                        )}
-                        <div className="shop-grid-price">
-                          <strong>{toCurrency(getPriceMeta(product).salePrice)}</strong>
-                          {getPriceMeta(product).hasDiscount && <del>{toCurrency(getPriceMeta(product).compareAtPrice)}</del>}
+                          <Link to={`/product/${product._id}`} className="text-decoration-none text-dark hover:text-primary transition-colors">
+                            <h3 className="font-black text-xl mb-2">{product.name}</h3>
+                          </Link>
+                          <p className="text-muted text-sm line-clamp-2 mb-3">
+                            {product.description || "Premium quality product with exceptional design and performance."}
+                          </p>
+                          <div className="d-flex align-items-center gap-3">
+                            <div className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest ${Number(product?.stock || 0) > 0 ? "bg-success bg-opacity-10 text-success" : "bg-danger bg-opacity-10 text-danger"}`}>
+                              {Number(product?.stock || 0) > 0 ? "In Stock" : "Out of Stock"}
+                            </div>
+                          </div>
                         </div>
-                        <div className="shop-grid-actions">
+                        <div className="col-md-3 text-md-end d-flex flex-column gap-3">
+                          <div>
+                            <div className="font-black text-2xl text-dark mb-1">
+                              {toCurrency(getPriceMeta(product).salePrice)}
+                            </div>
+                            {getPriceMeta(product).hasDiscount && (
+                              <del className="text-muted text-sm">
+                                {toCurrency(getPriceMeta(product).compareAtPrice)}
+                              </del>
+                            )}
+                          </div>
                           <button
-                            className="btn btn-cart-action"
+                            className="btn btn-dark w-100 py-3 rounded-[16px] font-black uppercase tracking-widest text-[10px] hover:bg-black"
                             onClick={() => {
                               if (!ensureLoggedIn({ user, navigate, location, message: "Please login to add to cart" })) return;
                               addToCart(product);
                             }}
                           >
-                            <FaShoppingCart className="me-2" />
                             Add to Cart
-                          </button>
-                          <button className="btn btn-outline-primary" onClick={() => navigate(`/product/${product._id}`)}>
-                            View details
                           </button>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="shop-list">
-                {effectiveProducts.map((product) => {
-                  const priceMeta = getPriceMeta(product);
-                  const rating = getRatingValue(product);
-                  const stockLabel = Number(product?.stock || 0) > 0 ? `${product.stock} in stock` : "Out of stock";
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </main>
+      </div>
 
-                  return (
-                    <article className="shop-list-card" key={product._id}>
-                      <Link to={`/product/${product._id}`} className="shop-list-media">
-                        <img
-                          src={getProductImage(product)}
-                          alt={product.name}
-                          loading="lazy"
-                          decoding="async"
-                          onError={(e) => {
-                            e.currentTarget.src = FALLBACK_IMAGE;
-                          }}
-                        />
-                      </Link>
-
-                      <div className="shop-list-copy">
-                        <div className="shop-list-head">
-                          <div>
-                            <span className="shop-list-category">{product.category || "General"}</span>
-                            <Link to={`/product/${product._id}`} className="shop-list-title-link">
-                              <h3>{product.name}</h3>
-                            </Link>
-                          </div>
-                          <button
-                            type="button"
-                            className={`shop-wishlist-btn ${wishlist.includes(product._id) ? "active" : ""}`}
-                            onClick={() => toggleWishlist(product._id)}
-                            aria-label="Wishlist"
-                          >
-                            {wishlist.includes(product._id) ? <FaHeart /> : <FaRegHeart />}
-                          </button>
-                        </div>
-
-                        {Number(product?.numReviews || 0) > 0 ? (
-                          <div className="shop-list-rating">
-                            <StarRow value={Math.round(rating)} />
-                            <span className="shop-list-rating-value">{rating.toFixed(1)}</span>
-                            <span className="shop-list-rating-count">({Number(product?.numReviews || 0)} orders)</span>
-                            <span className="shop-list-shipping">Free shipping</span>
-                          </div>
-                        ) : (
-                          <div className="shop-list-rating">
-                            <span className="shop-list-shipping ms-0">Free shipping</span>
-                            <span className="badge bg-light text-dark ms-2">New</span>
-                          </div>
-                        )}
-
-                        <p className="shop-list-description">
-                          {product.description || "Short description about the product goes here, with features and buying details."}
-                        </p>
-
-                        <div className="shop-list-tags">
-                          <span>{stockLabel}</span>
-                          <span>{product.brand || product.supplier?.name || "Trusted seller"}</span>
-                        </div>
-                      </div>
-
-                      <div className="shop-list-aside">
-                        <div className="shop-list-price">
-                          <strong>{toCurrency(priceMeta.salePrice)}</strong>
-                          {priceMeta.hasDiscount && <del>{toCurrency(priceMeta.compareAtPrice)}</del>}
-                        </div>
-                        <button
-                          className="btn btn-cart-action shop-list-cart-btn"
-                          onClick={() => {
-                            if (!ensureLoggedIn({ user, navigate, location, message: "Please login to add to cart" })) return;
-                            addToCart(product);
-                          }}
-                        >
-                          <FaShoppingCart className="me-2" />
-                          Add to Cart
-                        </button>
-                        <button className="btn btn-buy-action shop-list-buy-btn" onClick={() => navigate(`/product/${product._id}`)}>
-                          View details
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
+      <button 
+        className="mobile-filter-btn"
+        onClick={() => setIsMobileSidebarOpen(true)}
+      >
+        <FaFilter size={20} />
+      </button>
     </div>
   );
 };

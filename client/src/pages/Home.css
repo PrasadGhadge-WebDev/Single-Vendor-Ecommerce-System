@@ -2,6 +2,11 @@
 .home-modern {
   overflow-x: hidden;
   background: var(--surface-1);
+  --border-color: rgba(0, 0, 0, 0.1); /* Subtle border */
+}
+
+:root[data-theme="dark"] .home-modern {
+  --border-color: rgba(255, 255, 255, 0.15);
 }
 
 /* --- HERO SECTION (Carried forward) --- */
@@ -10,6 +15,7 @@
   min-height: calc(100vh - 155px);
   background: var(--surface-1);
   overflow: hidden;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .hero-slider-wrapper {
@@ -88,6 +94,7 @@
   background: var(--surface-2);
   border-radius: 20px;
   border: 1px solid var(--border-color);
+  box-shadow: 0 10px 30px -10px var(--shadow-color);
 }
 
 .trust-badge-card .icon-wrap {

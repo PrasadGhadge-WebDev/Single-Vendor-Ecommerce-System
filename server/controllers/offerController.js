@@ -26,11 +26,27 @@ const isOfferCurrentlyValid = (offer) => {
 
 exports.getPublicOffers = async (req, res) => {
   try {
-    const offers = await Offer.find({ isActive: true }).sort({ createdAt: -1 });
-    const publicOffers = offers.map((offer) => ({
-      ...offer.toObject(),
-      isCurrentlyValid: isOfferCurrentlyValid(offer),
-    }));
+    const offers = await Offer.find().sort({ createdAt: -1 });
+    const now = new Date();
+    const publicOffers = offers.map((offer) => {
+      const startsAt = offer.startsAt ? new Date(offer.startsAt) : null;
+      const expiresAt = offer.expiresAt ? new Date(offer.expiresAt) : null;
+      
+      let status = "LIVE";
+      if (!offer.isActive) {
+        status = "DISABLED";
+      } else if (startsAt && now < startsAt) {
+        status = "UPCOMING";
+      } else if (expiresAt && now > expiresAt) {
+        status = "EXPIRED";
+      }
+
+      return {
+        ...offer.toObject(),
+        offerStatus: status,
+        isCurrentlyValid: status === "LIVE",
+      };
+    });
     res.status(200).json(publicOffers);
   } catch (error) {
     res.status(500).json({ message: error.message });

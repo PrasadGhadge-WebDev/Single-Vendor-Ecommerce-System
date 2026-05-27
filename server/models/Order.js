@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const orderItemSchema = new mongoose.Schema(
   {
     product: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: String,
       ref: "Product",
       required: true,
     },
@@ -66,10 +66,14 @@ const orderSchema = new mongoose.Schema(
       type: String,
       enum: ["COD", "ONLINE"],
       default: "COD",
+      set: (value) => {
+        if (value === undefined || value === null) return value;
+        return String(value).trim().toUpperCase();
+      },
     },
     paymentStatus: {
       type: String,
-      enum: ["pending", "paid", "failed"],
+      enum: ["pending", "paid", "failed", "refunded"],
       default: "pending",
     },
     isPaid: {
@@ -82,7 +86,7 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
+      enum: ["pending", "confirmed", "processing", "shipped", "out_for_delivery", "delivered", "cancelled", "returned"],
       default: "pending",
     },
     stockUpdated: {
@@ -104,7 +108,7 @@ const orderSchema = new mongoose.Schema(
           {
             status: {
               type: String,
-              enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
+              enum: ["pending", "confirmed", "processing", "shipped", "out_for_delivery", "delivered", "cancelled", "returned"],
               required: true,
             },
             description: {

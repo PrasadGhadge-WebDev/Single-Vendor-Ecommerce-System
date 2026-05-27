@@ -108,13 +108,35 @@ exports.getProductReviews = async (req, res) => {
   try {
     const { productId } = req.params;
 
+    let targetProductId = productId;
+    
     if (!mongoose.Types.ObjectId.isValid(productId)) {
-      return res.status(400).json({ message: "Invalid product ID format" });
+      // Find product by SKU or string _id
+      const product = await Product.findOne({ 
+        $or: [
+          { _id: productId },
+          { sku: { $regex: new RegExp(`^${productId}$`, "i") } }
+        ]
+      }).select("_id").lean();
+
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      targetProductId = product._id;
     }
 
-    const reviews = await Review.find({ product: productId })
-      .populate("user", "name")
-      .sort({ createdAt: -1 });
+    let reviews;
+    if (mongoose.Types.ObjectId.isValid(targetProductId)) {
+      reviews = await Review.find({ product: new mongoose.Types.ObjectId(targetProductId) })
+        .populate("user", "name")
+        .sort({ createdAt: -1 });
+    } else {
+      const rawReviews = await Review.collection
+        .find({ product: targetProductId })
+        .sort({ createdAt: -1 })
+        .toArray();
+      reviews = await Review.populate(rawReviews, { path: "user", select: "name" });
+    }
 
     res.status(200).json(reviews);
   } catch (error) {

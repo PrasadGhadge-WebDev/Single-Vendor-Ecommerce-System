@@ -1,51 +1,54 @@
-/* Footer.css */
-.footer-premium {
+/* Footer.css - Compact Version */
+.footer-compact {
   background-color: var(--surface-3);
   color: var(--muted-text);
-  padding-top: 80px;
-  padding-bottom: 32px;
+  padding-top: 32px;
+  padding-bottom: 20px;
   font-family: var(--bs-body-font-family);
-  margin-top: 120px;
+  margin-top: 40px;
   border-top: 1px solid var(--border-color);
-  transition: background-color 0.4s ease;
 }
 
 .footer-top {
-  margin-bottom: 64px;
+  margin-bottom: 24px;
 }
 
 .footer-brand {
-  font-size: 24px;
+  font-size: 18px;
   color: var(--page-text);
   font-family: 'Outfit', sans-serif;
-  font-weight: 700;
-  margin-bottom: 16px;
+  font-weight: 800;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .footer-desc {
-  font-size: 14px;
-  line-height: 1.6;
-  margin-bottom: 24px;
+  font-size: 12px;
+  line-height: 1.4;
+  margin-bottom: 12px;
   color: var(--muted-text);
+  max-width: 220px;
 }
 
 .footer-social {
   display: flex;
-  gap: 16px;
+  gap: 10px;
 }
 
 .footer-social a {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   background: var(--surface-2);
   color: var(--page-text);
   text-decoration: none;
-  transition: background 0.2s, transform 0.2s;
+  transition: all 0.2s ease;
   border: 1px solid var(--border-color);
+  font-size: 12px;
 }
 
 .footer-social a:hover {
@@ -55,22 +58,26 @@
 }
 
 .footer-heading {
-  font-size: 18px;
+  font-size: 13px;
   color: var(--page-text);
   font-family: 'Outfit', sans-serif;
-  font-weight: 600;
-  margin-bottom: 24px;
+  font-weight: 800;
+  margin-bottom: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.8;
 }
 
 .footer-links li {
-  margin-bottom: 12px;
+  margin-bottom: 6px;
 }
 
 .footer-links a {
   color: var(--muted-text);
   text-decoration: none;
-  font-size: 14px;
+  font-size: 12px;
   transition: color 0.2s;
+  font-weight: 500;
 }
 
 .footer-links a:hover {
@@ -80,20 +87,20 @@
 .footer-contact li {
   display: flex;
   align-items: center;
-  font-size: 14px;
-  margin-bottom: 16px;
+  font-size: 12px;
+  margin-bottom: 8px;
   color: var(--muted-text);
 }
 
 .footer-payments {
   display: flex;
-  gap: 16px;
+  gap: 10px;
 }
 
 .payment-icon {
-  font-size: 32px;
+  font-size: 20px;
   color: var(--page-text);
-  opacity: 0.5;
+  opacity: 0.4;
   transition: opacity 0.2s;
 }
 
@@ -105,25 +112,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 32px;
+  padding-top: 20px;
   border-top: 1px solid var(--border-color);
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 12px;
 }
 
 .footer-copyright {
-  font-size: 14px;
+  font-size: 12px;
   color: var(--muted-text);
-}
-
-.footer-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 8px 16px;
-  background: var(--surface-1);
-  border-radius: 9999px;
-  border: 1px solid var(--border-color);
-  color: var(--page-text);
-  font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
 }
