@@ -41,10 +41,35 @@ const purchaseSchema = new mongoose.Schema(
       enum: ["PENDING", "PARTIAL", "PAID"],
       default: "PENDING",
     },
+    purchaseId: {
+      type: String,
+      unique: true,
+      required: true,
+    },
+    paymentMethod: {
+      type: String,
+      enum: ["Cash", "Bank Transfer", "UPI", "Cheque", "None"],
+      default: "None",
+    },
+    paidAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    remainingAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    invoiceUrl: {
+      type: String,
+      default: "",
+    },
     notes: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 500,
     },
   },
   { timestamps: true }

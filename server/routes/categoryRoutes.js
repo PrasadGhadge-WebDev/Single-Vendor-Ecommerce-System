@@ -4,7 +4,8 @@ const {
   addCategory,
   updateCategory,
   deleteCategory,
-  getCategoryById
+  getCategoryById,
+  bulkActionCategories
 } = require("../controllers/categoryController");
 
 const { requireSignIn, isAdmin } = require("../middlewares/authMiddleware");
@@ -19,6 +20,8 @@ router.get("/:id", getCategoryById);
 router.post("/", requireSignIn, isAdmin, upload.single("image"), addCategory);
 
 router.put("/:id", requireSignIn, isAdmin, upload.single("image"), updateCategory);
+
+router.post("/bulk-action", requireSignIn, isAdmin, bulkActionCategories);
 
 router.delete("/:id", requireSignIn, isAdmin, deleteCategory);
 

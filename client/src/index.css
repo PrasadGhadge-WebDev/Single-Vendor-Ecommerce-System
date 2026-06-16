@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,7 +10,7 @@ html, body, #root {
 }
 
 :root {
-  font-family: "Inter", "Segoe UI", sans-serif;
+  font-family: "Plus Jakarta Sans", "Inter", "Segoe UI", sans-serif;
   line-height: 1.5;
   font-weight: 400;
   font-synthesis: none;
@@ -370,5 +370,25 @@ small.text-muted {
   .global-page-frame {
     border-left: none;
     border-right: none;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-invoice-area, .print-invoice-area * {
+    visibility: visible;
+  }
+  .print-invoice-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 10px 20px !important;
+    background-color: white !important;
+    box-shadow: none !important;
+    border: none !important;
   }
 }

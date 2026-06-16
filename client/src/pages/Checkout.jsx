@@ -3,7 +3,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 import API from "../api";
 import { CartContext } from "../context/CartContext";
 import { AuthContext } from "../context/AuthContext";
+import { OfferContext } from "../context/OfferContext";
 import { toast } from "react-toastify";
+import { FaTags } from "react-icons/fa";
 import axios from "axios";
 import "./Checkout.css";
 import { normalizeDigits, isValidName, isValidPincode } from "../utils/validation";
@@ -49,12 +51,10 @@ const validateAddress = (address) => {
 const Checkout = () => {
   const { cart, clearCart } = useContext(CartContext);
   const { user } = useContext(AuthContext);
+  const { getCartOfferDetails } = useContext(OfferContext);
   const navigate = useNavigate();
   const location = useLocation();
   const [loading, setLoading] = useState(false);
-  const [offerCode, setOfferCode] = useState("");
-  const [offers, setOffers] = useState([]);
-  const [appliedOffer, setAppliedOffer] = useState(null);
   const [buyNowQty, setBuyNowQty] = useState(() => Math.max(1, Number(location.state?.buyNowItem?.quantity) || 1));
   const [wasValidated, setWasValidated] = useState(false);
   const [addressErrors, setAddressErrors] = useState({});
@@ -83,58 +83,10 @@ const Checkout = () => {
     return cart;
   }, [buyNowItem, buyNowQty, cart]);
 
-  const totalAmount = checkoutItems.reduce(
-    (sum, item) => sum + (item.productId?.price || 0) * item.quantity,
-    0
-  );
-
-  React.useEffect(() => {
-    const fetchOffers = async () => {
-      try {
-        const { data } = await API.get("/offers/public");
-        const allOffers = Array.isArray(data) ? data : [];
-        setOffers(allOffers.filter((offer) => offer?.isCurrentlyValid !== false));
-      } catch {
-        setOffers([]);
-      }
-    };
-    fetchOffers();
-  }, []);
-
-  const discountAmount = useMemo(() => {
-    if (!appliedOffer) return 0;
-    if (totalAmount < (appliedOffer.minOrderAmount || 0)) return 0;
-    if (appliedOffer.discountType === "PERCENT") {
-      let amount = (totalAmount * appliedOffer.discountValue) / 100;
-      if (appliedOffer.maxDiscountAmount > 0) {
-        amount = Math.min(amount, appliedOffer.maxDiscountAmount);
-      }
-      return Math.min(amount, totalAmount);
-    }
-    return Math.min(appliedOffer.discountValue || 0, totalAmount);
-  }, [appliedOffer, totalAmount]);
-
-  const finalPayable = totalAmount - discountAmount;
-
-  const applyOffer = () => {
-    const code = offerCode.trim().toUpperCase();
-    if (!code) {
-      setAppliedOffer(null);
-      return;
-    }
-    const found = offers.find((offer) => offer.code === code);
-    if (!found) {
-      toast.error("Invalid offer code");
-      setAppliedOffer(null);
-      return;
-    }
-    if (totalAmount < (found.minOrderAmount || 0)) {
-      toast.warning(`Minimum order amount for this offer is INR ${found.minOrderAmount}`);
-      setAppliedOffer(null);
-      return;
-    }
-    setAppliedOffer(found);
-  };
+  const cartOfferDetails = useMemo(() => getCartOfferDetails(checkoutItems), [checkoutItems, getCartOfferDetails]);
+  const totalAmount = cartOfferDetails.subtotal;
+  const discountAmount = cartOfferDetails.discount;
+  const finalPayable = cartOfferDetails.finalAmount;
 
   const handleOrder = async () => {
     if (!user) {
@@ -175,8 +127,9 @@ const Checkout = () => {
           product: item.productId?._id,
           quantity: item.quantity,
         })),
-        offerCode: appliedOffer?.code || "",
         shippingAddress: trimmedAddress,
+        // Send auto-applied offer logic so backend doesn't need to recalculate or knows what was applied
+        appliedOffers: cartOfferDetails.appliedOffers.map(o => o._id),
       });
 
       toast.success("Order placed successfully");
@@ -429,41 +382,27 @@ const Checkout = () => {
 
                 <hr className="my-3" />
 
-                <div className="mb-3">
-                  <label className="form-label">Offer Code</label>
-                  <div className="d-flex gap-2">
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={offerCode}
-                      onChange={(e) => setOfferCode(e.target.value.toUpperCase())}
-                      placeholder="Enter coupon code"
-                    />
-                    <button type="button" className="btn btn-outline-primary px-4" onClick={applyOffer}>
-                      Apply
-                    </button>
-                  </div>
-                  {appliedOffer && (
-                    <small className="text-success d-block mt-2">
-                      Offer applied: {appliedOffer.code} (Discount INR {discountAmount.toFixed(2)})
-                    </small>
-                  )}
-                </div>
-
-                <div className="d-flex justify-content-between">
+                {/* Dynamic Price Breakdown */}
+                <div className="d-flex justify-content-between mb-2 mt-4">
                   <span className="text-muted-text font-bold">Subtotal</span>
-                  <span className="fw-semibold text-primary-text">INR {totalAmount.toFixed(2)}</span>
+                  <span className="fw-semibold text-primary-text">INR {totalAmount.toLocaleString("en-IN")}</span>
                 </div>
-                <div className="d-flex justify-content-between">
-                  <span className="text-muted-text font-bold">Discount</span>
-                  <span className="fw-semibold text-success">- INR {discountAmount.toFixed(2)}</span>
-                </div>
+                
+                {discountAmount > 0 && (
+                  <div className="d-flex justify-content-between mb-2">
+                    <span className="text-success font-bold d-flex align-items-center gap-1">
+                      <FaTags size={12} /> Offer Discount
+                      {cartOfferDetails.primaryOffer && ` (${cartOfferDetails.primaryOffer.title})`}
+                    </span>
+                    <span className="fw-bold text-success">- INR {discountAmount.toLocaleString("en-IN")}</span>
+                  </div>
+                )}
 
                 <hr className="my-3" />
 
                 <div className="d-flex justify-content-between align-items-baseline">
                   <span className="fw-bold text-primary-text">Final Total</span>
-                  <span className="fw-bold fs-5 text-primary">INR {finalPayable.toFixed(2)}</span>
+                  <span className="fw-bold fs-5 text-primary">INR {finalPayable.toLocaleString("en-IN")}</span>
                 </div>
               </div>
             </div>

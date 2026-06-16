@@ -3,6 +3,7 @@ const {
   getPublicOffers,
   createOffer,
   getAllOffers,
+  getOfferById,
   updateOffer,
   deleteOffer,
 } = require("../controllers/offerController");
@@ -12,6 +13,7 @@ const router = express.Router();
 
 router.get("/public", getPublicOffers);
 router.get("/", requireSignIn, isAdmin, getAllOffers);
+router.get("/:id", requireSignIn, isAdmin, getOfferById);
 router.post("/", requireSignIn, isAdmin, createOffer);
 router.put("/:id", requireSignIn, isAdmin, updateOffer);
 router.delete("/:id", requireSignIn, isAdmin, deleteOffer);

@@ -33,7 +33,7 @@ const paymentSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["created", "cod_pending", "verified", "failed"],
+      enum: ["created", "cod_pending", "verified", "failed", "refunded"],
       default: "created",
     },
     razorpayOrderId: {

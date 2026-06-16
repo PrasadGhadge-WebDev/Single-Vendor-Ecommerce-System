@@ -1,52 +1,55 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import React, { useEffect, useMemo, useState, useRef } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import API, { getImageUrl } from "../../api";
 import { downloadCsv, inDateRange } from "../../utils/adminHelpers";
-import { FaPlus, FaSearch, FaChevronDown, FaEdit, FaTrash, FaFileCsv, FaSync, FaBoxOpen, FaTags, FaExclamationTriangle, FaBox } from "react-icons/fa";
+import { 
+  FaPlus, FaSearch, FaChevronDown, FaEdit, FaTrash, FaFileCsv, 
+  FaBoxOpen, FaTags, FaExclamationTriangle, FaBox, FaStar, 
+  FaEye, FaCheckCircle, FaBan, FaChartLine, FaTimes, FaUpload
+} from "react-icons/fa";
 import { toast } from "react-toastify";
+import Papa from "papaparse";
 import Pagination from "../../components/Pagination";
-import ProductFormModal from "../../components/ProductFormModal";
 import ConfirmModal from "../../components/ConfirmModal";
+import AddProduct from "./AddProduct";
 
-const LOW_STOCK_THRESHOLD = 10;
-const PRODUCTS_PER_PAGE = 12;
+const PRODUCTS_PER_PAGE = 10;
 
 const ManageProducts = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
-  const [suppliers, setSuppliers] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [editingProduct, setEditingProduct] = useState(null);
-  const showModal = searchParams.get("modal") === "product";
-  const editingId = searchParams.get("id");
+  
+  // Filters
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [stockFilter, setStockFilter] = useState("all");
-  const [supplierFilter, setSupplierFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [stockStatusFilter, setStockStatusFilter] = useState("all");
   const [dateRange, setDateRange] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [autoRefresh, setAutoRefresh] = useState(false);
-  const [productPage, setProductPage] = useState(1);
-  const [confirmConfig, setConfirmConfig] = useState({ isOpen: false, productId: null });
+  
+  // Bulk actions
+  const [selectedProductIds, setSelectedProductIds] = useState([]);
+  const [bulkAction, setBulkAction] = useState("");
+  const [bulkCategory, setBulkCategory] = useState("");
 
-  const fetchProducts = async (showLoader = false) => {
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [editProductId, setEditProductId] = useState(null);
+
+  const [productPage, setProductPage] = useState(1);
+  const [confirmConfig, setConfirmConfig] = useState({ isOpen: false, productId: null, action: null });
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const fetchProducts = async () => {
     try {
-      const { data } = await API.get("/products");
+      const { data } = await API.get(`/products?_t=${new Date().getTime()}`);
       const list = Array.isArray(data) ? data : data.products || [];
       setProducts(list);
     } catch (error) {
       console.error("Error fetching products:", error);
-      if (showLoader) toast.error("Failed to load products");
-    }
-  };
-
-  const fetchSuppliers = async () => {
-    try {
-      const { data } = await API.get("/suppliers");
-      setSuppliers(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Error fetching suppliers:", error);
+      toast.error("Failed to load products");
     }
   };
 
@@ -70,91 +73,43 @@ const ManageProducts = () => {
     }
   };
 
-  const deleteProduct = (id) => {
-    if (!id) {
-      toast.error("Invalid product ID. Cannot perform deletion.");
-      return;
-    }
-    setConfirmConfig({ isOpen: true, productId: id });
-  };
-
-  const handleConfirmDelete = async () => {
-    const id = confirmConfig.productId;
-    if (!id) return;
-    
-    try {
-      await API.delete(`/products/${id}`);
-      fetchProducts();
-      window.dispatchEvent(new Event("products-updated"));
-      toast.success("Product removed from inventory");
-    } catch (error) {
-      toast.error("Error deleting product: " + (error.response?.data?.message || error.message));
-    }
-  };
-
-  const openAddModal = () => {
-    setEditingProduct(null);
-    setSearchParams({ modal: "product" });
-  };
-
-  const openEditModal = (product) => {
-    if (!product._id) {
-      toast.error("Invalid product reference. Cannot edit.");
-      return;
-    }
-    setEditingProduct(product);
-    setSearchParams({ modal: "product", id: product._id });
-  };
-
-  const resetModal = () => {
-    setSearchParams({});
-    setEditingProduct(null);
-  };
-
-  // Sync editingProduct if URL has ID but state doesn't (e.g. on refresh)
   useEffect(() => {
-    if (showModal && editingId && !editingProduct && products.length > 0) {
-      const product = products.find(p => p._id === editingId);
-      if (product) setEditingProduct(product);
-    }
-  }, [showModal, editingId, editingProduct, products]);
-
-  useEffect(() => {
-    fetchProducts(true);
-    fetchSuppliers();
+    fetchProducts();
     fetchCategories();
   }, []);
 
-  useEffect(() => {
-    if (!autoRefresh) return undefined;
-    const timer = setInterval(() => fetchProducts(), 30000);
-    return () => clearInterval(timer);
-  }, [autoRefresh]);
+  const deleteProduct = (id) => {
+    setConfirmConfig({ isOpen: true, productId: id, action: 'delete' });
+  };
 
-  const categoryOptions = useMemo(
-    () => Array.from(new Set(products.map((product) => product.category).filter(Boolean))).sort(),
-    [products]
-  );
-
-  const lowStockCount = useMemo(
-    () => products.filter((product) => Number(product.stock || 0) <= LOW_STOCK_THRESHOLD).length,
-    [products]
-  );
+  const handleConfirmDelete = async () => {
+    if (confirmConfig.action === 'delete') {
+      const id = confirmConfig.productId;
+      try {
+        await API.delete(`/products/${id}`);
+        fetchProducts();
+        toast.success("Product deleted successfully");
+      } catch (error) {
+        toast.error("Error deleting product");
+      }
+    } else if (confirmConfig.action === 'bulk_delete') {
+      executeBulkAction('delete');
+    }
+  };
 
   const filteredProducts = useMemo(() => {
     const term = search.trim().toLowerCase();
     return products.filter((product) => {
-      const stockValue = Number(product.stock || 0);
       if (categoryFilter !== "all" && product.category !== categoryFilter) return false;
-      if (stockFilter === "in-stock" && stockValue <= 0) return false;
-      if (stockFilter === "out-of-stock" && stockValue > 0) return false;
-      if (stockFilter === "low-stock" && stockValue > LOW_STOCK_THRESHOLD) return false;
-      if (supplierFilter !== "all") {
-        const currentSupplierId = product.supplier?._id || String(product.supplier || "");
-        if (currentSupplierId !== supplierFilter) return false;
+      if (statusFilter !== "all" && product.status !== statusFilter) return false;
+
+      if (stockStatusFilter !== "all") {
+        if (stockStatusFilter === "in-stock" && product.stock <= 0) return false;
+        if (stockStatusFilter === "out-of-stock" && product.stock > 0) return false;
+        if (stockStatusFilter === "low-stock" && (product.stock <= 0 || product.stock > (product.lowStockAlert || 10))) return false;
       }
       
-      // Smart Date Range Filtering
+      // Date Range Filtering
       if (dateRange !== "all") {
         const entryDate = new Date(product.createdAt);
         const now = new Date();
@@ -166,20 +121,24 @@ const ManageProducts = () => {
           const sevenDaysAgo = new Date(startOfToday);
           sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
           if (entryDate < sevenDaysAgo) return false;
+        } else if (dateRange === "30days") {
+          const thirtyDaysAgo = new Date(startOfToday);
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          if (entryDate < thirtyDaysAgo) return false;
         } else if (dateRange === "custom") {
           if ((dateFrom || dateTo) && !inDateRange(product.createdAt, dateFrom, dateTo)) return false;
         }
       }
 
       if (!term) return true;
-      const haystack = `${product.name} ${product.category} ${product.supplier?.name || ""}`.toLowerCase();
+      const haystack = `${product.name} ${product.sku} ${product.category} ${product.price} ${product.stock} ${product.status} ${new Date(product.createdAt).toLocaleDateString()}`.toLowerCase();
       return haystack.includes(term);
     });
-  }, [products, search, categoryFilter, stockFilter, supplierFilter, dateRange, dateFrom, dateTo]);
+  }, [products, search, categoryFilter, statusFilter, stockStatusFilter, dateRange, dateFrom, dateTo]);
 
   useEffect(() => {
     setProductPage(1);
-  }, [search, categoryFilter, stockFilter, supplierFilter, dateRange, dateFrom, dateTo]);
+  }, [search, categoryFilter, statusFilter, stockStatusFilter, dateRange, dateFrom, dateTo]);
 
   const totalProductPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE));
   const paginatedProducts = useMemo(() => {
@@ -187,46 +146,139 @@ const ManageProducts = () => {
     return filteredProducts.slice(startIndex, startIndex + PRODUCTS_PER_PAGE);
   }, [filteredProducts, productPage]);
 
+  // KPIs
+  const totalProducts = products.length;
+  const activeProducts = products.filter(p => p.status === 'Active').length;
+  const outOfStockProducts = products.filter(p => p.stock <= 0).length;
+  const lowStockProducts = products.filter(p => p.stock > 0 && p.stock <= (p.lowStockAlert || 10)).length;
+  const draftProducts = products.filter(p => p.status === 'Draft').length;
+  const featuredProductsCount = products.filter(p => p.featured).length;
+
   const exportProducts = () => {
     downloadCsv(
-      "inventory_report.csv",
-      filteredProducts.map((product) => ({
-        "Product Name": product.name,
-        "Category": product.category,
-        "Unit Price": product.price,
-        "Available Stock": product.stock,
-        "Vendor": product.supplier?.name || "N/A",
-        "Listed On": product.createdAt ? new Date(product.createdAt).toLocaleDateString() : "N/A",
+      "products_export.csv",
+      filteredProducts.map((p) => ({
+        "Product Name": p.name,
+        "SKU": p.sku || "N/A",
+        "Category": p.category,
+        "Brand": p.brand || "N/A",
+        "Price": p.price,
+        "Stock": p.stock,
+        "Status": p.status,
+        "Featured": p.featured ? "Yes" : "No",
+        "Created Date": new Date(p.createdAt).toLocaleDateString(),
       }))
     );
   };
 
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedProductIds(paginatedProducts.map(p => p._id));
+    } else {
+      setSelectedProductIds([]);
+    }
+  };
+
+  const handleSelectProduct = (id) => {
+    if (selectedProductIds.includes(id)) {
+      setSelectedProductIds(selectedProductIds.filter(pid => pid !== id));
+    } else {
+      setSelectedProductIds([...selectedProductIds, id]);
+    }
+  };
+
+  const handleBulkActionSubmit = async () => {
+    if (!bulkAction || selectedProductIds.length === 0) return;
+
+    if (bulkAction === 'delete') {
+      setConfirmConfig({ isOpen: true, action: 'bulk_delete' });
+      return;
+    }
+
+    executeBulkAction(bulkAction);
+  };
+
+  const executeBulkAction = async (action) => {
+    try {
+      const payload = { action, productIds: selectedProductIds };
+      if (action === 'assign_category') {
+        if (!bulkCategory) {
+          toast.warning("Please select a category to assign");
+          return;
+        }
+        payload.category = bulkCategory;
+      }
+
+      await API.post('/products/bulk-action', payload);
+      toast.success(`Bulk action completed successfully`);
+      setSelectedProductIds([]);
+      setBulkAction("");
+      fetchProducts();
+    } catch (error) {
+      toast.error("Bulk action failed");
+    }
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setImporting(true);
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        try {
+          const products = results.data.map((row) => ({
+            name: row["Product Name"] || row["name"],
+            sku: row["SKU"] || row["sku"],
+            category: row["Category"] || row["category"],
+            brand: row["Brand"] || row["brand"],
+            price: row["Price"] || row["price"],
+            stock: row["Stock"] || row["stock"],
+            status: row["Status"] || row["status"] || "Draft",
+          }));
+
+          if (products.length === 0) {
+            toast.error("No valid data found in CSV");
+            setImporting(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+            return;
+          }
+
+          const { data } = await API.post("/products/import", { products });
+          toast.success(data.message || "Products imported successfully");
+          fetchProducts();
+        } catch (error) {
+          console.error("Import error:", error);
+          toast.error(error.response?.data?.message || "Failed to import products");
+        } finally {
+          setImporting(false);
+          if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+      },
+      error: (error) => {
+        toast.error("Failed to parse CSV file: " + error.message);
+        setImporting(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    });
+  };
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-700">
-      {/* V3 Premium Module Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 relative">
-        <div className="relative group">
-          <div className="absolute -left-8 -top-8 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-all duration-700" />
-          <div className="flex items-start gap-4 relative">
-            <div className="w-1.5 h-12 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full shadow-lg shadow-indigo-500/20" />
-            <div>
-              <h1 className="text-4xl font-black tracking-tight flex items-center gap-3" style={{ color: 'var(--page-text)' }}>
-                Products
-                <span className="text-[10px] uppercase tracking-[0.3em] font-black px-2 py-1 bg-indigo-500/10 text-indigo-600 rounded-lg ml-2">
-                  Inventory
-                </span>
-              </h1>
-              <p className="text-sm font-bold opacity-40 uppercase tracking-[0.1em] mt-1.5">
-                Comprehensive SKU Catalog & Real-time Stock Monitoring
-              </p>
-            </div>
-          </div>
+    <div className="max-w-[1600px] mx-auto p-4 sm:p-8 space-y-6 animate-in fade-in duration-700" style={{ backgroundColor: '#F8FAFC', minHeight: '100vh' }}>
+      
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 m-0">Products</h1>
+          <p className="text-sm text-gray-500 m-0 mt-1">View and edit all products in your store.</p>
         </div>
 
         <div className="flex items-center gap-3 relative z-10">
           <button 
-            onClick={openAddModal}
-            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-95 group"
+            onClick={() => { setEditProductId(null); setShowAddProduct(true); }}
+            className="px-4 sm:px-6 py-2.5 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-600/30 transition-all flex items-center gap-2 w-full sm:w-auto justify-center"
           >
             <FaPlus size={12} className="group-hover:rotate-90 transition-transform" />
             <span>Add Product</span>
@@ -237,231 +289,318 @@ const ManageProducts = () => {
             style={{ borderColor: 'var(--border-color)', color: 'var(--page-text)' }}
           >
             <FaFileCsv size={12} className="text-indigo-600" />
-            <span>Export</span>
+            <span>Download Products</span>
+          </button>
+          
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            accept=".csv" 
+            className="hidden" 
+          />
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-slate-800 border rounded-2xl hover:bg-slate-50 transition-all text-sm font-bold shadow-sm disabled:opacity-50" 
+            style={{ borderColor: 'var(--border-color)', color: 'var(--page-text)' }}
+          >
+            {importing ? (
+              <span className="spinner-border spinner-border-sm text-green-600" role="status" aria-hidden="true"></span>
+            ) : (
+              <FaUpload size={12} className="text-green-600" />
+            )}
+            <span>{importing ? "Importing..." : "Import CSV"}</span>
           </button>
         </div>
       </div>
 
-      {lowStockCount > 0 && (
-        <div className="flex items-center gap-3 p-4 bg-rose-500/5 border border-rose-500/20 rounded-2xl animate-in slide-in-from-top-4 duration-500">
-          <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-600">
-            <FaExclamationTriangle size={18} />
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+        <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border shadow-sm flex flex-col justify-between" style={{ borderColor: 'var(--border-color)' }}>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Total Products</p>
+          <p className="text-2xl font-black text-slate-800 dark:text-white">{totalProducts}</p>
+        </div>
+        <div className="bg-emerald-50 dark:bg-emerald-900/20 p-5 rounded-2xl border border-emerald-100 dark:border-emerald-800 shadow-sm flex flex-col justify-between">
+          <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-2">Active</p>
+          <p className="text-2xl font-black text-emerald-700 dark:text-emerald-400">{activeProducts}</p>
+        </div>
+        <div className="bg-rose-50 dark:bg-rose-900/20 p-5 rounded-2xl border border-rose-100 dark:border-rose-800 shadow-sm flex flex-col justify-between">
+          <p className="text-xs font-bold text-rose-600 uppercase tracking-wider mb-2">Out of Stock</p>
+          <p className="text-2xl font-black text-rose-700 dark:text-rose-400">{outOfStockProducts}</p>
+        </div>
+        <div className="bg-amber-50 dark:bg-amber-900/20 p-5 rounded-2xl border border-amber-100 dark:border-amber-800 shadow-sm flex flex-col justify-between">
+          <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-2">Low Stock</p>
+          <p className="text-2xl font-black text-amber-700 dark:text-amber-400">{lowStockProducts}</p>
+        </div>
+        <div className="bg-slate-100 dark:bg-slate-800/80 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Drafts</p>
+          <p className="text-2xl font-black text-slate-700 dark:text-slate-300">{draftProducts}</p>
+        </div>
+        <div className="bg-indigo-50 dark:bg-indigo-900/20 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-800 shadow-sm flex flex-col justify-between">
+          <p className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2">Featured</p>
+          <p className="text-2xl font-black text-indigo-700 dark:text-indigo-400">{featuredProductsCount}</p>
+        </div>
+      </div>
+
+      {/* Advanced Filter Suite */}
+      <div className="bg-white py-3 px-4 rounded-xl shadow-sm border border-gray-100 mb-6 flex flex-col gap-3 w-full dark:bg-slate-900/60 dark:border-slate-800">
+        <div className="flex flex-nowrap overflow-x-auto gap-3 items-center w-full" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          <div className="flex-[2] min-w-[200px] relative">
+            <input
+              type="text"
+              placeholder="Search by all columns..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-4 pr-9 py-1.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium focus:bg-white dark:focus:bg-slate-800 focus:ring-2 ring-indigo-500/20 outline-none"
+              style={{ color: 'var(--page-text)' }}
+            />
+            <FaSearch className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none" />
           </div>
-          <div>
-            <p className="text-xs font-black text-rose-600 uppercase tracking-widest">Inventory Alert</p>
-            <p className="text-sm font-bold opacity-70">Critical Stock: {lowStockCount} items require immediate procurement.</p>
+          
+          <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="py-1.5 px-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold outline-none cursor-pointer flex-1 min-w-[110px]">
+            <option value="all">All Categories</option>
+            {categories.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+          </select>
+
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="py-1.5 px-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold outline-none cursor-pointer flex-1 min-w-[110px]">
+            <option value="all">All Status</option>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+          </select>
+
+          <select value={stockStatusFilter} onChange={(e) => setStockStatusFilter(e.target.value)} className="py-1.5 px-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold outline-none cursor-pointer flex-1 min-w-[110px]">
+            <option value="all">All Products</option>
+            <option value="in-stock">In Stock</option>
+            <option value="out-of-stock">Out of Stock</option>
+            <option value="low-stock">Low Stock</option>
+          </select>
+
+          <select value={dateRange} onChange={(e) => setDateRange(e.target.value)} className="py-1.5 px-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold outline-none cursor-pointer flex-1 min-w-[110px]">
+            <option value="all">Date Added</option>
+            <option value="today">Today</option>
+            <option value="7days">Last 7 Days</option>
+            <option value="30days">Last 30 Days</option>
+            <option value="custom">Custom Range</option>
+          </select>
+
+          {(search || categoryFilter !== 'all' || statusFilter !== 'all' || stockStatusFilter !== 'all' || dateRange !== 'all') && (
+            <button 
+              onClick={() => {
+                setSearch("");
+                setCategoryFilter("all");
+                setStatusFilter("all");
+                setStockStatusFilter("all");
+                setDateRange("all");
+                setDateFrom("");
+                setDateTo("");
+              }}
+              className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold transition-colors whitespace-nowrap shrink-0 ml-auto"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+        
+        {dateRange === 'custom' && (
+          <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-slate-700 mt-1">
+            <span className="text-xs font-semibold text-slate-500">Custom Date Range:</span>
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="py-1 px-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded text-xs outline-none" />
+            <span className="text-slate-400 text-xs">to</span>
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="py-1 px-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded text-xs outline-none" />
           </div>
+        )}
+      </div>
+
+      {/* Bulk Actions */}
+      {selectedProductIds.length > 0 && (
+        <div className="flex items-center gap-4 p-4 bg-indigo-50 border border-indigo-100 rounded-2xl dark:bg-indigo-900/20 dark:border-indigo-800">
+          <span className="text-sm font-bold text-indigo-700 dark:text-indigo-300">{selectedProductIds.length} items selected</span>
+          <select 
+            value={bulkAction} 
+            onChange={(e) => setBulkAction(e.target.value)}
+            className="px-3 py-2 text-sm border rounded-lg outline-none cursor-pointer"
+          >
+            <option value="">Choose action for selected...</option>
+            <option value="activate">Activate Products</option>
+            <option value="deactivate">Deactivate Products</option>
+            <option value="delete">Delete Products</option>
+            <option value="assign_category">Assign Category</option>
+          </select>
+          
+          {bulkAction === 'assign_category' && (
+            <select 
+              value={bulkCategory} 
+              onChange={(e) => setBulkCategory(e.target.value)}
+              className="px-3 py-2 text-sm border rounded-lg outline-none cursor-pointer"
+            >
+              <option value="">Select Category...</option>
+              {categories.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+            </select>
+          )}
+
+          <button 
+            onClick={handleBulkActionSubmit}
+            className="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-lg hover:bg-indigo-700"
+          >
+            Apply
+          </button>
         </div>
       )}
 
-      {/* Advanced Filter Suite */}
-      <div className="p-4 bg-white dark:bg-slate-900/60 rounded-3xl border shadow-xl shadow-indigo-500/5 flex flex-col xl:flex-row gap-4 items-center" style={{ borderColor: 'var(--border-color)' }}>
-        <div className="flex-grow w-full relative">
-          <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
-            <FaSearch className="text-indigo-500/40" size={14} />
-          </div>
-          <input
-            type="text"
-            placeholder="Search catalog, category or vendor..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pr-6 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:bg-white dark:focus:bg-slate-800 focus:ring-4 ring-indigo-500/10 focus:border-indigo-500/30 transition-all outline-none"
-            style={{ paddingLeft: '52px', color: 'var(--page-text)' }}
-          />
-        </div>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 w-full xl:w-auto shrink-0">
-          <div className="relative">
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none appearance-none font-bold opacity-70 hover:opacity-100"
-            >
-              <option value="all">Category</option>
-              {categoryOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-            <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={10} />
-          </div>
-
-          <div className="relative">
-            <select
-              value={stockFilter}
-              onChange={(e) => setStockFilter(e.target.value)}
-              className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none appearance-none font-bold opacity-70 hover:opacity-100"
-            >
-              <option value="all">Stock Level</option>
-              <option value="in-stock">Available</option>
-              <option value="out-of-stock">Depleted</option>
-              <option value="low-stock">Low Stock</option>
-            </select>
-            <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={10} />
-          </div>
-
-          <div className="relative">
-            <select
-              value={supplierFilter}
-              onChange={(e) => setSupplierFilter(e.target.value)}
-              className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none appearance-none font-bold opacity-70 hover:opacity-100"
-            >
-              <option value="all">Vendor</option>
-              {suppliers.map((s) => (
-                <option key={s._id} value={s._id}>{s.name}</option>
-              ))}
-            </select>
-            <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={10} />
-          </div>
-
-          <div className="relative">
-            <select 
-              className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none appearance-none font-bold opacity-70 hover:opacity-100"
-              value={dateRange} 
-              onChange={(e) => setDateRange(e.target.value)}
-            >
-              <option value="all">Listed Date</option>
-              <option value="today">Today</option>
-              <option value="7days">Last 7 Days</option>
-              <option value="custom">Custom Range</option>
-            </select>
-            <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={10} />
-          </div>
-
-          <button 
-            onClick={() => {
-              setSearch("");
-              setCategoryFilter("all");
-              setStockFilter("all");
-              setSupplierFilter("all");
-              setDateRange("all");
-              fetchProducts(true);
-            }}
-            className="px-6 py-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
-          >
-            Reset
-          </button>
-        </div>
-      </div>
-
-      {/* Professional High-Density Data Grid */}
-      <div className="bg-white dark:bg-slate-900/60 rounded-3xl border shadow-xl overflow-hidden" style={{ borderColor: 'var(--border-color)' }}>
+      {/* Products Table */}
+      <div className="bg-white dark:bg-slate-900/60 rounded-3xl border shadow-sm overflow-hidden" style={{ borderColor: 'var(--border-color)' }}>
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse table-fixed min-w-[1100px]">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b" style={{ borderColor: 'var(--border-color)' }}>
-                <th className="w-[10%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Preview</th>
-                <th className="w-[22%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Product Identity</th>
-                <th className="w-[15%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Category</th>
-                <th className="w-[12%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700 text-center">Unit Price</th>
-                <th className="w-[12%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700 text-center">Stock Level</th>
-                <th className="w-[15%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Vendor</th>
-                <th className="w-[14%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 text-right">Operations</th>
+              <tr className="bg-slate-50 dark:bg-slate-800/80 border-b" style={{ borderColor: 'var(--border-color)' }}>
+                <th className="px-4 py-4 w-12 text-center">
+                  <input 
+                    type="checkbox" 
+                    onChange={handleSelectAll} 
+                    checked={paginatedProducts.length > 0 && selectedProductIds.length === paginatedProducts.length}
+                    className="cursor-pointer"
+                  />
+                </th>
+                <th className="px-4 py-4 text-xs font-black uppercase tracking-wider text-slate-500">Image</th>
+                <th className="px-4 py-4 text-xs font-black uppercase tracking-wider text-slate-500">Product Name</th>
+                <th className="px-4 py-4 text-xs font-black uppercase tracking-wider text-slate-500">Category</th>
+                <th className="px-4 py-4 text-xs font-black uppercase tracking-wider text-slate-500">Price</th>
+                <th className="px-4 py-4 text-xs font-black uppercase tracking-wider text-slate-500">Stock</th>
+                <th className="px-4 py-4 text-xs font-black uppercase tracking-wider text-slate-500 text-center">Status</th>
+                <th className="px-4 py-4 text-xs font-black uppercase tracking-wider text-slate-500">Date</th>
+                <th className="px-4 py-4 text-xs font-black uppercase tracking-wider text-slate-500 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y dark:divide-slate-800" style={{ borderColor: 'var(--border-color)' }}>
-              {paginatedProducts.map((product, idx) => {
+              {paginatedProducts.length > 0 ? paginatedProducts.map((product) => {
                 const stockValue = Number(product.stock || 0);
                 const isOutOfStock = stockValue <= 0;
-                const isLowStock = !isOutOfStock && stockValue <= LOW_STOCK_THRESHOLD;
+                const lowStockThresh = product.lowStockAlert || 10;
+                const isLowStock = !isOutOfStock && stockValue <= lowStockThresh;
                 
                 return (
-                  <tr 
-                    key={product._id || idx} 
-                    className={`group transition-all duration-200 ${idx % 2 === 0 ? 'bg-transparent' : 'bg-slate-50/30 dark:bg-slate-800/20'} hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5`}
-                  >
-                    <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800">
-                      <div className="w-12 h-12 rounded-xl border bg-slate-50 dark:bg-slate-800 overflow-hidden flex items-center justify-center">
+                  <tr key={product._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <td className="px-4 py-3 text-center">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedProductIds.includes(product._id)}
+                        onChange={() => handleSelectProduct(product._id)}
+                        className="cursor-pointer"
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="w-10 h-10 rounded-lg border bg-slate-50 dark:bg-slate-800 overflow-hidden flex items-center justify-center">
                         {product.image ? (
-                          <img src={getImageUrl(product.image)} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                          <img src={getImageUrl(product.image)} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          <FaBox className="text-slate-200" size={16} />
+                          <FaBox className="text-slate-200" size={14} />
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800">
-                      <div className="truncate">
-                        <p className="font-bold text-sm truncate" style={{ color: 'var(--page-text)' }}>{product.name}</p>
-                        <p className="text-[9px] font-bold opacity-30 uppercase tracking-tighter truncate mt-0.5">SKU: {product._id?.slice(-8).toUpperCase() || "N/A"}</p>
+                    <td className="px-4 py-3">
+                      <div className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate max-w-[200px]" title={product.name}>
+                        {product.name}
                       </div>
                     </td>
-                    <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800">
-                      <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-[10px] font-bold">
-                        <FaTags className="text-indigo-500/40" size={9} />
+
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-md text-xs font-bold text-slate-600 dark:text-slate-300">
                         {product.category}
-                      </div>
+                      </span>
                     </td>
-                    <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800 text-center">
-                      <p className="text-sm font-black text-indigo-600 dark:text-indigo-400">₹{(product.price || 0).toLocaleString()}</p>
+                    <td className="px-4 py-3">
+                      <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">₹{(product.price || 0).toLocaleString()}</span>
                     </td>
-                    <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800 text-center">
-                      <div className="flex flex-col items-center gap-1">
-                        <span className={`text-xs font-black ${isOutOfStock ? "text-rose-600" : isLowStock ? "text-amber-600" : "text-emerald-600"}`}>
-                          {product.stock} Units
-                        </span>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col items-start gap-1">
                         {isOutOfStock ? (
-                          <span className="text-[8px] font-black uppercase text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/10">Depleted</span>
+                          <>
+                            <span className="text-xs font-black text-rose-600">Out of Stock</span>
+                            <span className="px-2 py-0.5 bg-rose-100 text-rose-700 rounded text-[10px] font-bold uppercase tracking-wide border border-rose-200">Out of Stock</span>
+                          </>
                         ) : isLowStock ? (
-                          <span className="text-[8px] font-black uppercase text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/10">Refill</span>
-                        ) : null}
+                          <>
+                            <span className="text-xs font-black text-rose-500">{product.stock} Units</span>
+                            <span className="px-2 py-0.5 bg-rose-50 border border-rose-200 text-rose-600 rounded text-[10px] font-bold uppercase tracking-wide flex items-center gap-1"><FaExclamationTriangle size={8} /> Low Stock</span>
+                          </>
+                        ) : (
+                          <span className="text-xs font-black text-emerald-600">{product.stock} Units</span>
+                        )}
+                        {product.stockStatus === 'Pre-Order' && <span className="text-[9px] uppercase tracking-wider text-purple-600 font-bold mt-1">Pre-Order</span>}
                       </div>
                     </td>
-                    <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800">
-                      <div className="truncate">
-                        <p className="text-xs font-semibold opacity-80 truncate">{product.supplier?.name || "Independent"}</p>
-                        <p className="text-[9px] font-bold opacity-30 truncate">Verified Partner</p>
-                      </div>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-full ${
+                        product.status === 'Active' ? 'bg-emerald-100 text-emerald-700' :
+                        product.status === 'Draft' ? 'bg-slate-200 text-slate-700' :
+                        product.status === 'Inactive' ? 'bg-amber-100 text-amber-700' :
+                        'bg-rose-100 text-rose-700'
+                      }`}>
+                        {product.status || 'Draft'}
+                      </span>
+                    </td>
+
+                    <td className="px-4 py-3">
+                      <span className="text-xs text-slate-500 font-medium">{new Date(product.createdAt).toLocaleDateString()}</span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button 
-                          onClick={() => openEditModal(product)}
-                          className="p-2 hover:bg-indigo-600 hover:text-white rounded-lg transition-all text-slate-400"
-                          title="Edit"
-                        >
-                          <FaEdit size={12} />
+                      <div className="flex items-center justify-end gap-2">
+                        <button onClick={() => { setEditProductId(product._id); setShowAddProduct(true); }} className="p-1.5 text-slate-400 hover:text-blue-600 transition-colors" title="Edit">
+                          <FaEdit size={14} />
                         </button>
-                        <button 
-                          onClick={() => deleteProduct(product._id)}
-                          className="p-2 hover:bg-rose-600 hover:text-white rounded-lg transition-all text-slate-400"
-                          title="Delete"
-                        >
-                          <FaTrash size={12} />
+                        <button onClick={() => deleteProduct(product._id)} className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors" title="Delete">
+                          <FaTrash size={14} />
                         </button>
                       </div>
                     </td>
                   </tr>
                 );
-              })}
+              }) : (
+                <tr>
+                  <td colSpan="9" className="px-4 py-16 text-center text-slate-500">
+                    <FaBoxOpen className="mx-auto text-4xl text-slate-300 mb-3" />
+                    <p className="text-lg font-bold text-slate-600">No Products Found</p>
+                    <p className="text-sm">Start by adding your first product to the catalog.</p>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      <Pagination currentPage={productPage} totalPages={totalProductPages} onPageChange={setProductPage} />
-
-      <ProductFormModal 
-        isOpen={showModal}
-        onClose={resetModal}
-        initialData={editingProduct}
-        categories={categories}
-        suppliers={suppliers}
-        onSuccess={() => {
-          fetchProducts();
-          window.dispatchEvent(new Event("products-updated"));
-        }}
-      />
+      {paginatedProducts.length > 0 && (
+        <Pagination currentPage={productPage} totalPages={totalProductPages} onPageChange={setProductPage} />
+      )}
 
       <ConfirmModal
         isOpen={confirmConfig.isOpen}
-        onClose={() => setConfirmConfig({ isOpen: false, productId: null })}
+        onClose={() => setConfirmConfig({ isOpen: false, productId: null, action: null })}
         onConfirm={handleConfirmDelete}
-        title="Delete Product"
-        message="Are you sure you want to delete this product? This action cannot be undone and will remove it from all categories."
-        confirmText="Delete Product"
+        title={confirmConfig.action === 'bulk_delete' ? "Delete Multiple Products" : "Delete Product"}
+        message={confirmConfig.action === 'bulk_delete' 
+          ? `Are you sure you want to delete ${selectedProductIds.length} products? This cannot be undone.`
+          : "Are you sure you want to delete this product? This action cannot be undone."}
+        confirmText="Delete"
+        type="danger"
       />
+      {showAddProduct && (
+        <AddProduct 
+          productId={editProductId}
+          onClose={() => {
+            setShowAddProduct(false);
+            setEditProductId(null);
+          }}
+          onSuccess={() => {
+            setShowAddProduct(false);
+            setEditProductId(null);
+            fetchProducts();
+          }}
+        />
+      )}
     </div>
   );
 };
-
 
 export default ManageProducts;

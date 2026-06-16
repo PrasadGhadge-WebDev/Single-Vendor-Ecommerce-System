@@ -1,11 +1,12 @@
 const User = require("../models/User");
 const Order = require("../models/Order");
+const Cart = require("../models/Cart");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-password").lean();
+    const users = await User.find().sort({ createdAt: -1 }).select("-password").lean();
     
     // Aggregate orders for all users to get real-time metrics
     const ordersData = await Order.aggregate([
@@ -82,6 +83,10 @@ exports.updateMyProfile = async (req, res) => {
       currentUser.address = String(address || "").trim();
     }
 
+    if (req.body.wishlist !== undefined && Array.isArray(req.body.wishlist)) {
+      currentUser.wishlist = req.body.wishlist;
+    }
+
     await currentUser.save();
 
     res.json({
@@ -121,10 +126,10 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
-// super admin creates sub-admin accounts only
+// admin creates accounts
 exports.createUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, gender, dateOfBirth, status, customerType, phone, isAdmin } = req.body;
     if (!name || !email || !password) {
       return res.status(400).json({ message: "Name, email and password are required" });
     }
@@ -137,8 +142,14 @@ exports.createUser = async (req, res) => {
       name,
       email,
       password: hashed,
-      isAdmin: true,
+      isAdmin: isAdmin || false,
       isSuperAdmin: false,
+      gender: gender || "Prefer Not to Say",
+      dateOfBirth: dateOfBirth || null,
+      status: status || "Active",
+      isBlocked: status === "Blocked" || status === "Suspended",
+      customerType: customerType || "Regular",
+      phone: phone || "",
     });
     res.status(201).json({
       _id: user._id,
@@ -192,6 +203,117 @@ exports.impersonateUser = async (req, res) => {
     
     const token = jwt.sign({ id: targetUser._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
     res.json({ token });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id).populate("wishlist").select("-password").lean();
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Get orders
+    const orders = await Order.find({ user: user._id }).sort({ createdAt: -1 }).lean();
+    
+    const ordersCount = orders.length;
+    const totalSpent = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+    const avgOrderValue = ordersCount > 0 ? totalSpent / ordersCount : 0;
+    const wishlistCount = user.wishlist ? user.wishlist.length : 0;
+    
+    // Get cart
+    const cart = await Cart.findOne({ userId: user._id }).populate("items.productId").lean();
+    const cartCount = cart && cart.items ? cart.items.reduce((sum, item) => sum + item.quantity, 0) : 0;
+
+    res.json({
+      ...user,
+      orders,
+      cartItems: cart ? cart.items : [],
+      stats: {
+        ordersCount,
+        totalSpent,
+        avgOrderValue,
+        wishlistCount,
+        cartCount,
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.updateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      name, email, gender, dateOfBirth, status, customerType, phone, 
+      isVerified, isPhoneVerified, adminNotes, password, isAdmin,
+      loyaltyPoints, preferences, shippingDetails, billingDetails 
+    } = req.body;
+    
+    const targetUser = await User.findById(id);
+    if (!targetUser) return res.status(404).json({ message: "User not found" });
+
+    if (email && email !== targetUser.email) {
+      const exists = await User.findOne({ email, _id: { $ne: targetUser._id } });
+      if (exists) return res.status(400).json({ message: "Email already in use" });
+      targetUser.email = email;
+    }
+
+    if (name !== undefined) targetUser.name = name;
+    if (gender !== undefined) targetUser.gender = gender;
+    if (dateOfBirth !== undefined) targetUser.dateOfBirth = dateOfBirth;
+    if (status !== undefined) {
+      targetUser.status = status;
+      targetUser.isBlocked = status === "Blocked" || status === "Suspended";
+    }
+    if (customerType !== undefined) targetUser.customerType = customerType;
+    if (phone !== undefined) targetUser.phone = phone;
+    if (isVerified !== undefined) targetUser.isVerified = isVerified;
+    if (isPhoneVerified !== undefined) targetUser.isPhoneVerified = isPhoneVerified;
+    if (adminNotes !== undefined) targetUser.adminNotes = adminNotes;
+    if (isAdmin !== undefined) targetUser.isAdmin = isAdmin;
+    if (loyaltyPoints !== undefined) targetUser.loyaltyPoints = loyaltyPoints;
+    if (preferences !== undefined) targetUser.preferences = preferences;
+    if (shippingDetails !== undefined) targetUser.shippingDetails = shippingDetails;
+    if (billingDetails !== undefined) targetUser.billingDetails = billingDetails;
+
+    if (password) {
+      targetUser.password = await bcrypt.hash(password, 10);
+    }
+
+    await targetUser.save();
+    res.json({ message: "User updated successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.bulkActionUsers = async (req, res) => {
+  try {
+    const { action, userIds } = req.body;
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ message: "No users selected" });
+    }
+
+    // Prevent affecting super admins
+    const targetUsers = await User.find({ _id: { $in: userIds }, isSuperAdmin: false });
+    const targetIds = targetUsers.map(u => u._id);
+
+    if (action === "activate") {
+      await User.updateMany({ _id: { $in: targetIds } }, { $set: { status: "Active", isBlocked: false } });
+    } else if (action === "block") {
+      await User.updateMany({ _id: { $in: targetIds } }, { $set: { status: "Blocked", isBlocked: true } });
+    } else if (action === "delete") {
+      await User.deleteMany({ _id: { $in: targetIds } });
+    } else {
+      return res.status(400).json({ message: "Invalid action" });
+    }
+
+    res.json({ message: `Bulk action '${action}' completed on ${targetIds.length} users` });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

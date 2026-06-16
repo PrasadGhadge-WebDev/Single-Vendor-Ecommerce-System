@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const productSchema = new mongoose.Schema(
   {
     _id: {
-      type: String,
+      type: mongoose.Schema.Types.Mixed,
       default: () => new mongoose.Types.ObjectId().toString(),
     },
     name: {
@@ -11,15 +11,39 @@ const productSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    slug: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    shortDescription: {
+      type: String,
+      default: "",
+    },
     description: {
       type: String,
       default: "",
-      trim: true,
+    },
+    specifications: {
+      type: String,
+      default: "",
     },
     price: {
       type: Number,
       required: true,
       min: 0,
+    },
+    discountPrice: {
+      type: Number,
+      min: 0,
+    },
+    costPrice: {
+      type: Number,
+      min: 0,
+    },
+    taxClass: {
+      type: String,
+      default: "GST 18%",
     },
     category: {
       type: String,
@@ -34,10 +58,6 @@ const productSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    discountPrice: {
-      type: Number,
-      min: 0,
-    },
     image: {
       type: String,
       default: "",
@@ -47,15 +67,56 @@ const productSchema = new mongoose.Schema(
         type: String,
       },
     ],
+    sku: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
     stock: {
       type: Number,
       default: 0,
       min: 0,
     },
-    sku: {
+    stockStatus: {
       type: String,
-      unique: true,
-      sparse: true,
+      enum: ["In Stock", "Out of Stock", "Pre-Order"],
+      default: "In Stock",
+    },
+    lowStockAlert: {
+      type: Number,
+      default: 10,
+      min: 0,
+    },
+    lowStockNotified: {
+      type: Boolean,
+      default: false,
+    },
+    outOfStockNotified: {
+      type: Boolean,
+      default: false,
+    },
+    variants: [
+      {
+        size: String,
+        color: String,
+        storage: String,
+        ram: String,
+        price: Number,
+        sku: String,
+        stock: Number,
+        image: String,
+      }
+    ],
+    seoSettings: {
+      metaTitle: String,
+      metaDescription: String,
+      metaKeywords: String,
+    },
+    shipping: {
+      weight: Number,
+      length: Number,
+      width: Number,
+      height: Number,
     },
     warranty: {
       type: String,
@@ -68,8 +129,22 @@ const productSchema = new mongoose.Schema(
     ],
     status: {
       type: String,
-      enum: ["In Stock", "Out of Stock"],
-      default: "In Stock",
+      enum: ["Draft", "Active", "Inactive", "Archived"],
+      default: "Active",
+    },
+    featured: {
+      type: Boolean,
+      default: false,
+    },
+    views: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    soldCount: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
     averageRating: {
       type: Number,

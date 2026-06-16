@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import API, { getImageUrl } from "../api";
 import { CartContext } from "../context/CartContext";
 import { AuthContext } from "../context/AuthContext";
-import { FaChevronDown, FaChevronUp, FaStar, FaShoppingCart, FaBolt, FaShieldAlt, FaTruck, FaArrowLeft, FaMinus, FaPlus } from "react-icons/fa";
+import { OfferContext } from "../context/OfferContext";
+import { FaChevronDown, FaChevronUp, FaStar, FaShoppingCart, FaBolt, FaShieldAlt, FaTruck, FaArrowLeft, FaMinus, FaPlus, FaTags } from "react-icons/fa";
 import ProductCard from "../components/ProductCard";
 import {
   buildSmartRecommendations,
@@ -21,6 +22,7 @@ const ProductDetails = () => {
   const location = useLocation();
   const { addToCart } = useContext(CartContext);
   const { user } = useContext(AuthContext);
+  const { getBestOfferForProduct } = useContext(OfferContext);
 
   const [product, setProduct] = useState(null);
   const [catalogProducts, setCatalogProducts] = useState([]);
@@ -31,6 +33,7 @@ const ProductDetails = () => {
   const [reviews, setReviews] = useState([]);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewsExpanded, setReviewsExpanded] = useState(false); // Default to collapsed to save space
+  const [specsExpanded, setSpecsExpanded] = useState(false);
   const [recentlyViewed, setRecentlyViewed] = useState([]);
 
   const loadProduct = useCallback(async () => {
@@ -40,7 +43,7 @@ const ProductDetails = () => {
       setProduct(data);
       setActiveImage(data.image || (data.images && data.images[0]) || null);
     } catch (err) {
-      console.error("Product details error:", err);
+      // console.error("Product details error:", err);
       setError(err.response?.data?.message || "Product not found");
     } finally {
       setLoading(false);
@@ -111,6 +114,57 @@ const ProductDetails = () => {
     () => recentlyViewed.filter((item) => item?._id !== product?._id).slice(0, 8),
     [recentlyViewed, product]
   );
+
+  const parsedSpecs = useMemo(() => {
+    if (!product?.specifications) return null;
+    try {
+      const parsed = JSON.parse(product.specifications);
+      if (typeof parsed === 'object' && parsed !== null) {
+        if (parsed.CustomFallback) {
+          return { type: 'text', data: parsed.CustomFallback };
+        }
+        if (Object.keys(parsed).length > 0) {
+          return { type: 'kv', data: parsed };
+        }
+      }
+    } catch (e) {
+      return { type: 'text', data: String(product.specifications) };
+    }
+    return null;
+  }, [product?.specifications]);
+
+  const pricingMeta = useMemo(() => {
+    let salePrice = Number(product?.price || 0);
+    const originalPrice = salePrice;
+    let compareAtPrice = Number(
+      product?.compareAtPrice ||
+        product?.originalPrice ||
+        product?.mrp ||
+        product?.listPrice ||
+        0
+    );
+
+    let bestOfferData = getBestOfferForProduct(product);
+    let hasDiscount = false;
+    
+    if (bestOfferData) {
+      salePrice = bestOfferData.finalPrice;
+      compareAtPrice = originalPrice;
+      hasDiscount = true;
+    } else {
+      const fallbackCompare = compareAtPrice > salePrice ? compareAtPrice : 0;
+      hasDiscount = fallbackCompare > salePrice;
+      compareAtPrice = fallbackCompare;
+    }
+
+    return {
+      salePrice,
+      compareAtPrice,
+      originalPrice,
+      hasDiscount,
+      offerData: bestOfferData
+    };
+  }, [product, getBestOfferForProduct]);
 
   const updateBuyQty = (next) => {
     const maxStock = Math.max(1, Number(product?.stock || 1));
@@ -184,6 +238,8 @@ const ProductDetails = () => {
   const reviewCount = Number(product.numReviews || 0);
   const maxStock = Math.max(1, Number(product.stock || 0));
 
+
+
   return (
     <div className="product-details-page bg-white">
       <div className="container py-4">
@@ -252,9 +308,13 @@ const ProductDetails = () => {
                   />
 
                   {/* Discount Badge */}
-                  {product.compareAtPrice > product.price && (
-                    <div className="absolute top-6 left-6 bg-red-600 text-white px-4 py-1.5 rounded-full text-xs font-black shadow-lg z-10 uppercase tracking-widest">
-                      {Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)}% OFF
+                  {pricingMeta.hasDiscount && (
+                    <div className="absolute top-6 left-6 bg-red-600 text-white px-4 py-1.5 rounded-full text-xs font-black shadow-lg z-10 uppercase tracking-widest flex items-center gap-2">
+                       <FaBolt /> 
+                       {pricingMeta.offerData 
+                          ? (pricingMeta.offerData.offer.discountType === 'PERCENT' ? `${pricingMeta.offerData.offer.discountValue}% OFF` : `₹${pricingMeta.offerData.offer.discountValue} OFF`)
+                          : `${Math.round(((pricingMeta.compareAtPrice - pricingMeta.salePrice) / pricingMeta.compareAtPrice) * 100)}% OFF`
+                       }
                     </div>
                   )}
                 </div>
@@ -299,22 +359,61 @@ const ProductDetails = () => {
                 </div>
               </div>
 
-              <div className="mb-6 p-3 bg-gray-50 rounded-2xl border border-gray-100 inline-block min-w-[180px]">
+              <div className="mb-4 p-3 bg-gray-50 rounded-2xl border border-gray-100 inline-block min-w-[180px]">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-black text-gray-900">₹{Number(product.price).toLocaleString("en-IN")}</span>
-                  {product.compareAtPrice > product.price && (
-                    <span className="text-lg text-gray-400 line-through font-medium">₹{Number(product.compareAtPrice).toLocaleString("en-IN")}</span>
+                  <span className="text-3xl font-black text-gray-900">₹{pricingMeta.salePrice.toLocaleString("en-IN")}</span>
+                  {pricingMeta.hasDiscount && (
+                    <span className="text-lg text-gray-400 line-through font-medium">₹{pricingMeta.compareAtPrice.toLocaleString("en-IN")}</span>
                   )}
                 </div>
                 <p className="text-gray-400 text-[9px] font-black uppercase tracking-widest mt-0.5">Inclusive of all taxes & shipping</p>
               </div>
 
-              <div className="mb-6">
-                <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Description</h3>
-                <p className="text-gray-600 leading-relaxed text-xs lg:text-sm">
-                  {product.description || "No description available for this product."}
-                </p>
-              </div>
+              {pricingMeta.offerData && (
+                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl flex flex-col gap-1">
+                  <div className="flex items-center gap-2 text-green-700 font-bold text-sm">
+                    <FaTags />
+                    <span>🔥 {pricingMeta.offerData.offer.title} Applied</span>
+                  </div>
+                  <p className="text-green-800 text-xs font-medium m-0">
+                    You Save <span className="font-black text-green-600">₹{pricingMeta.offerData.discountAmount.toLocaleString("en-IN")}</span>! 
+                    {pricingMeta.offerData.offer.expiresAt && ` Valid until ${new Date(pricingMeta.offerData.offer.expiresAt).toLocaleDateString()}.`}
+                  </p>
+                </div>
+              )}
+
+
+
+              {parsedSpecs && (
+                <div className="mb-6 border-b border-gray-100 pb-2">
+                  <button 
+                    onClick={() => setSpecsExpanded(!specsExpanded)}
+                    className="flex items-center justify-between w-full text-left focus:outline-none py-2 group"
+                  >
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-gray-800 transition-colors m-0">Specifications</h3>
+                    {specsExpanded ? <FaChevronUp className="text-gray-400 group-hover:text-gray-800 text-[10px] transition-colors" /> : <FaChevronDown className="text-gray-400 group-hover:text-gray-800 text-[10px] transition-colors" />}
+                  </button>
+                  
+                  {specsExpanded && (
+                    <div className="animate-fade-in mt-2 mb-4">
+                      {parsedSpecs.type === 'text' ? (
+                        <div className="text-gray-600 leading-relaxed text-xs lg:text-sm whitespace-pre-wrap bg-gray-50 p-4 rounded-xl">
+                          {parsedSpecs.data}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 bg-gray-50 p-4 rounded-xl">
+                          {Object.entries(parsedSpecs.data).map(([key, value]) => (
+                            <div key={key} className="flex items-start gap-2 py-1.5 border-b border-gray-200 last:border-0">
+                              <span className="text-xs font-bold text-gray-900 w-1/3 shrink-0">{key}</span>
+                              <span className="text-xs text-gray-600">{value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-3 mb-6">
                 <div className="flex items-center gap-3">

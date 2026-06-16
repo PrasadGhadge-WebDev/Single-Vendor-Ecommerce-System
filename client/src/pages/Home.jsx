@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import API, { getImageUrl } from "../api";
 import { CartContext } from "../context/CartContext";
 import { AuthContext } from "../context/AuthContext";
+import { OfferContext } from "../context/OfferContext";
 import ProductCard from "../components/ProductCard";
 import {
   FaArrowRight, FaShieldAlt, FaShippingFast, FaUndo, FaHeadset, FaLaptop,
@@ -24,39 +25,10 @@ const WHY_CHOOSE_US = [
   { title: "Help Anytime", subtitle: "24/7 live customer support", icon: FaHeadset }
 ];
 
-const SLIDES = [
-  {
-    badge: "🔥 Top Spotlight",
-    title: "Discover Premium Electronics",
-    subhead: "The latest gadgets and tech accessories at your fingertips.",
-    price: "Great Deals",
-    image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    btnPrimary: "🎧 Shop Now",
-    btnSecondary: "🔍 Explore"
-  },
-  {
-    badge: "✨ New Release",
-    title: "Upgrade Your Lifestyle",
-    subhead: "Find the perfect balance of performance and style.",
-    price: "Limited Time",
-    image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-    btnPrimary: "🛒 Order Now",
-    btnSecondary: "Details"
-  }
-];
-
-const CATEGORY_STYLE_MAP = {
-  "Mobiles": { emoji: "📱", accent: "category-card-phones", description: "Smartphones & Accessories" },
-  "Laptops": { emoji: "💻", accent: "category-card-laptops", description: "Powerhouses for work & play" },
-  "Audio": { emoji: "🎧", accent: "category-card-audio", description: "Immersive sound experiences" },
-  "Wearables": { emoji: "⌚", accent: "category-card-wearables", description: "Smart watches & fitness trackers" },
-  "Tablets": { emoji: "平板", accent: "category-card-tablets", description: "Versatile digital canvases" },
-  "Accessories": { emoji: "🔌", accent: "category-card-accessories", description: "Essential tech complements" },
-  "Peripherals": { emoji: "⌨️", accent: "category-card-peripherals", description: "Input & output devices" },
-};
 
 const Home = () => {
   const { user } = useContext(AuthContext);
+  const { heroOffer } = useContext(OfferContext);
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -64,19 +36,57 @@ const Home = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
 
   const heroSlides = useMemo(() => {
-    if (products.length === 0) return SLIDES;
+    if (products.length === 0) {
+      return [{
+        badge: "ℹ️ System Info",
+        title: "No Products Found",
+        subhead: "Add products from the Admin Dashboard to see them featured here.",
+        price: "₹0",
+        image: "",
+        btnPrimary: "Admin Panel",
+        btnSecondary: "Refresh",
+        id: ""
+      }];
+    }
 
-    return products.slice(0, 5).map((p, index) => ({
-      badge: index === 0 ? "🔥 Top spotlight" : index === 1 ? "✨ New Arrival" : "⚡ Featured Deal",
-      title: p.name,
-      subhead: p.description || "Premium electronics at unbeatable prices. Experience the next generation of tech today.",
-      price: `₹${p.price.toLocaleString()}`,
-      image: getImageUrl(p.image),
-      btnPrimary: "🛒 Buy Now",
-      btnSecondary: "🔍 Explore",
-      id: p._id
-    }));
-  }, [products]);
+    let displayProducts = products.filter(p => p.featured);
+    if (displayProducts.length === 0) {
+      displayProducts = [...products].reverse();
+    }
+
+    const baseSlides = displayProducts.slice(0, 4).map((p, index) => {
+      const img = p.image || (p.images && p.images.length > 0 ? p.images[0] : "");
+      return {
+        badge: p.category ? `🏷️ ${p.category}` : "🔥 Featured",
+        title: p.name,
+        subhead: p.shortDescription || p.description || "Premium electronics at unbeatable prices.",
+        price: `₹${(p.price || 0).toLocaleString()}`,
+        image: img ? getImageUrl(img) : "",
+        btnPrimary: "🛒 Shop Now",
+        btnSecondary: "🔍 Explore",
+        id: p._id
+      };
+    });
+
+    if (heroOffer) {
+      const firstImgProduct = products.find(p => p.image || (p.images && p.images.length > 0));
+      const offerImg = firstImgProduct ? getImageUrl(firstImgProduct.image || firstImgProduct.images[0]) : "";
+
+      baseSlides.unshift({
+        badge: "🎉 Special Offer",
+        title: heroOffer.title,
+        subhead: heroOffer.description || `Get ${heroOffer.discountValue}${heroOffer.discountType === 'PERCENT' ? '%' : '₹'} OFF on ${heroOffer.applicableOn}!`,
+        price: "Active Now",
+        image: offerImg,
+        btnPrimary: "Shop Offer",
+        btnSecondary: "Details",
+        id: "",
+        isOffer: true
+      });
+    }
+
+    return baseSlides;
+  }, [products, heroOffer]);
 
   const nextSlide = useCallback(() => {
     setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
@@ -113,29 +123,16 @@ const Home = () => {
 
   const newArrivals = useMemo(() => [...products].reverse().slice(0, 8), [products]);
 
-  const dynamicCategoryCards = useMemo(() => {
-    // 1. Get all unique subcategories from products
-    const subCats = {};
+  const productsByCategory = useMemo(() => {
+    const grouped = {};
     products.forEach(p => {
-      if (p.subCategory) {
-        subCats[p.subCategory] = (subCats[p.subCategory] || 0) + 1;
+      const cat = p.category || "Other";
+      if (!grouped[cat]) {
+        grouped[cat] = [];
       }
+      grouped[cat].push(p);
     });
-
-    // 2. Map them to card objects
-    return Object.keys(subCats).map(name => {
-      const style = CATEGORY_STYLE_MAP[name] || {
-        emoji: "📦",
-        accent: "category-card-default",
-        description: `Explore our range of ${name}`
-      };
-      return {
-        label: name,
-        sub: name,
-        count: subCats[name],
-        ...style
-      };
-    });
+    return grouped;
   }, [products]);
 
   return (
@@ -194,11 +191,17 @@ const Home = () => {
                 <div className="hidden md:flex justify-center items-center h-full relative group">
                   <div className="absolute w-[500px] h-[500px] bg-gradient-to-tr from-primary/10 to-accent/10 rounded-full blur-3xl animate-pulse group-hover:scale-110 transition-transform duration-1000" />
                   <div className="relative p-8 bg-white/5 backdrop-blur-md rounded-[60px] border border-white/10 shadow-2xl transition-transform duration-700 group-hover:rotate-2">
-                    <img
-                      src={slide.image}
-                      alt={slide.title}
-                      className="relative max-h-[380px] object-contain drop-shadow-[0_35px_35px_rgba(0,0,0,0.4)] animate-float"
-                    />
+                    {slide.image ? (
+                      <img
+                        src={slide.image}
+                        alt={slide.title}
+                        className="relative max-h-[380px] object-contain drop-shadow-[0_35px_35px_rgba(0,0,0,0.4)] animate-float"
+                      />
+                    ) : (
+                      <div className="w-[300px] h-[300px] md:w-[380px] md:h-[380px] flex items-center justify-center text-white/50 bg-white/5 rounded-[40px] backdrop-blur-sm border border-white/10 shadow-inner">
+                        <span className="text-xl font-bold tracking-widest uppercase">No Image</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -272,6 +275,28 @@ const Home = () => {
               </div>
             </section>
           )}
+
+          {/* Category Products Sections */}
+          {Object.entries(productsByCategory).map(([category, catProducts]) => (
+            catProducts.length > 0 && (
+              <section key={category} className="w-full max-w-[95%] 2xl:max-w-[1600px] mx-auto px-2 sm:px-4 mb-20">
+                <div className="flex items-center justify-between mb-10">
+                  <div className="space-y-1">
+                    <h2 className="text-3xl md:text-4xl font-black text-primary-text tracking-tight uppercase">{category}</h2>
+                    <div className="h-1.5 w-20 bg-primary rounded-full" />
+                  </div>
+                  <Link to={`/shop?category=${encodeURIComponent(category)}`} className="group flex items-center gap-3 text-primary font-black uppercase text-sm tracking-widest hover:gap-5 transition-all">
+                    View All <FaArrowRight className="text-xs" />
+                  </Link>
+                </div>
+                <div className="flex flex-wrap justify-center gap-[25px]">
+                  {catProducts.slice(0, 8).map((product) => (
+                    <ProductCard key={product._id} product={product} />
+                  ))}
+                </div>
+              </section>
+            )
+          ))}
         </>
       )}
 

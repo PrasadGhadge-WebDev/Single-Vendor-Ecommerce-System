@@ -5,18 +5,38 @@ const { logStockHistory } = require("../utils/stockHistoryLogger");
 
 exports.createSupplier = async (req, res) => {
   try {
-    const { name, email, phone, company, address, isActive } = req.body;
+    const { 
+      name, contactPerson, mobileNumber, phone, email, gstNumber, 
+      address, city, state, pincode, country, 
+      company, website, notes, isActive, bankDetails 
+    } = req.body;
+    
     if (!name || !String(name).trim()) {
       return res.status(400).json({ message: "Supplier name is required" });
     }
 
     const supplier = await Supplier.create({
       name: String(name).trim(),
+      contactPerson: contactPerson ? String(contactPerson).trim() : "",
+      mobileNumber: mobileNumber ? String(mobileNumber).trim() : (phone ? String(phone).trim() : ""),
+      phone: phone ? String(phone).trim() : (mobileNumber ? String(mobileNumber).trim() : ""),
       email: email ? String(email).trim().toLowerCase() : "",
-      phone: phone ? String(phone).trim() : "",
-      company: company ? String(company).trim() : "",
+      gstNumber: gstNumber ? String(gstNumber).trim() : "",
       address: address ? String(address).trim() : "",
+      city: city ? String(city).trim() : "",
+      state: state ? String(state).trim() : "",
+      pincode: pincode ? String(pincode).trim() : "",
+      country: country ? String(country).trim() : "India",
+      company: company ? String(company).trim() : "",
+      website: website ? String(website).trim() : "",
+      notes: notes ? String(notes).trim() : "",
       isActive: isActive !== undefined ? Boolean(isActive) : true,
+      bankDetails: {
+        bankName: bankDetails?.bankName ? String(bankDetails.bankName).trim() : "",
+        accountName: bankDetails?.accountName ? String(bankDetails.accountName).trim() : "",
+        accountNumber: bankDetails?.accountNumber ? String(bankDetails.accountNumber).trim() : "",
+        ifscCode: bankDetails?.ifscCode ? String(bankDetails.ifscCode).trim() : "",
+      }
     });
 
     res.status(201).json(supplier);
@@ -107,6 +127,7 @@ exports.deleteSupplier = async (req, res) => {
 exports.createPurchase = async (req, res) => {
   try {
     const {
+      purchaseId,
       supplierId,
       productId,
       quantity,
@@ -114,11 +135,14 @@ exports.createPurchase = async (req, res) => {
       purchaseDate,
       invoiceNumber = "",
       paymentStatus = "PENDING",
+      paymentMethod = "None",
+      paidAmount = 0,
       notes = "",
     } = req.body;
 
     const qty = Number(quantity);
     const cost = Number(unitCost);
+    const paidAmt = Number(paidAmount);
 
     if (!supplierId || !productId || !qty || qty <= 0 || Number.isNaN(cost) || cost < 0) {
       return res.status(400).json({
@@ -134,15 +158,28 @@ exports.createPurchase = async (req, res) => {
     if (!supplier) return res.status(404).json({ message: "Supplier not found" });
     if (!product) return res.status(404).json({ message: "Product not found" });
 
+    let invoiceUrl = "";
+    if (req.file) {
+      invoiceUrl = `/uploads/${req.file.filename}`;
+    }
+
+    const totalPurchaseCost = qty * cost;
+    const remainingAmount = paymentStatus === "PARTIAL" ? (totalPurchaseCost - paidAmt) : (paymentStatus === "PAID" ? 0 : totalPurchaseCost);
+
     const purchase = await Purchase.create({
+      purchaseId: purchaseId || `PUR-${Date.now()}`,
       supplier: supplier._id,
       product: product._id,
       quantity: qty,
       unitCost: cost,
-      totalCost: qty * cost,
+      totalCost: totalPurchaseCost,
       purchaseDate: purchaseDate ? new Date(purchaseDate) : new Date(),
       invoiceNumber: String(invoiceNumber || "").trim(),
+      invoiceUrl,
       paymentStatus,
+      paymentMethod,
+      paidAmount: paymentStatus === "PARTIAL" ? paidAmt : (paymentStatus === "PAID" ? totalPurchaseCost : 0),
+      remainingAmount: remainingAmount > 0 ? remainingAmount : 0,
       notes: String(notes || "").trim(),
     });
 
@@ -309,6 +346,92 @@ exports.getSupplierAnalytics = async (req, res) => {
       topSuppliers,
       lowStockProducts,
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.updatePurchase = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { invoiceNumber, notes } = req.body;
+
+    const purchase = await Purchase.findById(id);
+    if (!purchase) return res.status(404).json({ message: "Purchase not found" });
+
+    if (invoiceNumber !== undefined) purchase.invoiceNumber = invoiceNumber;
+    if (notes !== undefined) purchase.notes = notes;
+
+    await purchase.save();
+    
+    const populatedPurchase = await Purchase.findById(id)
+      .populate("supplier", "name company email phone")
+      .populate("product", "name category price stock");
+
+    res.status(200).json(populatedPurchase);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.deletePurchase = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const purchase = await Purchase.findById(id);
+    if (!purchase) return res.status(404).json({ message: "Purchase not found" });
+
+    // Revert stock
+    const product = await Product.findById(purchase.product);
+    if (product) {
+      const previousStock = Number(product.stock || 0);
+      const newStock = Math.max(0, previousStock - purchase.quantity);
+      product.stock = newStock;
+      await product.save();
+
+      await logStockHistory({
+        productId: product._id,
+        eventType: "ADJUSTMENT",
+        quantityChange: -purchase.quantity,
+        previousStock,
+        newStock,
+        referenceType: "PURCHASE",
+        referenceId: purchase._id.toString(),
+        note: `Purchase deleted, stock reverted.`,
+        actorId: req.user?._id || null,
+      });
+    }
+
+    await Purchase.findByIdAndDelete(id);
+    res.status(200).json({ message: "Purchase deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.markPurchaseAsPaid = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const purchase = await Purchase.findById(id);
+    if (!purchase) return res.status(404).json({ message: "Purchase not found" });
+
+    if (purchase.paymentStatus === "PAID") {
+      return res.status(400).json({ message: "Purchase is already marked as paid" });
+    }
+
+    purchase.paymentStatus = "PAID";
+    purchase.paidAmount = purchase.totalCost;
+    purchase.remainingAmount = 0;
+    if (req.body.paymentMethod) {
+      purchase.paymentMethod = req.body.paymentMethod;
+    }
+
+    await purchase.save();
+    
+    const populatedPurchase = await Purchase.findById(id)
+      .populate("supplier", "name company email phone")
+      .populate("product", "name category price stock");
+
+    res.status(200).json(populatedPurchase);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

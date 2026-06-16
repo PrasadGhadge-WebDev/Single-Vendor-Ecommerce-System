@@ -130,25 +130,12 @@ const StockHistory = () => {
   }, [items, historyPage]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-700">
-      {/* V3 Premium Module Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 relative">
-        <div className="relative group">
-          <div className="absolute -left-8 -top-8 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-all duration-700" />
-          <div className="flex items-start gap-4 relative">
-            <div className="w-1.5 h-12 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full shadow-lg shadow-indigo-500/20" />
-            <div>
-              <h1 className="text-4xl font-black tracking-tight flex items-center gap-3" style={{ color: 'var(--page-text)' }}>
-                Stock History
-                <span className="text-[10px] uppercase tracking-[0.3em] font-black px-2 py-1 bg-indigo-500/10 text-indigo-600 rounded-lg ml-2">
-                  Audit Log
-                </span>
-              </h1>
-              <p className="text-sm font-bold opacity-40 uppercase tracking-[0.1em] mt-1.5">
-                Sequential Inventory Ledger & Supply Chain Forensic Tracking
-              </p>
-            </div>
-          </div>
+    <div className="max-w-[1600px] mx-auto p-4 sm:p-8 space-y-6 animate-in fade-in duration-700" style={{ backgroundColor: '#F8FAFC', minHeight: '100vh' }}>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 m-0">Stock History</h1>
+          <p className="text-sm text-gray-500 m-0 mt-1">SEQUENTIAL INVENTORY LEDGER & SUPPLY CHAIN FORENSIC TRACKING</p>
         </div>
 
         <div className="flex items-center gap-3 relative z-10">
@@ -181,77 +168,77 @@ const StockHistory = () => {
       </div>
 
       {/* Advanced Filter Suite */}
-      <div className="p-4 bg-white dark:bg-slate-900/60 rounded-3xl border shadow-xl shadow-indigo-500/5 flex flex-col xl:flex-row gap-4 items-center" style={{ borderColor: 'var(--border-color)' }}>
-        <div className="flex-grow w-full relative">
-          <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
-            <FaSearch className="text-indigo-500/40" size={14} />
-          </div>
+      <div className="p-4 bg-white dark:bg-slate-900/60 rounded-3xl border shadow-xl shadow-indigo-500/5 flex flex-nowrap overflow-x-auto gap-4 items-center hide-scrollbar" style={{ borderColor: 'var(--border-color)', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <div className="flex-[2] min-w-[250px] relative">
           <input
             type="text"
-            placeholder="Search by note, reference ID or actor..."
+            placeholder="Search by all columns..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pr-6 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:bg-white dark:focus:bg-slate-800 focus:ring-4 ring-indigo-500/10 focus:border-indigo-500/30 transition-all outline-none"
-            style={{ paddingLeft: '52px', color: 'var(--page-text)' }}
+            className="w-full pl-5 pr-12 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:bg-white dark:focus:bg-slate-800 focus:ring-4 ring-indigo-500/10 focus:border-indigo-500/30 transition-all outline-none"
+            style={{ color: 'var(--page-text)' }}
           />
+          <div className="absolute right-5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
+            <FaSearch className="text-indigo-500/40" size={14} />
+          </div>
         </div>
         
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full xl:w-auto shrink-0">
-          <div className="relative">
-            <select
-              value={eventType}
-              onChange={(e) => setEventType(e.target.value)}
-              className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none appearance-none font-bold opacity-70 hover:opacity-100"
-            >
-              <option value="">All Events</option>
-              <option value="PURCHASE">Purchase</option>
-              <option value="SALE">Sale</option>
-              <option value="CANCELLATION_RESTOCK">Restock</option>
-              <option value="MANUAL_ADJUSTMENT">Adjustment</option>
-              <option value="INITIAL_STOCK">Initial</option>
-            </select>
-            <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={10} />
-          </div>
+        <div className="relative min-w-[150px]">
+          <select
+            value={eventType}
+            onChange={(e) => setEventType(e.target.value)}
+            className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none appearance-none font-bold opacity-70 hover:opacity-100"
+          >
+            <option value="">All Events</option>
+            <option value="PURCHASE">Purchase</option>
+            <option value="SALE">Sale</option>
+            <option value="CANCELLATION_RESTOCK">Restock</option>
+            <option value="MANUAL_ADJUSTMENT">Adjustment</option>
+            <option value="INITIAL_STOCK">Initial</option>
+          </select>
+          <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={10} />
+        </div>
 
-          <div className="relative">
-            <input
-              type="text"
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:bg-white dark:focus:bg-slate-800 focus:ring-4 ring-indigo-500/10 focus:border-indigo-500/30 transition-all outline-none font-bold opacity-70 hover:opacity-100"
-              placeholder="Product Name..."
-              value={productSearch}
-              onChange={(e) => setProductSearch(e.target.value)}
-              onFocus={() => setShowProductSuggestions(true)}
-              onBlur={() => setTimeout(() => setShowProductSuggestions(false), 200)}
-            />
-            {showProductSuggestions && productSuggestions.length > 0 && (
-              <div className="absolute top-full left-0 w-full bg-white dark:bg-slate-800 border rounded-xl mt-2 shadow-2xl z-50 max-h-48 overflow-y-auto overflow-x-hidden">
-                {productSuggestions.map(p => (
-                  <button 
-                    key={p._id}
-                    onClick={() => handleProductSuggestionSelect(p)}
-                    className="w-full text-left px-4 py-2 text-[10px] font-bold hover:bg-slate-100 dark:hover:bg-slate-700 truncate border-b border-slate-50 dark:border-slate-700 last:border-0"
-                  >
-                    {p.name}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+        <div className="relative min-w-[200px]">
+          <input
+            type="text"
+            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:bg-white dark:focus:bg-slate-800 focus:ring-4 ring-indigo-500/10 focus:border-indigo-500/30 transition-all outline-none font-bold opacity-70 hover:opacity-100"
+            placeholder="Product Name..."
+            value={productSearch}
+            onChange={(e) => setProductSearch(e.target.value)}
+            onFocus={() => setShowProductSuggestions(true)}
+            onBlur={() => setTimeout(() => setShowProductSuggestions(false), 200)}
+          />
+          {showProductSuggestions && productSuggestions.length > 0 && (
+            <div className="absolute top-full left-0 w-full bg-white dark:bg-slate-800 border rounded-xl mt-2 shadow-2xl z-50 max-h-48 overflow-y-auto overflow-x-hidden">
+              {productSuggestions.map(p => (
+                <button 
+                  key={p._id}
+                  onClick={() => handleProductSuggestionSelect(p)}
+                  className="w-full text-left px-4 py-2 text-[10px] font-bold hover:bg-slate-100 dark:hover:bg-slate-700 truncate border-b border-slate-50 dark:border-slate-700 last:border-0"
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
-          <div className="relative">
-            <select 
-              className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none appearance-none font-bold opacity-70 hover:opacity-100"
-              value={dateRange} 
-              onChange={(e) => setDateRange(e.target.value)}
-            >
-              <option value="all">Audit Timeline</option>
-              <option value="today">Today</option>
-              <option value="7days">Last 7 Days</option>
-              <option value="custom">Custom Range</option>
-            </select>
-            <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={10} />
-          </div>
+        <div className="relative min-w-[150px]">
+          <select 
+            className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none appearance-none font-bold opacity-70 hover:opacity-100"
+            value={dateRange} 
+            onChange={(e) => setDateRange(e.target.value)}
+          >
+            <option value="all">Audit Timeline</option>
+            <option value="today">Today</option>
+            <option value="7days">Last 7 Days</option>
+            <option value="custom">Custom Range</option>
+          </select>
+          <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={10} />
+        </div>
 
+        {(search !== "" || eventType !== "" || productId !== "" || productSearch !== "" || dateRange !== "all") && (
           <button 
             onClick={() => {
               setSearch("");
@@ -261,11 +248,11 @@ const StockHistory = () => {
               setDateRange("all");
               fetchHistory(true);
             }}
-            className="px-6 py-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
+            className="px-6 py-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95 shrink-0 ml-auto"
           >
             Reset
           </button>
-        </div>
+        )}
       </div>
 
       {/* Professional High-Density Data Grid */}

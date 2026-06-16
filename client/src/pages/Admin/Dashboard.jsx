@@ -12,12 +12,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { FaBoxOpen, FaClipboardList, FaRupeeSign, FaUsers, FaWarehouse, FaSync, FaChevronDown, FaFileCsv, FaChartLine, FaArrowUp, FaArrowDown, FaCube } from "react-icons/fa";
+import { FaSync, FaPlus, FaListAlt, FaFileDownload, FaTicketAlt, FaChartLine, FaClipboardList, FaBoxOpen } from "react-icons/fa";
 import API from "../../api";
 import { AuthContext } from "../../context/AuthContext";
-import { downloadCsv } from "../../utils/adminHelpers";
+import { useNavigate } from "react-router-dom";
 
-const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#a855f7", "#06b6d4"];
+const COLORS = ["#F59E0B", "#5B3DF5", "#10B981", "#EF4444", "#a855f7", "#06b6d4"];
 
 const formatCurrency = (value) =>
   `₹${Number(value || 0).toLocaleString("en-IN", {
@@ -32,383 +32,402 @@ const formatCompactCurrency = (value) =>
 
 const Dashboard = () => {
   const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
-  const [supplierStats, setSupplierStats] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [autoRefresh, setAutoRefresh] = useState(false);
-  const [lowStockCondition, setLowStockCondition] = useState("all");
 
   const fetchStats = useCallback(async (showLoader = true) => {
     if (!user?.token) return;
     try {
       if (showLoader) setLoading(true);
-      const params = {};
-      if (dateFrom) params.dateFrom = new Date(dateFrom).toISOString();
-      if (dateTo) params.dateTo = new Date(dateTo).toISOString();
-
-      const [{ data: orderData }, { data: supplierData }] = await Promise.all([
-        API.get("/orders/stats/dashboard", { params }),
-        API.get("/suppliers/analytics/overview", { params }),
-      ]);
-
+      const { data: orderData } = await API.get("/orders/stats/dashboard");
       setStats(orderData.stats || orderData);
-      setSupplierStats(supplierData || null);
     } catch (error) {
       console.error("Error fetching stats:", error);
     } finally {
       if (showLoader) setLoading(false);
     }
-  }, [dateFrom, dateTo, user?.token]);
+  }, [user?.token]);
 
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
 
-  useEffect(() => {
-    if (!autoRefresh) return undefined;
-    const timer = setInterval(() => {
-      fetchStats(false);
-    }, 30000);
-    return () => clearInterval(timer);
-  }, [autoRefresh, fetchStats]);
-
   const orderStatusData = useMemo(
-    () =>
-      (stats?.orderStatusSummary || []).map((item) => ({
-        name: item._id || "unknown",
-        value: item.count || 0,
-      })),
+    () => {
+      if (stats?.orderStatusSummary?.length) {
+        return stats.orderStatusSummary.map((item) => ({
+          name: item._id || "unknown",
+          value: item.count || 0,
+        }));
+      }
+      return [
+        { name: "Pending", value: 45 },
+        { name: "Packed", value: 30 },
+        { name: "Delivered", value: 120 }
+      ];
+    },
     [stats]
-  );
-
-  const topSuppliersData = useMemo(
-    () =>
-      (supplierStats?.topSuppliers || []).map((item) => ({
-        name: item.supplierName || "Unknown",
-        amount: Number(item.totalAmount || 0),
-        units: Number(item.totalUnits || 0),
-      })),
-    [supplierStats]
-  );
-
-  const lowStockData = useMemo(
-    () =>
-      (supplierStats?.lowStockProducts || stats?.lowStockProducts || []).map((item) => ({
-        name: item.name,
-        stock: Number(item.stock || 0),
-      })),
-    [stats, supplierStats]
-  );
-
-  const lowStockConditionedData = useMemo(() => {
-    if (lowStockCondition === "out") return lowStockData.filter((item) => item.stock === 0);
-    if (lowStockCondition === "critical") return lowStockData.filter((item) => item.stock > 0 && item.stock <= 3);
-    if (lowStockCondition === "reorder") return lowStockData.filter((item) => item.stock >= 4 && item.stock <= 10);
-    return lowStockData;
-  }, [lowStockData, lowStockCondition]);
-
-  const lowStockChartData = useMemo(
-    () =>
-      [...lowStockConditionedData]
-        .sort((a, b) => a.stock - b.stock)
-        .slice(0, 10)
-        .map((item) => ({
-          ...item,
-          shortName: item.name.length > 16 ? `${item.name.slice(0, 16)}...` : item.name,
-          severity: item.stock === 0 ? "out" : item.stock <= 3 ? "critical" : "reorder",
-        })),
-    [lowStockConditionedData]
-  );
-
-  const inventorySnapshot = useMemo(
-    () => [
-      { label: "Products", value: Number(supplierStats?.inventory?.totalProducts || stats?.totalProducts || 0) },
-      { label: "Stock Units", value: Number(supplierStats?.inventory?.totalStockUnits || 0) },
-      { label: "Purchases", value: Number(supplierStats?.purchases?.totalPurchases || 0) },
-      { label: "Purchase Units", value: Number(supplierStats?.purchases?.totalUnitsPurchased || 0) },
-    ],
-    [stats, supplierStats]
   );
 
   const metricCards = [
     {
-      label: "Gross Revenue",
-      value: formatCurrency(stats?.totalRevenue || 0),
-      icon: <FaRupeeSign />,
-      color: "from-indigo-600 to-blue-600",
-      shadow: "shadow-indigo-500/20",
-      trend: "up"
+      label: "Total Revenue",
+      value: formatCurrency(stats?.totalRevenue ?? 0),
+      icon: "💰",
+      growth: "↑ 12.5%",
+      growthColor: "text-[#10B981]"
     },
     {
-      label: "Order Volume",
-      value: Number(stats?.totalOrders || 0).toLocaleString("en-IN"),
-      icon: <FaClipboardList />,
-      color: "from-emerald-600 to-teal-600",
-      shadow: "shadow-emerald-500/20",
-      trend: "up"
+      label: "Total Orders",
+      value: Number(stats?.totalOrders ?? 0).toLocaleString("en-IN"),
+      icon: "📦",
+      growth: "↑ 8.2%",
+      growthColor: "text-[#10B981]"
     },
     {
-      label: "Customer Base",
-      value: Number(stats?.totalUsers || 0).toLocaleString("en-IN"),
-      icon: <FaUsers />,
-      color: "from-amber-500 to-orange-500",
-      shadow: "shadow-amber-500/20",
-      trend: "up"
+      label: "Total Customers",
+      value: Number(stats?.totalUsers ?? 0).toLocaleString("en-IN"),
+      icon: "👥",
+      growth: "↑ 5.1%",
+      growthColor: "text-[#10B981]"
     },
     {
-      label: "Catalog Assets",
-      value: Number(stats?.totalProducts || 0).toLocaleString("en-IN"),
-      icon: <FaBoxOpen />,
-      color: "from-purple-600 to-pink-600",
-      shadow: "shadow-purple-500/20",
-      trend: "up"
+      label: "Total Products",
+      value: Number(stats?.totalProducts ?? 0).toLocaleString("en-IN"),
+      icon: "🛍️",
+      growth: "↑ 2.4%",
+      growthColor: "text-[#10B981]"
     },
+    {
+      label: "Low Stock Items",
+      value: Number(stats?.lowStockProducts?.length ?? 0),
+      icon: "⚠️",
+      growth: "Action Needed",
+      growthColor: "text-[#EF4444]"
+    }
   ];
 
-  const exportSummary = () => {
-    downloadCsv("enterprise_overview.csv", [
-      {
-        totalOrders: stats?.totalOrders || 0,
-        totalUsers: stats?.totalUsers || 0,
-        totalProducts: stats?.totalProducts || 0,
-        totalRevenue: stats?.totalRevenue || 0,
-        inventoryValue: supplierStats?.inventory?.inventoryValue || 0,
-        totalPurchases: supplierStats?.purchases?.totalPurchases || 0,
-      },
-    ]);
-  };
+  const dynamicMonthlySales = useMemo(() => {
+    return stats?.monthlySales || [];
+  }, [stats]);
+
+  const dynamicRecentOrders = useMemo(() => {
+    return (stats?.recentOrders || []).map((order) => ({
+      id: order._id.slice(-6).toUpperCase(),
+      customer: order.user?.name || "Unknown",
+      date: new Date(order.createdAt).toLocaleDateString("en-IN", {
+        day: "2-digit", month: "short", year: "numeric"
+      }),
+      amount: order.totalAmount,
+      status: order.status.charAt(0).toUpperCase() + order.status.slice(1)
+    }));
+  }, [stats]);
+
+  const dynamicTopProducts = useMemo(() => {
+    return stats?.topProducts || [];
+  }, [stats]);
+
+  const dynamicLowStockProducts = useMemo(() => {
+    return stats?.lowStockProducts || [];
+  }, [stats]);
 
   return (
-    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 space-y-8 animate-in fade-in duration-700 pb-10">
-      {/* V3 Premium Module Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative">
-        <div className="relative group">
-          <div className="absolute -left-8 -top-8 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-all duration-700" />
-          <div className="flex items-start gap-4 relative">
-            <div className="w-1.5 h-12 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full shadow-lg shadow-indigo-500/20" />
-            <div>
-              <h1 className="text-4xl font-black tracking-tight flex items-center gap-3" style={{ color: 'var(--page-text)' }}>
-                Command Center
-                <span className="text-[10px] uppercase tracking-[0.3em] font-black px-2 py-1 bg-indigo-500/10 text-indigo-600 rounded-lg ml-2">
-                  Analytics
-                </span>
-              </h1>
-              <p className="text-sm font-bold opacity-40 uppercase tracking-[0.1em] mt-1.5">
-                Real-time Enterprise Intelligence & Market Performance Metrics
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 relative z-10">
-          <div className="flex flex-col items-end px-6 py-2 bg-indigo-500/5 rounded-2xl border border-indigo-500/10">
-            <p className="text-xl font-black text-indigo-600">{formatCurrency(supplierStats?.inventory?.inventoryValue || 0)}</p>
-            <p className="text-[10px] font-black opacity-30 uppercase tracking-widest">Global Asset Valuation</p>
-          </div>
-          <button 
-            onClick={exportSummary}
-            className="flex items-center gap-2 px-6 py-4 bg-white dark:bg-slate-800 border rounded-2xl hover:bg-slate-50 transition-all text-xs font-black shadow-sm" 
-            style={{ borderColor: 'var(--border-color)', color: 'var(--page-text)' }}
-          >
-            <FaFileCsv className="text-indigo-600" />
-            <span>EXPORT REPORTS</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Advanced Filter Suite */}
-      <div className="p-4 bg-white dark:bg-slate-900/60 rounded-3xl border shadow-xl shadow-indigo-500/5" style={{ borderColor: 'var(--border-color)' }}>
-        <div className="grid grid-cols-1 xl:grid-cols-[1.75fr_auto] gap-4 items-center">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 w-full items-end">
-            <div className="relative">
-              <label className="absolute -top-2 left-4 px-2 bg-white dark:bg-slate-900 text-[9px] font-black uppercase tracking-widest text-indigo-600 z-10">Period Origin</label>
-              <input 
-                type="datetime-local" 
-                value={dateFrom} 
-                onChange={(e) => setDateFrom(e.target.value)} 
-                className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold focus:bg-white dark:focus:bg-slate-800 focus:ring-4 ring-indigo-500/10 focus:border-indigo-500/30 transition-all outline-none" 
-              />
-            </div>
-            <div className="relative">
-              <label className="absolute -top-2 left-4 px-2 bg-white dark:bg-slate-900 text-[9px] font-black uppercase tracking-widest text-indigo-600 z-10">Period Terminal</label>
-              <input 
-                type="datetime-local" 
-                value={dateTo} 
-                onChange={(e) => setDateTo(e.target.value)} 
-                className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold focus:bg-white dark:focus:bg-slate-800 focus:ring-4 ring-indigo-500/10 focus:border-indigo-500/30 transition-all outline-none" 
-              />
-            </div>
-            <div className="flex gap-2 col-span-1 md:col-span-2">
-              <button onClick={() => fetchStats()} className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase shadow-xl shadow-indigo-600/20 active:scale-95 transition-all">
-                <FaSync size={12} className={loading ? "animate-spin" : ""} />
-                <span>Hydrate Metrics</span>
-              </button>
-              <button onClick={() => { setDateFrom(""); setDateTo(""); }} className="px-4 py-3.5 bg-slate-100 dark:bg-slate-800 rounded-2xl text-xs font-black uppercase active:scale-95 transition-all">
-                Reset
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-3 px-2">
-            <div className="relative inline-flex items-center cursor-pointer group">
-              <input type="checkbox" id="dashboardAutoRefresh" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} className="sr-only peer" />
-              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-              <label htmlFor="dashboardAutoRefresh" className="ml-3 text-[10px] font-black uppercase tracking-widest opacity-40 group-hover:opacity-100 transition-opacity">Live Sync 30s</label>
-            </div>
-          </div>
+    <div className="max-w-[1600px] mx-auto p-4 sm:p-8 space-y-8 animate-in fade-in duration-700" style={{ backgroundColor: '#F8FAFC', minHeight: '100vh' }}>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 m-0">Welcome Back Admin 👋</h1>
+          <p className="text-sm text-gray-500 m-0 mt-1">HERE IS WHAT'S HAPPENING WITH YOUR STORE TODAY</p>
         </div>
       </div>
 
       {loading && !stats ? (
         <div className="flex flex-col items-center justify-center h-64 opacity-30">
-          <FaSync className="animate-spin text-indigo-600 mb-4" size={30} />
-          <p className="text-sm font-black uppercase tracking-widest">Aggregating Enterprise Data...</p>
+          <FaSync className="animate-spin text-[#5B3DF5] mb-4" size={30} />
+          <p className="text-sm font-black uppercase tracking-widest">Loading Dashboard...</p>
         </div>
       ) : (
-        <div className="space-y-8">
-          {/* Metric Grids */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <div className="space-y-8 mt-8">
+          
+          {/* ROW 1: KPI Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
             {metricCards.map((item) => (
-              <div key={item.label} className="relative group">
-                <div className={`p-6 bg-white dark:bg-slate-900 border rounded-[2rem] shadow-xl ${item.shadow} hover:-translate-y-2 transition-all duration-300 overflow-hidden`} style={{ borderColor: 'var(--border-color)' }}>
-                  <div className={`absolute -right-6 -bottom-6 w-32 h-32 bg-gradient-to-br ${item.color} opacity-[0.03] group-hover:opacity-[0.08] transition-all duration-500 rounded-full`} />
-                  <div className="flex items-start justify-between mb-4">
-                    <div className={`w-12 h-12 bg-gradient-to-br ${item.color} rounded-2xl flex items-center justify-center text-white shadow-lg`}>
-                      {React.cloneElement(item.icon, { size: 18 })}
-                    </div>
-                    <div className="flex items-center gap-1 text-emerald-500">
-                      <FaArrowUp size={10} />
-                      <span className="text-[10px] font-black">12.5%</span>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 mb-1">{item.label}</p>
-                    <h3 className="text-2xl font-black tracking-tight" style={{ color: 'var(--page-text)' }}>{item.value}</h3>
-                  </div>
+              <div key={item.label} className="p-6 bg-white border border-slate-100 rounded-3xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="text-2xl">{item.icon}</div>
+                  <span className={`text-sm font-bold ${item.growthColor}`}>{item.growth}</span>
+                </div>
+                <div>
+                  <h3 className="text-3xl font-black text-slate-800 tracking-tight mb-1">{item.value}</h3>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{item.label}</p>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Charts Row 1 */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-            <div className="bg-white dark:bg-slate-900/60 rounded-[2.5rem] border shadow-xl p-8" style={{ borderColor: 'var(--border-color)' }}>
+          {/* ROW 2: Sales Chart & Order Status */}
+          <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-6">
+            {/* Sales Chart */}
+            <div className="bg-white border border-slate-100 rounded-3xl shadow-sm p-8">
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h4 className="text-lg font-black" style={{ color: 'var(--page-text)' }}>Operational Status</h4>
-                  <p className="text-[10px] font-bold opacity-30 uppercase tracking-widest mt-1">Transaction Lifecycle distribution</p>
+                  <h4 className="text-lg font-black text-slate-800">Sales Analytics</h4>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Monthly Revenue Performance</p>
                 </div>
-                <div className="w-10 h-10 bg-indigo-500/5 rounded-xl flex items-center justify-center text-indigo-600">
+                <div className="w-10 h-10 bg-[#5B3DF5]/10 rounded-xl flex items-center justify-center text-[#5B3DF5]">
                   <FaChartLine size={16} />
                 </div>
               </div>
               <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={300}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dynamicMonthlySales} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12, fontWeight: 'bold', fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                    <YAxis tickFormatter={formatCompactCurrency} tick={{ fontSize: 12, fontWeight: 'bold', fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                    <Tooltip 
+                      formatter={(value) => formatCurrency(value)}
+                      contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '12px', color: '#fff' }}
+                      itemStyle={{ fontWeight: 'bold' }}
+                      cursor={{ fill: '#f1f5f9' }}
+                    />
+                    <Bar dataKey="sales" fill="#5B3DF5" radius={[6, 6, 0, 0]} barSize={40} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Order Status */}
+            <div className="bg-white border border-slate-100 rounded-3xl shadow-sm p-8">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h4 className="text-lg font-black text-slate-800">Order Status</h4>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Current Order Distribution</p>
+                </div>
+              </div>
+              <div className="h-[300px] w-full flex items-center justify-center relative">
+                <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={orderStatusData} dataKey="value" nameKey="name" outerRadius={100} innerRadius={60} paddingAngle={5} label>
+                    <Pie 
+                      data={orderStatusData} 
+                      dataKey="value" 
+                      nameKey="name" 
+                      outerRadius={100} 
+                      innerRadius={60} 
+                      paddingAngle={5}
+                    >
                       {orderStatusData.map((entry, index) => (
                         <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip 
-                      contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: 'none', borderRadius: '16px', padding: '12px', color: '#fff' }}
-                      itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                      contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '12px', color: '#fff' }}
+                      itemStyle={{ fontWeight: 'bold' }}
                     />
-                    <Legend iconType="circle" />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b' }} />
                   </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-slate-900/60 rounded-[2.5rem] border shadow-xl p-8" style={{ borderColor: 'var(--border-color)' }}>
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h4 className="text-lg font-black" style={{ color: 'var(--page-text)' }}>Top Strategic Partners</h4>
-                  <p className="text-[10px] font-bold opacity-30 uppercase tracking-widest mt-1">Highest value procurement sources</p>
-                </div>
-                <div className="w-10 h-10 bg-emerald-500/5 rounded-xl flex items-center justify-center text-emerald-600">
-                  <FaUsers size={16} />
-                </div>
-              </div>
-              <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={300}>
-                  <BarChart data={topSuppliersData} layout="vertical" margin={{ left: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} />
-                    <XAxis type="number" tickFormatter={formatCompactCurrency} hide />
-                    <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10, fontWeight: 'bold', fill: 'currentColor' }} />
-                    <Tooltip formatter={(value) => formatCurrency(value)} />
-                    <Bar dataKey="amount" name="Procurement Value" fill="#6366f1" radius={[0, 10, 10, 0]} barSize={24} />
-                  </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
           </div>
 
-          {/* Charts Row 2 */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-            <div className="bg-white dark:bg-slate-900/60 rounded-[2.5rem] border shadow-xl p-8" style={{ borderColor: 'var(--border-color)' }}>
+          {/* ROW 3: Recent Orders */}
+          <div className="bg-white border border-slate-100 rounded-3xl shadow-sm p-8">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h4 className="text-lg font-black text-slate-800">Recent Orders</h4>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Latest transactions</p>
+              </div>
+              <div className="w-10 h-10 bg-[#10B981]/10 rounded-xl flex items-center justify-center text-[#10B981]">
+                <FaClipboardList size={16} />
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-100">
+                    <th className="pb-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Order ID</th>
+                    <th className="pb-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Customer</th>
+                    <th className="pb-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Date</th>
+                    <th className="pb-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Amount</th>
+                    <th className="pb-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dynamicRecentOrders.length > 0 ? dynamicRecentOrders.map((order, idx) => (
+                    <tr key={idx} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
+                      <td className="py-4 text-sm font-bold text-slate-800">#{order.id}</td>
+                      <td className="py-4 text-sm font-bold text-slate-700">{order.customer}</td>
+                      <td className="py-4 text-sm font-medium text-slate-500">{order.date}</td>
+                      <td className="py-4 text-sm font-black text-[#5B3DF5]">{formatCurrency(order.amount)}</td>
+                      <td className="py-4 text-right">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                          order.status === 'Delivered' ? 'bg-[#10B981]/10 text-[#10B981]' :
+                          order.status === 'Pending' ? 'bg-[#F59E0B]/10 text-[#F59E0B]' :
+                          order.status === 'Packed' ? 'bg-[#5B3DF5]/10 text-[#5B3DF5]' :
+                          'bg-slate-100 text-slate-600'
+                        }`}>
+                          {order.status}
+                        </span>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan="5" className="py-8 text-center text-sm font-bold text-slate-400">No recent orders found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* ROW 4 & 5 Container (2 Columns) */}
+          <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-6">
+            
+            {/* ROW 4: Top Products */}
+            <div className="bg-white border border-slate-100 rounded-3xl shadow-sm p-8">
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h4 className="text-lg font-black" style={{ color: 'var(--page-text)' }}>Critical Stock Variance</h4>
-                  <p className="text-[10px] font-bold opacity-30 uppercase tracking-widest mt-1">Inventory depletion forensic analysis</p>
+                  <h4 className="text-lg font-black text-slate-800">Top Selling Products</h4>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Highest performing items</p>
                 </div>
-                <div className="relative">
-                  <select
-                    className="pl-4 pr-10 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-[10px] font-black uppercase tracking-widest outline-none appearance-none cursor-pointer"
-                    value={lowStockCondition}
-                    onChange={(e) => setLowStockCondition(e.target.value)}
-                  >
-                    <option value="all">Comprehensive</option>
-                    <option value="out">Void Stock</option>
-                    <option value="critical">Critical</option>
-                    <option value="reorder">Low Reserve</option>
-                  </select>
-                  <FaChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={8} />
+                <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center text-purple-600">
+                  <FaBoxOpen size={16} />
                 </div>
               </div>
-              <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={300}>
-                  <BarChart data={lowStockChartData} layout="vertical" margin={{ left: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} />
-                    <XAxis type="number" hide />
-                    <YAxis dataKey="shortName" type="category" width={120} tick={{ fontSize: 10, fontWeight: 'bold', fill: 'currentColor' }} />
-                    <Tooltip />
-                    <Bar dataKey="stock" name="SKU Reserve" radius={[0, 10, 10, 0]} barSize={20}>
-                      {lowStockChartData.map((item) => (
-                        <Cell
-                          key={`${item.name}`}
-                          fill={item.severity === "out" ? "#ef4444" : item.severity === "critical" ? "#f97316" : "#f59e0b"}
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-100">
+                      <th className="pb-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Product</th>
+                      <th className="pb-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Sales</th>
+                      <th className="pb-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dynamicTopProducts.length > 0 ? dynamicTopProducts.map((product, idx) => (
+                      <tr key={idx} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
+                        <td className="py-4 text-sm font-bold text-slate-700">{product.name}</td>
+                        <td className="py-4 text-sm font-bold text-slate-600 text-center bg-slate-50/50 rounded-lg">{product.sales}</td>
+                        <td className="py-4 text-sm font-black text-[#10B981] text-right">{formatCurrency(product.revenue)}</td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan="3" className="py-8 text-center text-sm font-bold text-slate-400">No top products found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900/60 rounded-[2.5rem] border shadow-xl p-8" style={{ borderColor: 'var(--border-color)' }}>
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h4 className="text-lg font-black" style={{ color: 'var(--page-text)' }}>Catalog Distribution</h4>
-                  <p className="text-[10px] font-bold opacity-30 uppercase tracking-widest mt-1">Operational asset snapshot</p>
-                </div>
-                <div className="w-10 h-10 bg-purple-500/5 rounded-xl flex items-center justify-center text-purple-600">
-                  <FaCube size={16} />
-                </div>
+            {/* ROW 5: Quick Actions */}
+            <div className="bg-white border border-slate-100 rounded-3xl shadow-sm p-8">
+              <div className="mb-8">
+                <h4 className="text-lg font-black text-slate-800">Quick Actions</h4>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Frequently used tools</p>
               </div>
-              <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={300}>
-                  <BarChart data={inventorySnapshot}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                    <XAxis dataKey="label" tick={{ fontSize: 10, fontWeight: 'bold', fill: 'currentColor' }} />
-                    <YAxis hide />
-                    <Tooltip />
-                    <Bar dataKey="value" fill="#a855f7" radius={[10, 10, 0, 0]} barSize={40} />
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="grid grid-cols-1 gap-4">
+                <button 
+                  onClick={() => navigate('/admin/products/new')}
+                  className="flex items-center gap-4 p-4 rounded-2xl bg-[#5B3DF5]/5 hover:bg-[#5B3DF5]/10 border border-[#5B3DF5]/10 transition-colors group text-left"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#5B3DF5] flex items-center justify-center text-white shadow-lg shadow-[#5B3DF5]/30 group-hover:scale-105 transition-transform">
+                    <FaPlus size={16} />
+                  </div>
+                  <div>
+                    <h5 className="text-sm font-bold text-slate-800">Add Product</h5>
+                    <p className="text-xs text-slate-500">Create new inventory</p>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={() => navigate('/admin/orders')}
+                  className="flex items-center gap-4 p-4 rounded-2xl bg-[#10B981]/5 hover:bg-[#10B981]/10 border border-[#10B981]/10 transition-colors group text-left"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#10B981] flex items-center justify-center text-white shadow-lg shadow-[#10B981]/30 group-hover:scale-105 transition-transform">
+                    <FaListAlt size={16} />
+                  </div>
+                  <div>
+                    <h5 className="text-sm font-bold text-slate-800">Manage Orders</h5>
+                    <p className="text-xs text-slate-500">View and update</p>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={() => {}}
+                  className="flex items-center gap-4 p-4 rounded-2xl bg-[#F59E0B]/5 hover:bg-[#F59E0B]/10 border border-[#F59E0B]/10 transition-colors group text-left"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#F59E0B] flex items-center justify-center text-white shadow-lg shadow-[#F59E0B]/30 group-hover:scale-105 transition-transform">
+                    <FaFileDownload size={16} />
+                  </div>
+                  <div>
+                    <h5 className="text-sm font-bold text-slate-800">Generate Report</h5>
+                    <p className="text-xs text-slate-500">Download analytics</p>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={() => navigate('/admin/offers')}
+                  className="flex items-center gap-4 p-4 rounded-2xl bg-[#EF4444]/5 hover:bg-[#EF4444]/10 border border-[#EF4444]/10 transition-colors group text-left"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#EF4444] flex items-center justify-center text-white shadow-lg shadow-[#EF4444]/30 group-hover:scale-105 transition-transform">
+                    <FaTicketAlt size={16} />
+                  </div>
+                  <div>
+                    <h5 className="text-sm font-bold text-slate-800">Create Coupon</h5>
+                    <p className="text-xs text-slate-500">Add new discounts</p>
+                  </div>
+                </button>
               </div>
+            </div>
+
+          </div>
+
+          {/* ROW 6: Low Stock Products */}
+          <div className="bg-white border border-slate-100 rounded-3xl shadow-sm p-8">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h4 className="text-lg font-black text-slate-800">Low Stock Alert</h4>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Products requiring immediate restock</p>
+              </div>
+              <div className="w-10 h-10 bg-rose-500/10 rounded-xl flex items-center justify-center text-rose-600">
+                <FaBoxOpen size={16} />
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-100">
+                    <th className="pb-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Product</th>
+                    <th className="pb-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Remaining Stock</th>
+                    <th className="pb-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dynamicLowStockProducts.length > 0 ? dynamicLowStockProducts.map((product, idx) => (
+                    <tr key={idx} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
+                      <td className="py-4 text-sm font-bold text-slate-700">{product.name}</td>
+                      <td className="py-4 text-sm font-bold text-slate-600 text-center">
+                        <span className={`px-2 py-1 rounded text-xs font-black ${product.stock <= 0 ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>
+                          {product.stock} Units
+                        </span>
+                      </td>
+                      <td className="py-4 text-right">
+                        {product.stock <= 0 ? (
+                          <span className="text-xs font-bold text-rose-600 uppercase tracking-wide">Out of Stock</span>
+                        ) : (
+                          <span className="text-xs font-bold text-amber-600 uppercase tracking-wide">Low Stock</span>
+                        )}
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan="3" className="py-8 text-center text-sm font-bold text-slate-400">Inventory levels are healthy.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

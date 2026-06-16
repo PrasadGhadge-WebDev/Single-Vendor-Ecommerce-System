@@ -51,3 +51,16 @@ exports.isSuperAdmin = (req, res, next) => {
 // Aliases for alternative naming
 exports.protect = exports.requireSignIn;
 exports.admin = exports.isAdmin;
+
+exports.verifyTokenOptional = async (req, res, next) => {
+  if (req.headers.authorization?.startsWith("Bearer")) {
+    try {
+      const token = req.headers.authorization.split(" ")[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = await User.findById(decoded.id).select("-password");
+    } catch (err) {
+      // Ignore token errors, req.user will remain undefined
+    }
+  }
+  next();
+};

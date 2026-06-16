@@ -1,377 +1,528 @@
-import React, { useState, useContext, useEffect } from "react";
-import API from "../../api";
+import React, { useState, useEffect, useContext } from "react";
+import { createPortal } from "react-dom";
+import { useParams, useNavigate } from "react-router-dom";
+import API, { getImageUrl } from "../../api";
 import { AuthContext } from "../../context/AuthContext";
 import { toast } from "react-toastify";
-import { FaPlus, FaBox, FaTag, FaLayerGroup, FaWarehouse, FaUserTie, FaFileUpload, FaArrowLeft, FaCheckCircle, FaExclamationCircle, FaRupeeSign } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
+import { 
+  FaSave, FaImage, FaBox, FaTags, 
+  FaTrash, FaPlus, FaCheckCircle, FaTimes, FaCubes,
+  FaArrowLeft, FaArrowRight
+} from "react-icons/fa";
 
-const AddProduct = () => {
-  const { user } = useContext(AuthContext);
+const CATEGORY_SPECS = {
+  "Mobile Phones": ["Brand *", "Model", "Display", "Processor", "RAM", "Storage", "Rear Camera", "Front Camera", "Battery", "Operating System", "Connectivity (5G/4G)", "SIM Type", "Color"],
+  "Laptops": ["Brand *", "Model", "Processor", "RAM", "Storage", "Display Size", "Display Type", "Graphics Card", "Operating System", "Battery Life", "Weight", "Color"],
+  "Televisions": ["Brand *", "Model", "Screen Size", "Display Type", "Resolution", "Refresh Rate", "Smart TV (Yes/No)", "Operating System", "Audio Output", "HDMI Ports", "USB Ports", "Wi-Fi Support"]
+};
+
+const AddProduct = ({ productId: propId, onClose, onSuccess }) => {
+  const { id: paramId } = useParams();
+  const id = propId || paramId;
   const navigate = useNavigate();
-  const [form, setForm] = useState({
-    name: "",
-    description: "",
-    price: "",
-    category: "",
-    subCategory: "",
-    newCategory: "",
-    stock: "",
-    supplier: "",
-  });
+  const isEditMode = !!id;
+  const { user } = useContext(AuthContext);
 
+  const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [images, setImages] = useState([]);
   const [previews, setPreviews] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [supplierSearch, setSupplierSearch] = useState("");
-  const [showSupplierList, setShowSupplierList] = useState(false);
+  const [existingImages, setExistingImages] = useState([]); // For edit mode
+
+  const [form, setForm] = useState({
+    name: "", slug: "", shortDescription: "", description: "", specifications: {},
+    price: "", discountPrice: "", costPrice: "", taxClass: "GST 18%",
+    category: "", subCategory: "", brand: "", supplier: "",
+    sku: "", stock: "", stockStatus: "In Stock", lowStockAlert: 5,
+    status: "Active", featured: false,
+    variants: []
+  });
 
   useEffect(() => {
-    const loadCategories = async () => {
-      try {
-        const { data } = await API.get("/categories");
-        const cats = data.categories || data;
-        if (Array.isArray(cats)) {
-          const apiCategories = cats
-            .map((c) => ({
-              name: c.name || c.title || c.category || c,
-              subCategories: Array.isArray(c.subCategories) ? c.subCategories : [],
-            }))
-            .filter((c) => c.name);
-          setCategories(apiCategories);
-        }
-      } catch (err) {
-        console.error("Unable to fetch categories", err);
-      }
-    };
-    loadCategories();
-  }, []);
-
-  useEffect(() => {
-    const loadSuppliers = async () => {
-      try {
-        const { data } = await API.get("/suppliers");
-        setSuppliers(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error("Unable to fetch suppliers", err);
-      }
-    };
-    loadSuppliers();
-  }, []);
-
-  const handleImageChange = (e) => {
-    const files = Array.from(e.target.files);
-    setImages((prev) => [...prev, ...files]);
-    const newPreviews = files.map((file) => URL.createObjectURL(file));
-    setPreviews((prev) => [...prev, ...newPreviews]);
-  };
-
-  const removeImage = (index) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
-    setPreviews((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!user || !user.token) {
-      toast.warning("Authorization required");
-      return;
+    fetchCategories();
+    fetchSuppliers();
+    if (isEditMode) {
+      fetchProductDetails();
     }
+  }, [id]);
 
-    const formData = new FormData();
-    const finalCategory = form.newCategory.trim() || form.category;
-    
-    Object.keys(form).forEach((key) => {
-      if (key === "newCategory") return;
-      if (key === "category") {
-        formData.append("category", finalCategory);
-        return;
-      }
-      if (key === "subCategory") {
-        formData.append("subCategory", form.newCategory.trim() ? "" : form.subCategory);
-        return;
-      }
-      formData.append(key, form[key]);
-    });
-    
-    if (images.length > 0) {
-      formData.append("image", images[0]); // Primary thumbnail
-      images.forEach((img) => formData.append("images", img));
-    }
-
-    setLoading(true);
+  const fetchCategories = async () => {
     try {
-      await API.post("/products", formData, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
+      const { data } = await API.get("/categories");
+      const list = Array.isArray(data) ? data : data?.categories || [];
+      setCategories(list);
+    } catch (err) { console.error(err); }
+  };
 
-      toast.success("Product indexed in catalog");
-      window.dispatchEvent(new Event('products-updated'));
-      navigate("/admin/products");
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to index product");
+  const fetchSuppliers = async () => {
+    try {
+      const { data } = await API.get("/suppliers");
+      setSuppliers(Array.isArray(data) ? data : []);
+    } catch (err) { console.error(err); }
+  };
+
+  const fetchProductDetails = async () => {
+    try {
+      setLoading(true);
+      const { data } = await API.get(`/products/${id}`);
+      
+      let parsedSpecs = {};
+      if (data.specifications) {
+        try {
+          parsedSpecs = data.specifications.startsWith('{') ? JSON.parse(data.specifications) : { CustomFallback: data.specifications };
+        } catch (e) {
+          parsedSpecs = { CustomFallback: data.specifications };
+        }
+      }
+
+      setForm({
+        ...data,
+        specifications: parsedSpecs,
+        variants: data.variants || [],
+        supplier: data.supplier?._id || data.supplier || ""
+      });
+      if (data.image) setExistingImages([data.image, ...(data.images || [])]);
+    } catch (err) {
+      toast.error("Failed to fetch product details");
     } finally {
       setLoading(false);
     }
   };
 
-  const selectedCategory = categories.find((cat) => cat.name === form.category);
-  const availableSubCategories = form.newCategory.trim()
-    ? []
-    : selectedCategory?.subCategories || [];
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setForm(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-700">
-      {/* V3 Premium Module Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 relative">
-        <div className="relative group">
-          <div className="absolute -left-8 -top-8 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl" />
-          <div className="flex items-start gap-4 relative">
-            <button 
-              onClick={() => navigate(-1)}
-              className="mt-1 w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border flex items-center justify-center text-slate-400 hover:text-indigo-600 transition-all hover:border-indigo-500/30"
-              style={{ borderColor: 'var(--border-color)' }}
-            >
-              <FaArrowLeft size={14} />
-            </button>
-            <div>
-              <h1 className="text-4xl font-black tracking-tight flex items-center gap-3" style={{ color: 'var(--page-text)' }}>
-                New Product
-                <span className="text-[10px] uppercase tracking-[0.3em] font-black px-2 py-1 bg-indigo-500/10 text-indigo-600 rounded-lg ml-2">
-                  Inventory
-                </span>
-              </h1>
-              <p className="text-sm font-bold opacity-40 uppercase tracking-[0.1em] mt-1.5">
-                Registering strategic assets into the global enterprise catalog
-              </p>
-            </div>
-          </div>
+  const handleSpecChange = (field, value) => {
+    setForm(prev => ({
+      ...prev,
+      specifications: {
+        ...(typeof prev.specifications === 'object' ? prev.specifications : {}),
+        [field]: value
+      }
+    }));
+  };
+
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files);
+    setImages(prev => [...prev, ...files]);
+    const newPreviews = files.map(file => URL.createObjectURL(file));
+    setPreviews(prev => [...prev, ...newPreviews]);
+  };
+
+  const removeImage = (index, isExisting = false) => {
+    if (isExisting) {
+      setExistingImages(prev => prev.filter((_, i) => i !== index));
+    } else {
+      setImages(prev => prev.filter((_, i) => i !== index));
+      setPreviews(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const moveImage = (index, direction, isExisting = false) => {
+    if (isExisting) {
+      if (direction === 'left' && index > 0) {
+        setExistingImages(prev => {
+          const arr = [...prev];
+          [arr[index - 1], arr[index]] = [arr[index], arr[index - 1]];
+          return arr;
+        });
+      } else if (direction === 'right' && index < existingImages.length - 1) {
+        setExistingImages(prev => {
+          const arr = [...prev];
+          [arr[index], arr[index + 1]] = [arr[index + 1], arr[index]];
+          return arr;
+        });
+      }
+    } else {
+      if (direction === 'left' && index > 0) {
+        setImages(prev => {
+          const arr = [...prev];
+          [arr[index - 1], arr[index]] = [arr[index], arr[index - 1]];
+          return arr;
+        });
+        setPreviews(prev => {
+          const arr = [...prev];
+          [arr[index - 1], arr[index]] = [arr[index], arr[index - 1]];
+          return arr;
+        });
+      } else if (direction === 'right' && index < images.length - 1) {
+        setImages(prev => {
+          const arr = [...prev];
+          [arr[index], arr[index + 1]] = [arr[index + 1], arr[index]];
+          return arr;
+        });
+        setPreviews(prev => {
+          const arr = [...prev];
+          [arr[index], arr[index + 1]] = [arr[index + 1], arr[index]];
+          return arr;
+        });
+      }
+    }
+  };
+
+  const addVariant = () => {
+    setForm(prev => ({
+      ...prev,
+      variants: [...prev.variants, { size: "", color: "", storage: "", ram: "", price: "", sku: "", stock: "" }]
+    }));
+  };
+
+  const updateVariant = (index, field, value) => {
+    const newVariants = [...form.variants];
+    newVariants[index][field] = value;
+    setForm(prev => ({ ...prev, variants: newVariants }));
+  };
+
+  const removeVariant = (index) => {
+    setForm(prev => ({
+      ...prev,
+      variants: prev.variants.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.name || !form.price || !form.category) {
+      toast.warning("Please fill out required fields (Name, Price, Category)");
+      return;
+    }
+
+    setLoading(true);
+    const formData = new FormData();
+    
+    // Append standard fields
+    ['name', 'slug', 'shortDescription', 'price', 'discountPrice', 'costPrice', 
+     'taxClass', 'category', 'subCategory', 'brand', 'supplier', 'stock', 
+     'stockStatus', 'lowStockAlert', 'status'].forEach(key => {
+      formData.append(key, form[key]);
+    });
+
+    formData.append('specifications', JSON.stringify(form.specifications));
+
+    // Append JSON strings for nested objects
+    formData.append('variants', JSON.stringify(form.variants));
+
+    formData.append('existingImages', JSON.stringify(existingImages));
+
+    // Append files
+    if (images.length > 0) {
+      if (existingImages.length === 0) {
+        formData.append("image", images[0]); // First image as main
+        images.slice(1).forEach(img => formData.append("images", img));
+      } else {
+        images.forEach(img => formData.append("images", img));
+      }
+    }
+
+    try {
+      if (isEditMode) {
+        await API.put(`/products/${id}`, formData, { headers: { "Content-Type": "multipart/form-data" } });
+        toast.success("Product updated successfully");
+      } else {
+        await API.post("/products", formData, { headers: { "Content-Type": "multipart/form-data" } });
+        toast.success("Product created successfully");
+      }
+      if (onSuccess) onSuccess();
+      else navigate("/admin/products");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to save product");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateSlug = () => {
+    const generated = form.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+    setForm(prev => ({ ...prev, slug: generated }));
+  };
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 sm:p-6 animate-in fade-in duration-300">
+      
+      {/* Modal Card */}
+      <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl flex flex-col max-h-[95vh] overflow-hidden">
+        
+        {/* Header */}
+        <div className="flex justify-between items-center px-8 py-6 border-b border-slate-100">
+          <h1 className="text-xl font-black text-slate-900 m-0">
+            {isEditMode ? 'Edit Product Details' : 'Onboard New Product'}
+          </h1>
+          <button 
+            onClick={() => { if (onClose) onClose(); else navigate(-1); }}
+            className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors"
+          >
+            <FaTimes />
+          </button>
         </div>
-      </div>
 
-      <div className="bg-white dark:bg-slate-900/60 rounded-[2.5rem] border shadow-2xl overflow-hidden relative" style={{ borderColor: 'var(--border-color)' }}>
-        <form onSubmit={handleSubmit} className="p-8 md:p-12 space-y-10">
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            {/* Left Column: Visual Assets */}
-            <div className="space-y-8">
-              <div className="space-y-4">
-                <label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Product Media Showcase</label>
-                <div 
-                  className="relative group border-2 border-dashed border-indigo-500/20 rounded-3xl p-10 flex flex-col items-center justify-center bg-indigo-50/30 dark:bg-indigo-500/5 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10 transition-all cursor-pointer shadow-inner"
-                  onClick={() => document.getElementById('imageInput').click()}
-                >
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-8 bg-white custom-scrollbar">
+          <form id="productForm" onSubmit={handleSubmit} className="space-y-8">
+            
+            {/* --- BASIC INFORMATION --- */}
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6">
+              <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6">Basic Information</h2>
+              <div className="space-y-5">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Product Name *</label>
                   <input 
-                    id="imageInput"
-                    type="file" 
-                    multiple
-                    onChange={handleImageChange} 
-                    accept="image/*" 
-                    className="hidden" 
+                    type="text" name="name" value={form.name} onChange={handleInputChange} required
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-sm font-medium text-slate-700"
+                    placeholder="Enter product name (e.g. iPhone 16 Pro)"
                   />
-                  <FaFileUpload className="text-indigo-500/40 mb-4 animate-bounce" size={40} />
-                  <p className="text-sm font-bold text-slate-600 dark:text-slate-400">Click to upload multiple detailed views</p>
-                  <p className="text-[10px] uppercase tracking-widest opacity-40 mt-1">High resolution JPG/PNG preferred</p>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Category *</label>
+                  <select 
+                    name="category" value={form.category} onChange={handleInputChange} required
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-sm font-medium text-slate-700 cursor-pointer"
+                  >
+                    <option value="">Select Category</option>
+                    {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                  </select>
                 </div>
 
-                {/* Multi-Image Preview Grid */}
-                {previews.length > 0 && (
-                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-                    {previews.map((src, idx) => (
-                      <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden shadow-xl group border-4 border-white dark:border-slate-800">
-                        <img src={src} className="w-full h-full object-cover" alt="Preview" />
-                        <button 
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); removeImage(idx); }}
-                          className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-lg hover:scale-110 active:scale-90"
-                        >
-                          <FaTimes size={10} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="p-6 bg-indigo-500/5 rounded-3xl border border-indigo-500/10 space-y-4">
-                <div className="flex items-center gap-3 text-indigo-600">
-                  <FaExclamationCircle size={14} />
-                  <p className="text-[10px] font-black uppercase tracking-widest">Metadata Requirements</p>
-                </div>
-                <ul className="space-y-2 text-[10px] font-bold opacity-60 list-disc list-inside">
-                  <li>Minimum description of 20 characters</li>
-                  <li>Positive integer required for stock count</li>
-                  <li>Category classification is mandatory</li>
-                </ul>
               </div>
             </div>
 
-            {/* Right Column: Attribute Ingress */}
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Product Designation</label>
-                <div className="relative">
-                  <FaTag className="absolute left-5 top-1/2 -translate-y-1/2 text-indigo-500/30" size={12} />
+            {/* --- PRICING --- */}
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6">
+              <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6">Pricing</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Price (₹) *</label>
                   <input 
-                    className="w-full pl-12 pr-6 py-4 bg-slate-50 dark:bg-slate-800/50 border border-transparent rounded-2xl text-sm font-bold focus:ring-4 ring-indigo-500/10 transition-all outline-none"
-                    placeholder="Global Identifier Name..."
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    required
+                    type="number" name="price" value={form.price} onChange={handleInputChange} required min="0" step="0.01"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-sm font-medium text-slate-700"
+                    placeholder="Enter selling price (e.g. 99999)"
                   />
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Economic Valuation (INR)</label>
-                <div className="relative">
-                  <FaRupeeSign className="absolute left-5 top-1/2 -translate-y-1/2 text-indigo-500/30" size={12} />
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Stock Quantity *</label>
                   <input 
-                    type="number"
-                    className="w-full pl-12 pr-6 py-4 bg-slate-50 dark:bg-slate-800/50 border border-transparent rounded-2xl text-sm font-bold focus:ring-4 ring-indigo-500/10 transition-all outline-none"
-                    placeholder="0.00"
-                    value={form.price}
-                    onChange={(e) => setForm({ ...form, price: e.target.value })}
-                    required
+                    type="number" name="stock" value={form.stock} onChange={handleInputChange} required min="0"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-sm font-medium text-slate-700"
+                    placeholder="Enter available stock (e.g. 50)"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Classification</label>
-                  <div className="relative">
-                    <FaLayerGroup className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500/30" size={12} />
-                    <select 
-                      className="w-full pl-10 pr-4 py-4 bg-slate-50 dark:bg-slate-800/50 border border-transparent rounded-2xl text-xs font-bold outline-none appearance-none cursor-pointer"
-                      value={form.category}
-                      onChange={(e) => setForm({ ...form, category: e.target.value, subCategory: "", newCategory: "" })}
-                    >
-                      <option value="">Legacy Class</option>
-                      {categories.map((cat) => <option key={cat.name} value={cat.name}>{cat.name}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Stock Reserve</label>
-                  <div className="relative">
-                    <FaWarehouse className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500/30" size={12} />
-                    <input 
-                      type="number"
-                      className="w-full pl-10 pr-4 py-4 bg-slate-50 dark:bg-slate-800/50 border border-transparent rounded-2xl text-xs font-bold outline-none"
-                      placeholder="Units"
-                      value={form.stock}
-                      onChange={(e) => setForm({ ...form, stock: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2 relative">
-                <label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Strategic Sourcing Partner</label>
-                <div className="relative group">
-                  <FaUserTie className="absolute left-5 top-1/2 -translate-y-1/2 text-indigo-500/30 group-focus-within:text-indigo-600 transition-colors" size={12} />
-                  <input 
-                    type="text"
-                    className="w-full pl-12 pr-6 py-4 bg-slate-50 dark:bg-slate-800/50 border border-transparent rounded-2xl text-xs font-bold focus:ring-4 ring-indigo-500/10 transition-all outline-none"
-                    placeholder="Search supplier..."
-                    value={supplierSearch}
-                    onChange={(e) => {
-                      setSupplierSearch(e.target.value);
-                      setShowSupplierList(true);
-                      if (!e.target.value) {
-                        setForm({ ...form, supplier: "" });
-                      }
-                    }}
-                    onFocus={() => setShowSupplierList(true)}
-                  />
-
-                  {showSupplierList && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setShowSupplierList(false)} />
-                      <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-3xl shadow-2xl z-50 max-h-[250px] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
-                        <div className="p-2 space-y-1">
-                          {suppliers.filter(s => 
-                            s.name?.toLowerCase().includes(supplierSearch.toLowerCase()) || 
-                            s.company?.toLowerCase().includes(supplierSearch.toLowerCase())
-                          ).length > 0 ? (
-                            suppliers.filter(s => 
-                              s.name?.toLowerCase().includes(supplierSearch.toLowerCase()) || 
-                              s.company?.toLowerCase().includes(supplierSearch.toLowerCase())
-                            ).map((s) => (
-                              <button
-                                key={s._id}
-                                type="button"
-                                onClick={() => {
-                                  setForm({ ...form, supplier: s._id });
-                                  setSupplierSearch(s.name || "");
-                                  setShowSupplierList(false);
-                                }}
-                                className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-indigo-500/5 dark:hover:bg-indigo-500/10 text-left transition-all group"
-                              >
-                                <div>
-                                  <p className="text-[11px] font-black group-hover:text-indigo-600 transition-colors" style={{ color: 'var(--page-text)' }}>{s.name}</p>
-                                  <p className="text-[9px] font-bold opacity-30 uppercase tracking-widest">{s.company || 'Direct Partner'}</p>
-                                </div>
-                                {form.supplier === s._id && (
-                                  <FaCheckCircle className="text-indigo-600" size={10} />
-                                )}
-                              </button>
-                            ))
-                          ) : (
-                            <div className="p-8 text-center">
-                              <FaUserTie className="mx-auto text-slate-200 mb-2" size={24} />
-                              <p className="text-[10px] font-black opacity-20 uppercase tracking-widest">No matching partners</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Technical Description</label>
-                <textarea 
-                  className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border border-transparent rounded-2xl text-sm font-bold focus:ring-4 ring-indigo-500/10 transition-all outline-none min-h-[120px]"
-                  placeholder="Detailed product specifications and market proposition..."
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  required
-                />
               </div>
             </div>
-          </div>
 
-          <div className="pt-8 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-4">
-            <button 
-              type="button" 
-              onClick={() => navigate(-1)}
-              className="px-10 py-4 bg-slate-100 dark:bg-slate-800 rounded-2xl text-sm font-black uppercase tracking-widest active:scale-95 transition-all"
-            >
-              Cancel
-            </button>
-            <button 
-              type="submit" 
-              disabled={loading}
-              className="px-12 py-4 bg-indigo-600 text-white rounded-2xl text-sm font-black uppercase tracking-widest shadow-2xl shadow-indigo-600/30 hover:bg-indigo-700 active:scale-95 transition-all flex items-center gap-3"
-            >
-              {loading ? "PROCESSING..." : (
-                <>
-                  <FaCheckCircle size={14} />
-                  <span>COMMENCE INDEXING</span>
-                </>
+            {/* --- SPECIFICATIONS --- */}
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6">
+              <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6">Specifications</h2>
+              {CATEGORY_SPECS[form.category] ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {CATEGORY_SPECS[form.category].map(spec => {
+                    const isRequired = spec.includes('*');
+                    const labelName = spec.replace('*', '').trim();
+                    const stateKey = labelName;
+                    const val = typeof form.specifications === 'object' && form.specifications !== null ? (form.specifications[stateKey] || "") : "";
+                    
+                    const SPEC_DROPDOWNS = {
+                      "RAM": ["4GB", "6GB", "8GB", "12GB", "16GB", "24GB", "32GB", "64GB"],
+                      "Storage": ["64GB", "128GB", "256GB", "512GB", "1TB", "2TB"],
+                      "Connectivity (5G/4G)": ["4G", "5G", "Wi-Fi Only"],
+                      "SIM Type": ["Single SIM", "Dual SIM (Nano + Nano)", "Dual SIM (Nano + eSIM)", "eSIM Only"],
+                      // Television Specs
+                      "Brand": ["Samsung", "LG", "Sony", "TCL", "Panasonic", "Hisense", "Vu", "Xiaomi"],
+                      "Screen Size": ["32 inch", "40 inch", "43 inch", "50 inch", "55 inch", "65 inch", "75 inch", "85 inch"],
+                      "Display Type": ["LED", "OLED", "QLED", "Mini-LED", "Micro-LED"],
+                      "Resolution": ["720p HD", "1080p Full HD", "4K UHD", "8K UHD"],
+                      "Refresh Rate": ["60Hz", "120Hz", "144Hz", "240Hz"],
+                      "Smart TV (Yes/No)": ["Yes", "No"],
+                      "Operating System": ["Android TV", "Google TV", "WebOS", "Tizen", "Roku TV", "Fire TV"],
+                      "Audio Output": ["10W", "20W", "30W", "40W", "60W", "Dolby Atmos Supported"],
+                      "HDMI Ports": ["1", "2", "3", "4"],
+                      "USB Ports": ["1", "2", "3"],
+                      "Wi-Fi Support": ["Yes", "No", "Wi-Fi 5", "Wi-Fi 6", "Wi-Fi 6E"]
+                    };
+
+                    const options = SPEC_DROPDOWNS[stateKey];
+
+                    return (
+                      <div key={stateKey}>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">{labelName} {isRequired && '*'}</label>
+                        <input 
+                          type="text" 
+                          list={options ? `datalist-${stateKey}` : undefined}
+                          value={val} 
+                          onChange={(e) => handleSpecChange(stateKey, e.target.value)} 
+                          required={isRequired}
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-sm font-medium text-slate-700"
+                          placeholder={`Enter or select ${labelName.toLowerCase()}`}
+                        />
+                        {options && (
+                          <datalist id={`datalist-${stateKey}`}>
+                            {options.map(opt => <option key={opt} value={opt} />)}
+                          </datalist>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Technical Specifications</label>
+                  <textarea 
+                    value={typeof form.specifications === 'object' && form.specifications !== null ? (form.specifications.CustomFallback || "") : ""} 
+                    onChange={(e) => handleSpecChange("CustomFallback", e.target.value)} 
+                    rows="6"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-sm font-medium text-slate-700 font-mono"
+                    placeholder="Display: 6.3-inch OLED&#10;Processor: A18 Pro&#10;RAM: 8GB&#10;Storage: 256GB&#10;Battery: 3582mAh&#10;OS: iOS 26"
+                  />
+                </div>
               )}
-            </button>
-          </div>
+            </div>
 
-        </form>
+            {/* --- MEDIA --- */}
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6">
+              <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6">Product Images *</h2>
+              <div 
+                className="border-2 border-dashed border-slate-300 rounded-2xl p-8 flex flex-col items-center justify-center bg-white hover:bg-slate-50 cursor-pointer transition-colors"
+                onClick={() => document.getElementById('imageUpload').click()}
+              >
+                <input id="imageUpload" type="file" multiple accept="image/*" className="hidden" onChange={handleImageChange} />
+                <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center shadow-sm mb-3 text-indigo-500">
+                  <FaImage />
+                </div>
+                <h3 className="text-sm font-bold text-slate-700">Click to upload images</h3>
+                <p className="text-xs text-slate-400 mt-1">Accepted Formats: JPG, PNG, WEBP</p>
+              </div>
+
+              {/* Previews Grid */}
+              <div className="grid grid-cols-4 sm:grid-cols-6 gap-4 mt-6">
+                {existingImages.map((src, idx) => (
+                  <div key={`exist-${src}`} className="relative aspect-square rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50">
+                    <img src={getImageUrl(src)} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
+                    
+                    {/* Always visible remove button */}
+                    <button 
+                      type="button" 
+                      onClick={() => removeImage(idx, true)} 
+                      className="absolute top-1 right-1 p-1.5 bg-rose-500 text-white rounded-full shadow-md hover:bg-rose-600 transition-all z-10"
+                      title="Remove image"
+                    >
+                      <FaTimes size={10} />
+                    </button>
+                    
+                    {/* Always visible move buttons */}
+                    <div className="absolute bottom-1 left-1 right-1 flex justify-between z-10">
+                      <button 
+                        type="button" 
+                        onClick={() => moveImage(idx, 'left', true)}
+                        disabled={idx === 0}
+                        className={`p-1.5 rounded-full shadow-md transition-all ${idx === 0 ? 'bg-white/50 text-slate-400 cursor-not-allowed' : 'bg-white text-slate-700 hover:bg-slate-100 hover:scale-110'}`}
+                        title="Move left"
+                      >
+                        <FaArrowLeft size={10} />
+                      </button>
+                      <div className="bg-slate-900/50 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center justify-center shadow-sm backdrop-blur-sm">
+                        {idx + 1}
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={() => moveImage(idx, 'right', true)} 
+                        disabled={idx === existingImages.length - 1}
+                        className={`p-1.5 rounded-full shadow-md transition-all ${idx === existingImages.length - 1 ? 'bg-white/50 text-slate-400 cursor-not-allowed' : 'bg-white text-slate-700 hover:bg-slate-100 hover:scale-110'}`}
+                        title="Move right"
+                      >
+                        <FaArrowRight size={10} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {previews.map((src, idx) => (
+                  <div key={`new-${src}`} className="relative aspect-square rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50">
+                    <img src={src} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
+                    
+                    {/* Always visible remove button */}
+                    <button 
+                      type="button" 
+                      onClick={() => removeImage(idx, false)} 
+                      className="absolute top-1 right-1 p-1.5 bg-rose-500 text-white rounded-full shadow-md hover:bg-rose-600 transition-all z-10"
+                      title="Remove image"
+                    >
+                      <FaTimes size={10} />
+                    </button>
+                    
+                    {/* Always visible move buttons */}
+                    <div className="absolute bottom-1 left-1 right-1 flex justify-between z-10">
+                      <button 
+                        type="button" 
+                        onClick={() => moveImage(idx, 'left', false)}
+                        disabled={idx === 0}
+                        className={`p-1.5 rounded-full shadow-md transition-all ${idx === 0 ? 'bg-white/50 text-slate-400 cursor-not-allowed' : 'bg-white text-slate-700 hover:bg-slate-100 hover:scale-110'}`}
+                        title="Move left"
+                      >
+                        <FaArrowLeft size={10} />
+                      </button>
+                      <div className="bg-slate-900/50 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center justify-center shadow-sm backdrop-blur-sm">
+                        {idx + 1}
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={() => moveImage(idx, 'right', false)} 
+                        disabled={idx === previews.length - 1}
+                        className={`p-1.5 rounded-full shadow-md transition-all ${idx === previews.length - 1 ? 'bg-white/50 text-slate-400 cursor-not-allowed' : 'bg-white text-slate-700 hover:bg-slate-100 hover:scale-110'}`}
+                        title="Move right"
+                      >
+                        <FaArrowRight size={10} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* --- STATUS --- */}
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6">
+              <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6">Status</h2>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Product Status *</label>
+                <select 
+                  name="status" value={form.status} onChange={handleInputChange} required
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-sm font-medium text-slate-700 cursor-pointer"
+                >
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
+            </div>
+
+          </form>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-between items-center px-8 py-5 border-t border-slate-100 bg-slate-50/50">
+          <button 
+            type="button" 
+            onClick={() => { if (onClose) onClose(); else navigate(-1); }} 
+            className="px-8 py-3 rounded-xl text-xs font-bold bg-white border border-slate-200 text-slate-700 uppercase tracking-wider hover:bg-slate-50 transition-all"
+          >
+            CANCEL
+          </button>
+          
+          <button 
+            form="productForm"
+            type="submit"
+            disabled={loading}
+            className="px-8 py-3 rounded-xl text-xs font-bold bg-blue-600 text-white uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-all disabled:opacity-70"
+          >
+            {loading ? <span className="spinner-border spinner-border-sm" /> : <FaCheckCircle size={14} />}
+            SAVE PRODUCT
+          </button>
+        </div>
+
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

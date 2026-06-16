@@ -1,279 +1,273 @@
 import React, { useState, useEffect, useRef } from "react";
-import { FaCloudUploadAlt, FaPlus, FaTimes, FaSpinner, FaCheckCircle } from "react-icons/fa";
+import { createPortal } from "react-dom";
+import { FaTimes, FaCloudUploadAlt, FaLayerGroup, FaGlobe, FaCogs, FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
+import API, { getImageUrl } from "../api";
 import { toast } from "react-toastify";
-import BaseModal from "./BaseModal";
-import API from "../api";
 
-const CategoryFormModal = ({ 
-  isOpen, 
-  onClose, 
-  onSuccess, 
-  initialData = null 
-}) => {
+const CategoryFormModal = ({ isOpen, onClose, initialData, onSuccess, categories }) => {
   const [loading, setLoading] = useState(false);
-  const [preview, setPreview] = useState(null);
-  const [subCategories, setSubCategories] = useState([]);
-  const [subCategoryInput, setSubCategoryInput] = useState("");
-  const [errors, setErrors] = useState({});
   const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
     name: "",
-    image: null
+    slug: "",
+    description: "",
+    parentCategory: "",
+    status: "active",
+    featured: false,
+    metaTitle: "",
+    metaDescription: "",
+    metaKeywords: "",
+    image: null,
+    imagePreview: null,
   });
 
   useEffect(() => {
     if (isOpen) {
-      setErrors({});
       if (initialData) {
         setFormData({
           name: initialData.name || "",
-          image: null
+          slug: initialData.slug || "",
+          description: initialData.description || "",
+          parentCategory: initialData.parentCategory?._id || initialData.parentCategory || "",
+          status: initialData.status || "active",
+          featured: initialData.featured || false,
+          metaTitle: initialData.seo?.metaTitle || "",
+          metaDescription: initialData.seo?.metaDescription || "",
+          metaKeywords: initialData.seo?.metaKeywords || "",
+          image: null,
+          imagePreview: initialData.image ? getImageUrl(initialData.image) : null,
         });
-        setSubCategories(initialData.subCategories || []);
-        setPreview(null);
       } else {
-        resetForm();
+        // Reset
+        const searchParams = new URLSearchParams(window.location.search);
+        const parentId = searchParams.get('parent');
+        
+        setFormData({
+          name: "",
+          slug: "",
+          description: "",
+          parentCategory: parentId || "",
+          status: "active",
+          featured: false,
+          metaTitle: "",
+          metaDescription: "",
+          metaKeywords: "",
+          image: null,
+          imagePreview: null,
+        });
       }
     }
-  }, [initialData, isOpen]);
+  }, [isOpen, initialData]);
 
-  const validate = () => {
-    const newErrors = {};
-    if (!formData.name.trim()) {
-      newErrors.name = "Category name is required";
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const handleNameChange = (e) => {
+    const name = e.target.value;
+    setFormData((prev) => ({
+      ...prev,
+      name,
+      slug: prev.slug === "" || !initialData ? name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') : prev.slug
+    }));
   };
 
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      image: null
-    });
-    setSubCategories([]);
-    setPreview(null);
-    setSubCategoryInput("");
-    setErrors({});
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: "" }));
-    }
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setFormData(prev => ({ ...prev, image: file }));
-      setPreview(URL.createObjectURL(file));
+      setFormData((prev) => ({
+        ...prev,
+        image: file,
+        imagePreview: URL.createObjectURL(file),
+      }));
     }
-  };
-
-  const addSubCategory = (e) => {
-    if (e.key === 'Enter' || e.type === 'click') {
-      e.preventDefault();
-      const value = subCategoryInput.trim();
-      if (value) {
-        if (!subCategories.includes(value)) {
-          setSubCategories([...subCategories, value]);
-        }
-        setSubCategoryInput("");
-      }
-    }
-  };
-
-  const removeSubCategory = (index) => {
-    setSubCategories(subCategories.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validate()) {
-      toast.error("Please fill required fields");
-      return;
-    }
-
-    setLoading(true);
     try {
-      const payload = new FormData();
-      payload.append("name", formData.name);
-      payload.append("subCategories", JSON.stringify(subCategories));
-      if (formData.image) payload.append("image", formData.image);
+      setLoading(true);
+      const data = new FormData();
+      data.append("name", formData.name);
+      data.append("slug", formData.slug);
+      data.append("description", formData.description);
+      data.append("parentCategory", formData.parentCategory);
+      data.append("status", formData.status);
+      data.append("featured", formData.featured);
+      
+      const seo = {
+        metaTitle: formData.metaTitle,
+        metaDescription: formData.metaDescription,
+        metaKeywords: formData.metaKeywords
+      };
+      data.append("seo", JSON.stringify(seo));
 
-      if (initialData) {
-        await API.put(`/categories/${initialData._id}`, payload);
-        toast.success("Category updated successfully!");
-      } else {
-        await API.post("/categories", payload);
-        toast.success("Category created successfully!");
+      if (formData.image) {
+        data.append("image", formData.image);
       }
 
+      if (initialData) {
+        await API.put(`/categories/${initialData._id}`, data, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        toast.success("Category updated successfully");
+      } else {
+        await API.post("/categories", data, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        toast.success("Category created successfully");
+      }
       onSuccess();
       onClose();
-      resetForm();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Something went wrong");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Operation failed");
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <BaseModal 
-      isOpen={isOpen} 
-      onClose={onClose} 
-      title={initialData ? "Edit Category" : "Add New Category"} 
-      size="md"
-      footer={
-        <>
+  if (!isOpen) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+        
+        {/* Header */}
+        <div className="flex justify-between items-center p-5 border-b border-gray-100 bg-gray-50/50">
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            {initialData ? <FaCogs className="text-indigo-600" /> : <FaLayerGroup className="text-indigo-600" />}
+            {initialData ? "Edit Category" : "Add New Category"}
+          </h2>
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+            <FaTimes />
+          </button>
+        </div>
+
+        <div className="flex flex-1 overflow-hidden">
+          {/* Form Content */}
+          <div className="flex-1 overflow-y-auto p-6 bg-white">
+            <form id="categoryForm" onSubmit={handleSubmit} className="space-y-8">
+              
+              {/* BASIC INFO SECTION */}
+              <div>
+                <h3 className="text-lg font-bold mb-4 text-gray-800 border-b pb-2">Basic Information</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Category Name *</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleNameChange}
+                      required
+                      placeholder="e.g., Electronics"
+                      className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Description</label>
+                    <textarea
+                      name="description"
+                      value={formData.description}
+                      onChange={handleChange}
+                      rows="3"
+                      placeholder="Enter category description..."
+                      className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-medium text-sm"
+                    ></textarea>
+                  </div>
+                </div>
+              </div>
+
+              {/* MEDIA SECTION */}
+              <div>
+                <h3 className="text-lg font-bold mb-4 text-gray-800 border-b pb-2">Category Image</h3>
+                <div 
+                  className="border-2 border-dashed border-gray-200 rounded-2xl p-8 flex flex-col items-center justify-center text-center hover:bg-gray-50 hover:border-indigo-300 transition-colors cursor-pointer group"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {formData.imagePreview ? (
+                    <div className="relative w-40 h-40">
+                      <img src={formData.imagePreview} alt="Preview" className="w-full h-full object-cover rounded-xl shadow-sm" />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-xl transition-opacity">
+                        <span className="text-white text-xs font-bold">Replace Image</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="w-16 h-16 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <FaCloudUploadAlt size={32} />
+                      </div>
+                      <p className="text-sm font-bold text-gray-700 mb-1">Click to upload image</p>
+                      <p className="text-xs text-gray-400">SVG, PNG, JPG or GIF (Recommended 600x600px)</p>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                </div>
+              </div>
+
+              {/* DISPLAY SECTION */}
+              <div>
+                <h3 className="text-lg font-bold mb-4 text-gray-800 border-b pb-2">Status</h3>
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+                  <div>
+                    <p className="font-bold text-sm text-gray-900">Category Status</p>
+                    <p className="text-xs text-gray-500">Determine if this category is visible to customers.</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      name="status"
+                      checked={formData.status === 'active'}
+                      onChange={(e) => setFormData(prev => ({...prev, status: e.target.checked ? 'active' : 'inactive'}))}
+                      className="sr-only peer" 
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                    <span className="ml-3 text-xs font-bold uppercase text-gray-500 w-16">{formData.status}</span>
+                  </label>
+                </div>
+              </div>
+
+            </form>
+          </div>
+        </div>
+
+        {/* Footer actions */}
+        <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="px-6 py-2 rounded-xl font-bold transition-all border hover:opacity-80"
-            style={{ 
-              borderColor: 'var(--border-color)', 
-              color: 'var(--page-text-muted)' 
-            }}
+            className="px-5 py-2.5 text-sm font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors"
           >
             Cancel
           </button>
           <button
-            onClick={handleSubmit}
+            type="submit"
+            form="categoryForm"
             disabled={loading}
-            className="px-8 py-2 text-white rounded-xl font-bold shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
-            style={{ backgroundColor: 'var(--accent-color)' }}
+            className="px-5 py-2.5 text-sm font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 disabled:bg-indigo-400 transition-colors shadow-md flex items-center gap-2"
           >
-            {loading ? <FaSpinner className="animate-spin" /> : <FaCheckCircle />}
-            {initialData ? "Update Category" : "Save Category"}
+            {loading ? (
+              <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+            ) : <FaCheckCircle />}
+            Save Category
           </button>
-        </>
-      }
-    >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-[10px] font-black mb-1.5 uppercase tracking-widest" style={{ color: 'var(--page-text)' }}>
-            Category Name *
-          </label>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleInputChange}
-            placeholder="e.g. Electronics"
-            className={`w-full px-4 py-2.5 rounded-lg border outline-none font-medium shadow-sm transition-all focus:ring-2 focus:ring-blue-500/20 ${
-              errors.name ? "border-red-500" : ""
-            }`}
-            style={{ 
-              backgroundColor: 'var(--surface-1)', 
-              borderColor: errors.name ? '#ef4444' : 'var(--border-color)',
-              color: 'var(--page-text)'
-            }}
-            required
-          />
-          {errors.name && <p className="text-[9px] text-red-500 mt-1 font-bold italic">{errors.name}</p>}
         </div>
 
-        <div>
-          <label className="block text-[10px] font-black mb-1.5 uppercase tracking-widest" style={{ color: 'var(--page-text)' }}>
-            Subcategories
-          </label>
-          <div className="flex flex-wrap gap-1.5 mb-2.5">
-            {subCategories.map((sub, idx) => (
-              <span 
-                key={idx} 
-                className="inline-flex items-center gap-2 px-3 py-1 rounded-lg text-white text-[10px] font-black border shadow-sm"
-                style={{ 
-                  backgroundColor: 'var(--accent-color)', 
-                  borderColor: 'var(--border-color)' 
-                }}
-              >
-                {sub}
-                <button type="button" onClick={() => removeSubCategory(idx)} className="hover:text-red-200">
-                  <FaTimes size={10} />
-                </button>
-              </span>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={subCategoryInput}
-              onChange={(e) => setSubCategoryInput(e.target.value)}
-              onKeyDown={addSubCategory}
-              placeholder="Add subcategory..."
-              className="flex-grow px-4 py-2.5 rounded-lg border outline-none font-medium shadow-sm"
-              style={{ 
-                backgroundColor: 'var(--surface-1)', 
-                borderColor: 'var(--border-color)',
-                color: 'var(--page-text)'
-              }}
-            />
-            <button
-              type="button"
-              onClick={addSubCategory}
-              className="px-4 py-2.5 text-white rounded-lg transition-all shadow active:scale-95 flex items-center justify-center shrink-0"
-              style={{ backgroundColor: 'var(--accent-color)' }}
-            >
-              <FaPlus size={14} />
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-[10px] font-black mb-1.5 uppercase tracking-widest" style={{ color: 'var(--page-text)' }}>
-            Category Image
-          </label>
-          <div 
-            onClick={() => fileInputRef.current.click()}
-            className="border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all group shadow-inner relative"
-            style={{ 
-              backgroundColor: 'var(--surface-2)', 
-              borderColor: 'var(--border-color)' 
-            }}
-          >
-            {preview ? (
-              <div className="relative w-28 h-28 rounded-lg overflow-hidden shadow-lg border-2" style={{ borderColor: 'var(--surface-1)' }}>
-                <img src={preview} alt="Preview" className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setPreview(null);
-                    setFormData(prev => ({ ...prev, image: null }));
-                  }}
-                  className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full shadow-lg"
-                >
-                  <FaTimes size={10} />
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="w-10 h-10 rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform" style={{ backgroundColor: 'var(--surface-3)' }}>
-                  <FaCloudUploadAlt size={20} style={{ color: 'var(--accent-color)' }} />
-                </div>
-                <p className="font-bold uppercase tracking-widest text-[10px]" style={{ color: 'var(--page-text)' }}>
-                  {initialData && !formData.image ? "Replace Image" : "Upload Image"}
-                </p>
-                <p className="text-[9px] mt-1 font-bold" style={{ color: 'var(--page-text-muted)' }}>JPG, PNG, WEBP (MAX 5MB)</p>
-              </>
-            )}
-            <input 
-              ref={fileInputRef}
-              type="file" 
-              className="hidden" 
-              onChange={handleImageChange}
-              accept="image/*"
-            />
-          </div>
-        </div>
-      </form>
-    </BaseModal>
+      </div>
+    </div>,
+    document.body
   );
 };
 

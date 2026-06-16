@@ -9,6 +9,7 @@ import AuthProvider, { AuthContext } from "./context/AuthContext";
 import { BusinessSettingsProvider } from "./context/BusinessSettingsContext";
 import { WishlistProvider } from "./context/WishlistContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { OfferProvider } from "./context/OfferContext";
 
 import Home from "./pages/Home";
 import Shop from "./pages/Shop";
@@ -17,12 +18,13 @@ import Checkout from "./pages/Checkout";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import UserOrders from "./pages/UserOrders";
+import UserOrderDetails from "./pages/UserOrderDetails";
 import About from "./pages/About";
 import Services from "./pages/Services";
 import Contact from "./pages/Contact";
 import ProductDetails from "./pages/ProductDetails";
-import Offers from "./pages/Offers";
 import ReplacementPolicy from "./pages/ReplacementPolicy";
+import Offers from "./pages/Offers";
 
 import ForgotPassword from "./pages/ForgotPassword";
 import Wishlist from "./pages/Wishlist";
@@ -31,9 +33,16 @@ import Dashboard from "./pages/Admin/Dashboard";
 import AddProduct from "./pages/Admin/AddProduct";
 import ManageProducts from "./pages/Admin/ManageProducts";
 import Orders from "./pages/Admin/Orders";
+import OrderDetails from "./pages/Admin/OrderDetails";
 import ManageCategories from "./pages/Admin/ManageCategories";
+import CategoryDetails from "./pages/Admin/CategoryDetails";
 import ManageUsers from "./pages/Admin/ManageUsers";
+import UserDetails from "./pages/Admin/UserDetails";
+import AdminProductDetails from "./pages/Admin/ProductDetails";
+import EditUser from "./pages/Admin/EditUser";
 import ManageOffers from "./pages/Admin/ManageOffers";
+import AddOffer from "./pages/Admin/AddOffer";
+import OfferDetails from "./pages/Admin/OfferDetails";
 import ManageSuppliers from "./pages/Admin/ManageSuppliers";
 import AdminProfile from "./pages/Admin/AdminProfile";
 import StockHistory from "./pages/Admin/StockHistory";
@@ -46,6 +55,7 @@ import Navbar from "./components/Navbar";
 import BottomNav from "./components/BottomNav";
 import Footer from "./components/Footer";
 import AdminLayout from "./components/AdminLayout";
+import AuthBackground from "./components/AuthBackground";
 
 const ProtectedRoute = ({ children }) => {
   const { user } = useContext(AuthContext);
@@ -68,18 +78,16 @@ const LayoutWrapper = ({ children }) => {
 
   return (
     <div className="d-flex flex-column min-vh-100" style={{ position: 'relative', overflowX: 'hidden' }}>
-      {!isAdminRoute && <Navbar />}
+      {!isAdminRoute && !isAuthRoute && <Navbar />}
 
-      <div className="flex-grow-1 global-page-frame" style={{ position: 'relative' }}>
-        {isAuthRoute && (
-          <div style={{ filter: 'blur(4px)', pointerEvents: 'none', userSelect: 'none' }}>
-            <Home />
-          </div>
-        )}
-        {children}
+      <div className="flex-grow-1 global-page-frame" style={{ position: 'relative', minHeight: '100vh' }}>
+        {isAuthRoute && <AuthBackground />}
+        <div style={{ position: 'relative', zIndex: 1, height: isAuthRoute ? '100vh' : 'auto' }}>
+          {children}
+        </div>
       </div>
-      {!isAdminRoute && <BottomNav />}
-      {!isAdminRoute && <Footer />}
+      {!isAdminRoute && !isAuthRoute && <BottomNav />}
+      {!isAdminRoute && !isAuthRoute && <Footer />}
     </div>
   );
 };
@@ -95,7 +103,8 @@ function App() {
         <WishlistProvider>
           <CartProvider>
             <BusinessSettingsProvider>
-              <Router>
+              <OfferProvider>
+                <Router>
                 <LayoutWrapper>
                   <Routes>
                     <Route path="/" element={<Home />} />
@@ -103,9 +112,9 @@ function App() {
                     <Route path="/shop/category/:categoryName" element={<Shop />} />
                     <Route path="/product/:id" element={<ProductDetails />} />
                     <Route path="/about" element={<About />} />
+                    <Route path="/offers" element={<Offers />} />
                     <Route path="/services" element={<Services />} />
                     <Route path="/contact" element={<Contact />} />
-                    <Route path="/offers" element={<Offers />} />
                     <Route path="/replacement-policy" element={<ReplacementPolicy />} />
                     <Route path="/cart" element={<Cart />} />
                     <Route path="/checkout" element={<Checkout />} />
@@ -124,16 +133,26 @@ function App() {
                     >
                       <Route index element={<Dashboard />} />
                       <Route path="dashboard" element={<Dashboard />} />
-                      <Route path="products" element={<ManageProducts />} />
+                      <Route path="payments" element={<ManagePayments />} />
                       <Route path="categories" element={<ManageCategories />} />
+                      <Route path="categories/:id" element={<CategoryDetails />} />
+                      <Route path="products" element={<ManageProducts />} />
+                      <Route path="products/:id" element={<AdminProductDetails />} />
+                      <Route path="products/edit/:id" element={<AddProduct />} />
                       <Route path="users" element={<ManageUsers />} />
+                      <Route path="users/:id" element={<UserDetails />} />
+                      <Route path="users/edit/:id" element={<EditUser />} />
                       <Route path="offers" element={<ManageOffers />} />
+                      <Route path="offers/add" element={<AddOffer />} />
+                      <Route path="offers/:id" element={<OfferDetails />} />
+                      <Route path="offers/edit/:id" element={<AddOffer />} />
                       <Route path="suppliers" element={<ManageSuppliers />} />
                       <Route path="reviews" element={<ManageReviews />} />
                       <Route path="stock-history" element={<StockHistory />} />
                       <Route path="profile" element={<AdminProfile />} />
                       <Route path="add-product" element={<AddProduct />} />
                       <Route path="orders" element={<Orders />} />
+                      <Route path="orders/:id" element={<OrderDetails />} />
                       <Route path="payments" element={<ManagePayments />} />
                     </Route>
 
@@ -142,6 +161,14 @@ function App() {
                       element={
                         <ProtectedRoute>
                           <UserOrders />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/orders/:id"
+                      element={
+                        <ProtectedRoute>
+                          <UserOrderDetails />
                         </ProtectedRoute>
                       }
                     />
@@ -160,6 +187,7 @@ function App() {
                   theme="colored"
                 />
               </Router>
+              </OfferProvider>
             </BusinessSettingsProvider>
           </CartProvider>
         </WishlistProvider>

@@ -62,6 +62,23 @@ const orderSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    offerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Offer",
+      default: null,
+    },
+    offerName: {
+      type: String,
+      default: "",
+    },
+    offerType: {
+      type: String,
+      default: "",
+    },
+    offerDiscountValue: {
+      type: Number,
+      default: 0,
+    },
     paymentMethod: {
       type: String,
       enum: ["COD", "ONLINE"],
@@ -73,7 +90,7 @@ const orderSchema = new mongoose.Schema(
     },
     paymentStatus: {
       type: String,
-      enum: ["pending", "paid", "failed", "refunded"],
+      enum: ["pending", "paid", "failed", "refunded", "cancelled"],
       default: "pending",
     },
     isPaid: {
@@ -84,9 +101,14 @@ const orderSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    collectedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
     status: {
       type: String,
-      enum: ["pending", "confirmed", "processing", "shipped", "out_for_delivery", "delivered", "cancelled", "returned"],
+      enum: ["pending", "confirmed", "packed", "shipped", "out_for_delivery", "delivered", "cancelled", "returned"],
       default: "pending",
     },
     stockUpdated: {
@@ -102,13 +124,34 @@ const orderSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    returnStatus: {
+      type: String,
+      enum: ["none", "requested", "approved", "rejected", "pickup_scheduled", "picked_up", "received", "refunded", "completed"],
+      default: "none",
+    },
+    returnReason: {
+      type: String,
+      default: "",
+    },
+    returnComments: {
+      type: String,
+      default: "",
+    },
+    returnImages: {
+      type: [String],
+      default: [],
+    },
+    returnRequestDate: {
+      type: Date,
+      default: null,
+    },
     statusHistory: {
       type: [
         new mongoose.Schema(
           {
             status: {
               type: String,
-              enum: ["pending", "confirmed", "processing", "shipped", "out_for_delivery", "delivered", "cancelled", "returned"],
+              enum: ["pending", "confirmed", "packed", "shipped", "out_for_delivery", "delivered", "cancelled", "returned"],
               required: true,
             },
             description: {

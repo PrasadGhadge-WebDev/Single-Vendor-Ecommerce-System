@@ -2,7 +2,9 @@ import { useContext } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { CartContext } from "../context/CartContext";
 import { AuthContext } from "../context/AuthContext";
+import { OfferContext } from "../context/OfferContext";
 import { getImageUrl } from "../api";
+import { FaTags } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { ensureLoggedIn } from "../utils/authGuards";
 
@@ -12,10 +14,11 @@ const FALLBACK_IMAGE =
 const Cart = () => {
   const { cart, updateQuantity, removeItem } = useContext(CartContext);
   const { user } = useContext(AuthContext);
+  const { getCartOfferDetails, getBestOfferForProduct } = useContext(OfferContext);
   const navigate = useNavigate();
   const location = useLocation();
 
-  const total = cart.reduce((sum, item) => sum + (item.productId?.price || 0) * item.quantity, 0);
+  const cartOfferDetails = getCartOfferDetails(cart);
 
   const handleQuantityChange = (productId, value) => {
     const qty = Math.max(1, Number(value) || 1);
@@ -86,7 +89,23 @@ const Cart = () => {
                     <Link to={`/product/${product?._id}`} className="text-decoration-none">
                       <h6 className="mb-1 text-primary-text font-bold">{product?.name}</h6>
                     </Link>
-                    <small className="text-muted-text d-block">INR {product?.price}</small>
+                    
+                    {/* Dynamic Price Display */}
+                    {(() => {
+                      const bestOffer = getBestOfferForProduct(product);
+                      if (bestOffer) {
+                        return (
+                          <div className="d-flex align-items-center gap-2 mb-1">
+                            <span className="text-primary-text font-bold">INR {bestOffer.finalPrice.toLocaleString("en-IN")}</span>
+                            <span className="text-muted-text text-decoration-line-through small">INR {product?.price}</span>
+                            <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 ms-1">
+                              {bestOffer.offer.title}
+                            </span>
+                          </div>
+                        );
+                      }
+                      return <small className="text-muted-text d-block mb-1">INR {product?.price}</small>;
+                    })()}
                     <small className="text-muted-text">Category: {product?.category || "-"}</small>
                   </div>
                 </div>
@@ -113,11 +132,38 @@ const Cart = () => {
             );
           })}
 
-          <div className="d-flex justify-content-between align-items-center mt-4 p-3 border border-theme rounded-4 shadow-sm bg-surface-1">
-            <h4 className="mb-0 text-primary-text font-black">Total: INR {total}</h4>
-            <button className="btn btn-buy-action px-4 rounded-pill" onClick={handleBuyTotalOrder}>
-              Buy Total Order
-            </button>
+          <div className="mt-4 p-4 border border-theme rounded-4 shadow-sm bg-surface-1">
+            <h5 className="font-black mb-3">Order Summary</h5>
+            <div className="d-flex justify-content-between mb-2">
+              <span className="text-muted-text">Subtotal</span>
+              <span className="font-bold">INR {cartOfferDetails.subtotal.toLocaleString("en-IN")}</span>
+            </div>
+            
+            {cartOfferDetails.discount > 0 && (
+              <div className="d-flex justify-content-between mb-3 text-success">
+                <span>
+                  <FaTags className="me-2" />
+                  Offer Discount
+                  {cartOfferDetails.primaryOffer && ` (${cartOfferDetails.primaryOffer.title})`}
+                </span>
+                <span className="font-bold">- INR {cartOfferDetails.discount.toLocaleString("en-IN")}</span>
+              </div>
+            )}
+            
+            <hr className="my-3 opacity-25" />
+            
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h4 className="mb-0 text-primary-text font-black">Total: INR {cartOfferDetails.finalAmount.toLocaleString("en-IN")}</h4>
+              {cartOfferDetails.discount > 0 && (
+                <small className="text-success fw-bold d-block mt-1">Total Savings: INR {cartOfferDetails.discount.toLocaleString("en-IN")}</small>
+              )}
+            </div>
+            
+            <div className="d-grid">
+              <button className="btn btn-buy-action py-3 rounded-pill fw-bold" onClick={handleBuyTotalOrder}>
+                Proceed to Checkout
+              </button>
+            </div>
           </div>
         </>
       )}

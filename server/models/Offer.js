@@ -2,26 +2,25 @@ const mongoose = require("mongoose");
 
 const offerSchema = new mongoose.Schema(
   {
-    title: {
+    name: {
       type: String,
       required: true,
       trim: true,
     },
     code: {
       type: String,
-      required: true,
-      unique: true,
       uppercase: true,
       trim: true,
+      sparse: true,
     },
     description: {
       type: String,
       default: "",
       trim: true,
     },
-    discountType: {
+    type: {
       type: String,
-      enum: ["PERCENT", "FIXED"],
+      enum: ["Percentage Discount", "Flat Discount", "Free Shipping"],
       required: true,
     },
     discountValue: {
@@ -29,31 +28,55 @@ const offerSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    maxDiscount: {
+      type: Number,
+      default: null, // Only for Percentage
+    },
+    applicableOn: {
+      type: String,
+      enum: ["All Products", "Specific Products", "Specific Categories"],
+      required: true,
+    },
+    products: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
+      }
+    ],
+    categories: [
+      {
+        type: String,
+        trim: true,
+      }
+    ],
     minOrderAmount: {
       type: Number,
       default: 0,
-      min: 0,
     },
-    maxDiscountAmount: {
+    usageLimit: {
+      type: Number,
+      default: null, // null means unlimited
+    },
+    perUserLimit: {
+      type: Number,
+      default: null, // null means unlimited
+    },
+    startDate: {
+      type: Date,
+      required: true,
+    },
+    endDate: {
+      type: Date,
+      required: true,
+    },
+    usageCount: {
       type: Number,
       default: 0,
-      min: 0,
     },
-    startsAt: {
-      type: Date,
-      default: Date.now,
-    },
-    expiresAt: {
-      type: Date,
-      default: null,
-    },
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
-    image: {
+    status: {
       type: String,
-      default: "",
+      enum: ["Draft", "Active", "Expired", "Inactive"],
+      default: "Active",
     },
   },
   { timestamps: true }

@@ -31,7 +31,7 @@ const defaultSettings = {
   deliveryTime: "",
   taxPercent: 0,
   isTaxInclusive: false,
-  orderStatusFlow: ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"],
+  orderStatusFlow: ["Pending", "Packed", "Shipped", "Delivered", "Cancelled"],
   autoConfirmOrders: false,
   cancelEnabled: true,
   returnEnabled: true,
@@ -242,25 +242,12 @@ const BusinessSettings = () => {
   );
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-700">
-      {/* V3 Premium Module Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 relative">
-        <div className="relative group">
-          <div className="absolute -left-8 -top-8 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-all duration-700" />
-          <div className="flex items-start gap-4 relative">
-            <div className="w-1.5 h-12 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full shadow-lg shadow-indigo-500/20" />
-            <div>
-              <h1 className="text-4xl font-black tracking-tight flex items-center gap-3" style={{ color: 'var(--page-text)' }}>
-                System Settings
-                <span className="text-[10px] uppercase tracking-[0.3em] font-black px-2 py-1 bg-indigo-500/10 text-indigo-600 rounded-lg ml-2">
-                  Enterprise
-                </span>
-              </h1>
-              <p className="text-sm font-bold opacity-40 uppercase tracking-[0.1em] mt-1.5">
-                Centralized Governance & Operational Parameter Optimization Terminal
-              </p>
-            </div>
-          </div>
+    <div className="max-w-[1600px] mx-auto p-4 sm:p-8 space-y-6 animate-in fade-in duration-700" style={{ backgroundColor: '#F8FAFC', minHeight: '100vh' }}>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 m-0">System Settings</h1>
+          <p className="text-sm text-gray-500 m-0 mt-1">CENTRALIZED GOVERNANCE & OPERATIONAL PARAMETER OPTIMIZATION TERMINAL</p>
         </div>
 
         {activeTab !== "reports" && activeTab !== "invoices" && (
@@ -468,7 +455,7 @@ const BusinessSettings = () => {
                 </div>
                 <div className="grid grid-cols-1 gap-4">
                   {[
-                    { name: "autoConfirmOrders", label: "Auto-confirm new orders", desc: "Instantly transition orders to Processing status upon placement" },
+                    { name: "autoConfirmOrders", label: "Auto-confirm new orders", desc: "Instantly transition orders to Packed status upon placement" },
                     { name: "cancelEnabled", label: "Allow Customer Cancellations", desc: "Enable self-service order termination for customers" },
                     { name: "returnEnabled", label: "Enable Return Policy Flow", desc: "Activate post-fulfillment return request system" }
                   ].map((item) => (

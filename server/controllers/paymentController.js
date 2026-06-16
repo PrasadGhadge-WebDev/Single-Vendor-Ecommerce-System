@@ -218,16 +218,86 @@ exports.getPaymentsByOrder = async (req, res) => {
   }
 };
 
+exports.getPaymentStats = async (req, res) => {
+  try {
+    const totalPaymentsAgg = await Payment.aggregate([
+      { $match: { method: "COD" } },
+      { $group: { _id: null, total: { $sum: "$amount" } } }
+    ]);
+    const totalPayments = totalPaymentsAgg[0]?.total || 0;
+
+    const totalReceivedAgg = await Payment.aggregate([
+      { $match: { method: "COD", status: "verified" } },
+      { $group: { _id: null, total: { $sum: "$amount" } } }
+    ]);
+    const totalReceived = totalReceivedAgg[0]?.total || 0;
+
+    const pendingAmountAgg = await Payment.aggregate([
+      { $match: { method: "COD", status: { $in: ["created", "cod_pending"] } } },
+      { $group: { _id: null, total: { $sum: "$amount" } } }
+    ]);
+    const pendingAmount = pendingAmountAgg[0]?.total || 0;
+
+    const codPendingCount = await Payment.countDocuments({ method: "COD", status: "cod_pending" });
+
+    res.status(200).json({
+      totalPayments,
+      totalReceived,
+      pendingAmount,
+      codPendingCount
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 exports.getAllPayments = async (req, res) => {
   try {
-    const { status, method, page = 1, limit = 20 } = req.query;
-    const filter = {};
+    const { status, orderStatus, search, dateFrom, dateTo, page = 1, limit = 20 } = req.query;
+    const filter = { method: "COD" };
     if (status) filter.status = status;
-    if (method) filter.method = method;
+
+    if (dateFrom || dateTo) {
+      filter.createdAt = {};
+      if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
+      if (dateTo) filter.createdAt.$lte = new Date(dateTo);
+    }
+
+    if (orderStatus) {
+      const orders = await Order.find({ status: orderStatus }).select('_id');
+      const orderIds = orders.map(o => o._id);
+      filter.order = { $in: orderIds };
+    }
+
+    if (search) {
+      const User = require("../models/User");
+      const users = await User.find({
+        $or: [
+          { name: { $regex: search, $options: "i" } },
+          { phone: { $regex: search, $options: "i" } }
+        ]
+      }).select("_id");
+      const userIds = users.map(u => u._id);
+
+      filter.$or = [];
+      if (userIds.length > 0) {
+        filter.$or.push({ user: { $in: userIds } });
+      }
+
+      const mongoose = require("mongoose");
+      if (mongoose.Types.ObjectId.isValid(search)) {
+        filter.$or.push({ order: search });
+        filter.$or.push({ _id: search });
+      }
+
+      if (filter.$or.length === 0) {
+        return res.status(200).json({ payments: [], total: 0, page: Number(page), pages: 0 });
+      }
+    }
 
     const payments = await Payment.find(filter)
-      .populate("user", "name email")
-      .populate("order", "id totalAmount status")
+      .populate("user", "name email phone")
+      .populate("order", "id totalAmount status statusHistory shippingAddress createdAt")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(Number(limit));

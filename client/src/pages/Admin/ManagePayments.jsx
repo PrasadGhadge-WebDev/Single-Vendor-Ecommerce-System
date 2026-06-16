@@ -1,33 +1,79 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import API from "../../api";
 import { toast } from "react-toastify";
-import { FaFilter, FaSearch, FaCreditCard, FaMoneyBillWave, FaSync, FaChevronDown, FaTrash, FaUser, FaBox, FaClock, FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
+import { FaSearch, FaEye, FaPrint, FaWallet, FaDownload, FaExternalLinkAlt, FaCheck, FaArrowLeft, FaChevronDown } from "react-icons/fa";
 import Pagination from "../../components/Pagination";
-import ConfirmModal from "../../components/ConfirmModal";
+import html2pdf from "html2pdf.js";
 
 const ManagePayments = () => {
+    const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const [payments, setPayments] = useState([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const [pages, setPages] = useState(1);
     const [loading, setLoading] = useState(false);
-    const showModal = searchParams.get("modal") === "payment";
-    const editingId = searchParams.get("id");
-    const [editingPayment, setEditingPayment] = useState(null);
-    const [statusFilter, setStatusFilter] = useState("");
-    const [methodFilter, setMethodFilter] = useState("");
-    const [confirmConfig, setConfirmConfig] = useState({ isOpen: false, paymentId: null });
+    
+    const [stats, setStats] = useState({
+        totalPayments: 0,
+        totalReceived: 0,
+        pendingAmount: 0,
+        codPendingCount: 0
+    });
 
-    useEffect(() => {
-        if (editingId) {
-            const payment = payments.find(p => p._id === editingId);
-            setEditingPayment(payment || null);
-        } else {
-            setEditingPayment(null);
+    const [statusFilter, setStatusFilter] = useState("");
+    const [orderStatusFilter, setOrderStatusFilter] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [dateFrom, setDateFrom] = useState("");
+    const [dateTo, setDateTo] = useState("");
+    const [datePreset, setDatePreset] = useState("");
+
+    const [viewPayment, setViewPayment] = useState(null); 
+    const [paymentToMark, setPaymentToMark] = useState(null);
+    
+    // COD Fields
+    const [codNotes, setCodNotes] = useState("");
+    const [codRefNo, setCodRefNo] = useState("");
+    const [markingPaid, setMarkingPaid] = useState(false);
+    const [openDropdownId, setOpenDropdownId] = useState(null);
+
+    const handleDatePresetChange = (e) => {
+        const val = e.target.value;
+        setDatePreset(val);
+        
+        const formatDate = (d) => {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        };
+
+        if (val === "today") {
+            const today = formatDate(new Date());
+            setDateFrom(today);
+            setDateTo(today);
+        } else if (val === "last7days") {
+            const today = new Date();
+            const last7 = new Date();
+            last7.setDate(today.getDate() - 7);
+            setDateFrom(formatDate(last7));
+            setDateTo(formatDate(today));
+        } else if (val === "") {
+            setDateFrom("");
+            setDateTo("");
         }
-    }, [editingId, payments]);
+        setPage(1);
+    };
+
+    const fetchStats = useCallback(async () => {
+        try {
+            const { data } = await API.get("/payments/stats");
+            setStats(data);
+        } catch (error) {
+            console.error("Failed to load payment stats");
+        }
+    }, []);
 
     const fetchPayments = useCallback(async (showLoader = true) => {
         if (showLoader) setLoading(true);
@@ -35,7 +81,10 @@ const ManagePayments = () => {
             const params = {
                 page,
                 status: statusFilter,
-                method: methodFilter
+                orderStatus: orderStatusFilter,
+                search: searchQuery,
+                dateFrom,
+                dateTo
             };
             const { data } = await API.get("/payments", { params });
             const list = Array.isArray(data.payments) ? data.payments : [];
@@ -48,191 +97,451 @@ const ManagePayments = () => {
         } finally {
             if (showLoader) setLoading(false);
         }
-    }, [page, statusFilter, methodFilter]);
+    }, [page, statusFilter, orderStatusFilter, searchQuery, dateFrom, dateTo]);
 
     useEffect(() => {
-        fetchPayments();
+        fetchStats();
+    }, [fetchStats]);
+
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            fetchPayments();
+        }, 300);
+        return () => clearTimeout(timeoutId);
     }, [fetchPayments]);
 
-    const deletePayment = (id) => {
-        setConfirmConfig({ isOpen: true, paymentId: id });
-    };
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (!event.target.closest('.action-dropdown-container')) {
+                setOpenDropdownId(null);
+            }
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, []);
 
-    const handleConfirmDeletePayment = async () => {
-        const id = confirmConfig.paymentId;
-        if (!id) return;
-        
+    const handleMarkAsPaid = async (orderId) => {
+        if (!orderId) return;
+        setMarkingPaid(true);
         try {
-            await API.delete(`/payments/${id}`);
-            toast.success("Transaction record purged");
-            setPayments((prev) => prev.filter((p) => p._id !== id));
+            await API.put(`/orders/${orderId}/pay`, {
+                notes: codNotes,
+                referenceNo: codRefNo,
+                receivedBy: "Admin"
+            });
+            toast.success("Payment marked as paid successfully");
+            fetchPayments(false);
+            fetchStats();
+            setPaymentToMark(null);
+            if (viewPayment) fetchPayments(false); // We don't auto close view modal if open, but list updates
         } catch (error) {
-            toast.error("Purge failed");
+            toast.error(error.response?.data?.message || "Failed to mark as paid");
+        } finally {
+            setMarkingPaid(false);
         }
     };
 
+    const generateReceiptHtml = (payment) => {
+        return `
+            <html>
+                <head>
+                    <title>Payment Receipt</title>
+                    <style>
+                        body { font-family: 'Courier New', Courier, monospace; padding: 20px; line-height: 1.5; color: #000; }
+                        h2 { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 20px;}
+                        .row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+                        .footer { margin-top: 30px; text-align: center; border-top: 1px dashed #000; padding-top: 10px; }
+                    </style>
+                </head>
+                <body>
+                    <div style="width: 100%; max-width: 600px; margin: 0 auto;">
+                        <h2>PAYMENT RECEIPT</h2>
+                        <div class="row"><span>Payment ID:</span> <span>${payment._id}</span></div>
+                        <div class="row"><span>Order ID:</span> <span>${payment.order?._id || "N/A"}</span></div>
+                        <div class="row"><span>Customer:</span> <span>${payment.user?.name || "N/A"}</span></div>
+                        <br/>
+                        <div class="row"><span>Method:</span> <span>${payment.method}</span></div>
+                        <div class="row"><span>Status:</span> <span>Paid</span></div>
+                        <div class="row"><span>Amount:</span> <span>Rs. ${payment.amount?.toLocaleString('en-IN')}</span></div>
+                        <br/>
+                        <div class="row"><span>Paid Date:</span> <span>${new Date(payment.updatedAt || Date.now()).toLocaleDateString('en-IN')}</span></div>
+                        <div class="row"><span>Received By:</span> <span>${payment.metadata?.receivedBy || "Admin"}</span></div>
+                        ${payment.metadata?.referenceNo ? `<div class="row"><span>Ref No:</span> <span>${payment.metadata.referenceNo}</span></div>` : ""}
+                        <div class="footer">Thank You</div>
+                    </div>
+                </body>
+            </html>
+        `;
+    };
+
+    const handlePrintReceipt = (payment) => {
+        const receiptContent = generateReceiptHtml(payment);
+        const printWindow = window.open("", "_blank");
+        printWindow.document.write(receiptContent);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+        }, 250);
+    };
+
+    const handleDownloadReceipt = (payment) => {
+        const receiptContent = document.createElement("div");
+        receiptContent.innerHTML = generateReceiptHtml(payment);
+        const opt = {
+            margin:       0.5,
+            filename:     `Receipt_${payment._id}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 },
+            jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+        html2pdf().set(opt).from(receiptContent).save();
+    };
+
+    const getStatusColor = (status) => {
+        const s = String(status).toLowerCase();
+        if (s === 'verified' || s === 'paid' || s === 'delivered') return 'bg-green-100 text-green-700 border-green-200';
+        if (s === 'cod_pending' || s === 'created' || s === 'pending') return 'bg-orange-100 text-orange-700 border-orange-200';
+        if (s === 'failed' || s === 'cancelled' || s === 'returned') return 'bg-red-100 text-red-700 border-red-200';
+        if (s === 'refunded') return 'bg-blue-100 text-blue-700 border-blue-200';
+        return 'bg-gray-100 text-gray-700 border-gray-200';
+    };
+
+    const formatCurrency = (amount) => `₹ ${amount?.toLocaleString('en-IN')}`;
+
+    const getDeliveryDate = (order) => {
+        if (!order || !order.statusHistory) return "-";
+        const deliveryEntry = order.statusHistory.find(h => h.status === 'delivered');
+        return deliveryEntry ? new Date(deliveryEntry.createdAt).toLocaleString('en-IN') : "-";
+    };
+
+    const openMarkAsPaidModal = (payment) => {
+        setPaymentToMark(payment);
+        setCodNotes("");
+        setCodRefNo(`COD-ORD-${payment.order?._id?.slice(-6).toUpperCase() || ""}`);
+    };
+
     return (
-        <div className="space-y-6 animate-in fade-in duration-700">
-            {/* V3 Premium Module Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 relative">
-                <div className="relative group">
-                    <div className="absolute -left-8 -top-8 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-all duration-700" />
-                    <div className="flex items-start gap-4 relative">
-                        <div className="w-1.5 h-12 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full shadow-lg shadow-indigo-500/20" />
+        <div className="max-w-[1600px] mx-auto p-4 sm:p-8 space-y-6" style={{ backgroundColor: '#F8FAFC', minHeight: '100vh' }}>
+            {viewPayment ? (
+                <div className="space-y-6 animate-in fade-in duration-300">
+                    {/* Header for Payment Details Page */}
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b border-slate-200 pb-4">
                         <div>
-                            <h1 className="text-4xl font-black tracking-tight flex items-center gap-3" style={{ color: 'var(--page-text)' }}>
-                                Payments
-                                <span className="text-[10px] uppercase tracking-[0.3em] font-black px-2 py-1 bg-indigo-500/10 text-indigo-600 rounded-lg ml-2">
-                                    Fintech
-                                </span>
-                            </h1>
-                            <p className="text-sm font-bold opacity-40 uppercase tracking-[0.1em] mt-1.5">
-                                Financial Ledger & Settlement Auditing Console
-                            </p>
+                            <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                                <span className="hover:text-indigo-600 cursor-pointer transition-colors" onClick={() => navigate('/admin')}>Dashboard</span>
+                                <span>/</span>
+                                <span className="hover:text-indigo-600 cursor-pointer transition-colors" onClick={() => setViewPayment(null)}>Payments</span>
+                                <span>/</span>
+                                <span className="text-gray-900 font-semibold">Payment Details</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <button onClick={() => setViewPayment(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors" title="Back to Payments">
+                                    <FaArrowLeft className="text-gray-600" />
+                                </button>
+                                <h1 className="text-2xl font-bold text-gray-900 m-0">Payment Details</h1>
+                            </div>
+                        </div>
+                        
+                        <div className="flex flex-wrap items-center gap-3">
+                            {viewPayment.order?._id && (
+                                <button onClick={() => navigate(`/admin/orders/${viewPayment.order._id}`)} className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors text-sm font-bold inline-flex items-center gap-2 shadow-sm border border-indigo-100">
+                                    <FaExternalLinkAlt /> View Order
+                                </button>
+                            )}
+                            
+                            {viewPayment.status !== 'verified' && viewPayment.order?.status?.toLowerCase() === 'delivered' && (
+                                <button onClick={() => openMarkAsPaidModal(viewPayment)} className="px-4 py-2 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-colors text-sm font-bold inline-flex items-center gap-2 shadow-sm">
+                                    <FaCheck /> Mark as Paid
+                                </button>
+                            )}
+
+                            {viewPayment.status === 'verified' && (
+                                <>
+                                    <button onClick={() => handlePrintReceipt(viewPayment)} className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-colors text-sm font-bold inline-flex items-center gap-2 shadow-sm border border-emerald-100">
+                                        <FaPrint /> Print Receipt
+                                    </button>
+                                    <button onClick={() => handleDownloadReceipt(viewPayment)} className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors text-sm font-bold inline-flex items-center gap-2 shadow-sm border border-blue-100">
+                                        <FaDownload /> Download PDF
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Cards Container */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Customer Information */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Customer Information</h3>
+                            <div className="space-y-4">
+                                <div><p className="text-xs text-gray-500 mb-1">Customer Name</p><p className="font-semibold text-base text-gray-900">{viewPayment.user?.name || "N/A"}</p></div>
+                                <div><p className="text-xs text-gray-500 mb-1">Customer Email</p><p className="font-semibold text-base text-gray-900">{viewPayment.user?.email || "N/A"}</p></div>
+                                <div><p className="text-xs text-gray-500 mb-1">Mobile Number</p><p className="font-semibold text-base text-gray-900">{viewPayment.order?.shippingAddress?.phone || viewPayment.user?.phone || "N/A"}</p></div>
+                            </div>
+                        </div>
+
+                        {/* Order Information */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Order Information</h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="col-span-2 sm:col-span-1"><p className="text-xs text-gray-500 mb-1">Order ID</p><p className="font-semibold text-base text-indigo-600">#{viewPayment.order?._id?.slice(-8).toUpperCase()}</p></div>
+                                <div className="col-span-2 sm:col-span-1"><p className="text-xs text-gray-500 mb-1.5">Order Status</p>
+                                    <span className={`inline-flex px-3 py-1 rounded-md text-xs font-black uppercase border ${getStatusColor(viewPayment.order?.status)}`}>
+                                        {viewPayment.order?.status || "-"}
+                                    </span>
+                                </div>
+                                <div className="col-span-2"><p className="text-xs text-gray-500 mb-1">Order Amount</p><p className="font-black text-2xl text-emerald-600">{formatCurrency(viewPayment.amount)}</p></div>
+                                <div className="col-span-2 sm:col-span-1"><p className="text-xs text-gray-500 mb-1">Order Date</p><p className="font-semibold text-base text-gray-900">{viewPayment.order?.createdAt ? new Date(viewPayment.order.createdAt).toLocaleString('en-IN') : "-"}</p></div>
+                                <div className="col-span-2 sm:col-span-1"><p className="text-xs text-gray-500 mb-1">Delivery Date</p><p className="font-semibold text-base text-gray-900">{getDeliveryDate(viewPayment.order)}</p></div>
+                            </div>
+                        </div>
+
+                        {/* Payment Information */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 lg:col-span-2">
+                            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Payment Information</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div><p className="text-xs text-gray-500 mb-1">Payment ID</p><p className="font-semibold text-base text-gray-900">{viewPayment._id.slice(-8).toUpperCase()}</p></div>
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1.5">Payment Status</p>
+                                    <span className={`inline-flex px-3 py-1 rounded-md text-xs font-black uppercase border ${getStatusColor(viewPayment.status)}`}>
+                                        {viewPayment.status === 'verified' ? 'Paid' : viewPayment.status.replace('cod_', '')}
+                                    </span>
+                                </div>
+                                <div><p className="text-xs text-gray-500 mb-1">Payment Method</p><p className="font-bold text-base text-gray-900">Cash on Delivery (COD)</p></div>
+                                {viewPayment.status === 'verified' && (
+                                    <>
+                                        <div><p className="text-xs text-gray-500 mb-1">Received By</p><p className="font-bold text-base text-emerald-700">{viewPayment.metadata?.receivedBy || "Admin"}</p></div>
+                                        <div><p className="text-xs text-gray-500 mb-1">Paid Date</p><p className="font-bold text-base text-emerald-700">{viewPayment.updatedAt ? new Date(viewPayment.updatedAt).toLocaleString('en-IN') : "-"}</p></div>
+                                        <div><p className="text-xs text-gray-500 mb-1">Reference No</p><p className="font-bold text-base text-emerald-700">{viewPayment.metadata?.referenceNo || "-"}</p></div>
+                                        <div className="lg:col-span-2"><p className="text-xs text-gray-500 mb-1">Notes</p><p className="font-bold text-base text-emerald-700">{viewPayment.metadata?.notes || "No notes provided."}</p></div>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
-
-                <div className="flex items-center gap-3 relative z-10">
-                    <div className="flex flex-col items-end">
-                        <p className="text-2xl font-black text-indigo-600">{total}</p>
-                        <p className="text-[10px] font-black opacity-30 uppercase tracking-widest text-right">Settled Transactions</p>
+            ) : (
+                <>
+                    {/* Header */}
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-900 m-0">COD Payments</h1>
+                            <p className="text-sm text-gray-500 m-0 mt-1">Manage Cash on Delivery collections and settlements</p>
+                        </div>
                     </div>
-                    <div className="w-px h-10 bg-slate-200 dark:bg-slate-700 mx-2" />
-                    <button 
-                        onClick={() => fetchPayments()}
-                        className="p-3 bg-white dark:bg-slate-800 border rounded-2xl hover:bg-slate-50 transition-all shadow-sm" 
-                        style={{ borderColor: 'var(--border-color)', color: 'var(--page-text)' }}
-                    >
-                        <FaSync size={14} className={loading ? "animate-spin" : ""} />
-                    </button>
+
+            {/* Top Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-center">
+                    <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Total COD Payments</p>
+                    <p className="text-2xl font-black text-indigo-600 mt-2">{formatCurrency(stats.totalPayments)}</p>
+                </div>
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-center">
+                    <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Total COD Received</p>
+                    <p className="text-2xl font-black text-green-600 mt-2">{formatCurrency(stats.totalReceived)}</p>
+                </div>
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-center">
+                    <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Total COD Pending</p>
+                    <p className="text-2xl font-black text-orange-500 mt-2">{stats.codPendingCount} Orders <span className="text-sm font-semibold text-gray-400 ml-1">({formatCurrency(stats.pendingAmount)})</span></p>
                 </div>
             </div>
 
-            {/* Advanced Filter Suite */}
-            <div className="p-4 bg-white dark:bg-slate-900/60 rounded-3xl border shadow-xl shadow-indigo-500/5 flex flex-col xl:flex-row gap-4 items-center" style={{ borderColor: 'var(--border-color)' }}>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 w-full xl:w-auto">
-                    <div className="relative">
-                        <select 
-                            className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none appearance-none font-bold opacity-70 hover:opacity-100"
-                            value={methodFilter} 
-                            onChange={(e) => { setMethodFilter(e.target.value); setPage(1); }}
-                        >
-                            <option value="">Channel: All</option>
-                            <option value="ONLINE">Digital (Online)</option>
-                            <option value="COD">Cash on Delivery</option>
-                        </select>
-                        <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={10} />
-                    </div>
+            {/* Filters Section */}
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-nowrap overflow-x-auto gap-4 items-center hide-scrollbar" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                <div className="flex-[2] min-w-[200px] relative">
+                    <input 
+                        type="text" 
+                        placeholder="Search by all columns..." 
+                        value={searchQuery}
+                        onChange={(e) => {setSearchQuery(e.target.value); setPage(1);}}
+                        className="w-full pl-4 pr-10 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none truncate"
+                    />
+                    <FaSearch className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                </div>
+                <select 
+                    className="flex-1 min-w-[120px] px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none"
+                    value={statusFilter} 
+                    onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                >
+                    <option value="">Payment Status: All</option>
+                    <option value="cod_pending">Pending</option>
+                    <option value="verified">Paid</option>
+                </select>
 
-                    <div className="relative">
-                        <select 
-                            className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none appearance-none font-bold opacity-70 hover:opacity-100"
-                            value={statusFilter} 
-                            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-                        >
-                            <option value="">Status: All</option>
-                            <option value="verified">Verified</option>
-                            <option value="cod_pending">COD Pending</option>
-                            <option value="created">Created</option>
-                            <option value="failed">Failed</option>
-                        </select>
-                        <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={10} />
-                    </div>
+                <select 
+                    className="flex-1 min-w-[120px] px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none"
+                    value={orderStatusFilter} 
+                    onChange={(e) => { setOrderStatusFilter(e.target.value); setPage(1); }}
+                >
+                    <option value="">Order Status: All</option>
+                    <option value="pending">Pending</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="packed">Packed</option>
+                    <option value="shipped">Shipped</option>
+                    <option value="out_for_delivery">Out for Delivery</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
 
+                <select 
+                    className="flex-1 min-w-[120px] px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none"
+                    value={datePreset} 
+                    onChange={handleDatePresetChange}
+                >
+                    <option value="">Creation Date</option>
+                    <option value="today">Today</option>
+                    <option value="last7days">Last 7 Days</option>
+                    <option value="custom">Custom Range</option>
+                </select>
+
+                {datePreset === "custom" && (
+                    <div className="flex items-center gap-2">
+                        <input 
+                            type="date"
+                            value={dateFrom}
+                            onChange={(e) => {setDateFrom(e.target.value); setPage(1);}}
+                            className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none text-gray-500"
+                        />
+                        <span className="text-gray-400 text-xs">-</span>
+                        <input 
+                            type="date"
+                            value={dateTo}
+                            onChange={(e) => {setDateTo(e.target.value); setPage(1);}}
+                            className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none text-gray-500"
+                        />
+                    </div>
+                )}
+
+                {(statusFilter !== "" || orderStatusFilter !== "" || searchQuery !== "" || datePreset !== "" || dateFrom !== "" || dateTo !== "") && (
                     <button 
                         onClick={() => {
                             setStatusFilter("");
-                            setMethodFilter("");
+                            setOrderStatusFilter("");
+                            setSearchQuery("");
+                            setDatePreset("");
+                            setDateFrom("");
+                            setDateTo("");
                             setPage(1);
                         }}
-                        className="px-6 py-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
+                        className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-bold transition-colors whitespace-nowrap shrink-0 ml-auto"
                     >
-                        Reset Filters
+                        Reset
                     </button>
-                </div>
+                )}
             </div>
 
-            {/* Professional High-Density Data Grid */}
-            <div className="bg-white dark:bg-slate-900/60 rounded-3xl border shadow-xl overflow-hidden" style={{ borderColor: 'var(--border-color)' }}>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse table-fixed min-w-[1100px]">
+            {/* Payments Table */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="overflow-x-auto min-h-[280px]">
+                    <table className="w-full text-left border-collapse whitespace-nowrap">
                         <thead>
-                            <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b" style={{ borderColor: 'var(--border-color)' }}>
-                                <th className="w-[15%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Order ID</th>
-                                <th className="w-[20%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Customer</th>
-                                <th className="w-[12%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700 text-center">Amount</th>
-                                <th className="w-[12%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700 text-center">Method</th>
-                                <th className="w-[15%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700 text-center">Paid Date</th>
-                                <th className="w-[12%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700 text-center">Status</th>
-                                <th className="w-[14%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 text-right">Operations</th>
+                            <tr className="bg-slate-50 border-b border-slate-200">
+                                <th className="px-3 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Payment ID</th>
+                                <th className="px-3 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Order ID</th>
+                                <th className="px-3 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Customer</th>
+                                <th className="px-3 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Amount</th>
+                                <th className="px-3 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Order Status</th>
+                                <th className="px-3 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Pay Status</th>
+                                <th className="px-3 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                                <th className="px-3 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-center">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y dark:divide-slate-800" style={{ borderColor: 'var(--border-color)' }}>
-                            {payments.length > 0 ? payments.map((p, idx) => (
-                                <tr 
-                                    key={p._id || idx} 
-                                    className={`group transition-all duration-200 ${idx % 2 === 0 ? 'bg-transparent' : 'bg-slate-50/30 dark:bg-slate-800/20'} hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5`}
-                                >
-                                    <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800">
-                                        <div className="flex items-center gap-2">
-                                            <FaBox className="text-indigo-500/40" size={12} />
-                                            <span className="font-black text-[11px] tracking-tight text-indigo-600 uppercase">#{p.order?._id?.slice(-8).toUpperCase() || "N/A"}</span>
-                                        </div>
+                        <tbody className="divide-y divide-slate-100">
+                            {payments.length > 0 ? payments.map((p, index) => {
+                                const isPaid = p.status === 'verified';
+                                const displayStatus = isPaid ? "Paid" : "Pending";
+                                const orderStatus = p.order?.status || "N/A";
+                                const isDelivered = orderStatus.toLowerCase() === 'delivered';
+                                const isLastRows = index >= payments.length - 2 && payments.length >= 3;
+                                
+                                return (
+                                <tr key={p._id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => setViewPayment(p)}>
+                                    <td className="px-3 py-3 text-xs font-semibold text-gray-600 truncate" title={p._id}>{p._id.slice(-8).toUpperCase()}</td>
+                                    <td className="px-3 py-3 text-xs font-bold text-indigo-600 truncate">#{p.order?._id?.slice(-8).toUpperCase() || "N/A"}</td>
+                                    <td className="px-3 py-3 text-sm truncate max-w-[150px]">
+                                        <p className="font-semibold text-gray-800 truncate">{p.user?.name || "N/A"}</p>
                                     </td>
-                                    <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800">
-                                        <div className="truncate">
-                                            <p className="font-bold text-xs truncate" style={{ color: 'var(--page-text)' }}>{p.user?.name || "Anonymous"}</p>
-                                            <p className="text-[9px] font-bold opacity-30 truncate">{p.user?.email || "No email"}</p>
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800 text-center">
-                                        <p className="text-sm font-black text-emerald-600">₹{p.amount?.toLocaleString('en-IN')}</p>
-                                    </td>
-                                    <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800 text-center">
-                                        <span className={`inline-flex px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest border ${p.method === "ONLINE" ? "bg-blue-500/10 text-blue-600 border-blue-500/20" : "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"}`}>
-                                            {p.method}
+                                    <td className="px-3 py-3 text-sm font-bold text-gray-900">{formatCurrency(p.amount)}</td>
+                                    <td className="px-3 py-3">
+                                        <span className={`inline-flex px-2 py-1 rounded-md text-[10px] font-bold uppercase border ${getStatusColor(orderStatus)}`}>
+                                            {orderStatus}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800 text-center">
-                                        <div className="flex flex-col items-center">
-                                            <p className="text-[10px] font-bold opacity-70">{new Date(p.updatedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</p>
-                                            <p className="text-[8px] font-bold opacity-30 uppercase">{new Date(p.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800 text-center">
-                                        <span className={`inline-flex px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                                            p.status === 'verified' ? 'bg-emerald-500/10 text-emerald-600' :
-                                            p.status === 'cod_pending' ? 'bg-amber-500/10 text-amber-600' :
-                                            p.status === 'failed' ? 'bg-rose-500/10 text-rose-600' :
-                                            'bg-slate-100 text-slate-500'
-                                        }`}>
-                                            {p.status === 'verified' ? 'Paid' : p.status.replace('_', ' ')}
+                                    <td className="px-3 py-3">
+                                        <span className={`inline-flex px-2 py-1 rounded-md text-[10px] font-bold uppercase border ${getStatusColor(p.status)}`}>
+                                            {displayStatus}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3 text-right">
-                                        <div className="flex items-center justify-end gap-2">
-                                            <div className="text-right">
-                                                <p className="text-[10px] font-bold opacity-60">{new Date(p.createdAt).toLocaleDateString()}</p>
-                                                <p className="text-[8px] font-bold opacity-30 uppercase tracking-tighter">{new Date(p.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                                            </div>
+                                    <td className="px-3 py-3 text-[11px] font-semibold text-gray-500">
+                                        {new Date(p.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                                    </td>
+                                    <td className="px-3 py-3">
+                                        <div className="relative inline-block text-left action-dropdown-container w-full text-center">
                                             <button 
-                                                onClick={() => deletePayment(p._id)}
-                                                className="p-2 hover:bg-rose-600 hover:text-white rounded-lg transition-all text-slate-400"
-                                                title="Purge Record"
+                                                onClick={(e) => { 
+                                                    e.stopPropagation(); 
+                                                    setOpenDropdownId(openDropdownId === p._id ? null : p._id);
+                                                }}
+                                                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs inline-flex items-center gap-1.5 transition-colors"
                                             >
-                                                <FaTrash size={12} />
+                                                More <FaChevronDown className={`text-[10px] transition-transform ${openDropdownId === p._id ? 'rotate-180' : ''}`} />
                                             </button>
+                                            
+                                            {openDropdownId === p._id && (
+                                                <div className={`absolute right-0 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1 overflow-hidden text-left ${isLastRows ? 'bottom-full mb-2' : 'mt-2'}`} onClick={e => e.stopPropagation()}>
+                                                    <button 
+                                                        onClick={() => { setViewPayment(p); setOpenDropdownId(null); }}
+                                                        className="w-full text-left px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-slate-50 flex items-center gap-2"
+                                                    >
+                                                        <FaEye className="text-blue-500" /> View Details
+                                                    </button>
+                                                    
+                                                    {!isPaid && isDelivered && (
+                                                        <button 
+                                                            onClick={() => { openMarkAsPaidModal(p); setOpenDropdownId(null); }}
+                                                            className="w-full text-left px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-slate-50 flex items-center gap-2"
+                                                        >
+                                                            <FaCheck className="text-green-500" /> Mark as Paid
+                                                        </button>
+                                                    )}
+                                                    
+                                                    {p.order?._id && (
+                                                        <button 
+                                                            onClick={() => { navigate(`/admin/orders/${p.order._id}`); setOpenDropdownId(null); }}
+                                                            className="w-full text-left px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-slate-50 flex items-center gap-2"
+                                                        >
+                                                            <FaExternalLinkAlt className="text-purple-500" /> View Order
+                                                        </button>
+                                                    )}
+                                                    
+                                                    {isPaid && (
+                                                        <>
+                                                            <div className="border-t border-slate-100 my-1"></div>
+                                                            <button 
+                                                                onClick={() => { handlePrintReceipt(p); setOpenDropdownId(null); }}
+                                                                className="w-full text-left px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-slate-50 flex items-center gap-2"
+                                                            >
+                                                                <FaPrint className="text-emerald-500" /> Print Receipt
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => { handleDownloadReceipt(p); setOpenDropdownId(null); }}
+                                                                className="w-full text-left px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-slate-50 flex items-center gap-2"
+                                                            >
+                                                                <FaDownload className="text-rose-500" /> Download PDF
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
-                            )) : (
+                            )}) : (
                                 <tr>
-                                    <td colSpan="7" className="px-4 py-12 text-center">
-                                        <div className="flex flex-col items-center gap-3 opacity-20">
-                                            <FaExclamationCircle size={40} />
-                                            <p className="font-black text-sm uppercase tracking-[0.2em]">Void Transaction Ledger</p>
-                                        </div>
+                                    <td colSpan="8" className="px-4 py-12 text-center text-gray-400 font-semibold">
+                                        No COD payments found
                                     </td>
                                 </tr>
                             )}
@@ -242,15 +551,66 @@ const ManagePayments = () => {
             </div>
 
             <Pagination currentPage={page} totalPages={pages} onPageChange={setPage} />
+            </>
+            )}
 
-            <ConfirmModal
-                isOpen={confirmConfig.isOpen}
-                onClose={() => setConfirmConfig({ isOpen: false, paymentId: null })}
-                onConfirm={handleConfirmDeletePayment}
-                title="Purge Transaction"
-                message="Are you sure you want to permanently delete this payment record? This action will remove it from the financial ledger."
-                confirmText="Purge Record"
-            />
+            {/* Mark as Paid Modal */}
+            {paymentToMark && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-amber-50">
+                            <h2 className="text-lg font-bold text-amber-900 flex items-center gap-2">
+                                <FaWallet className="text-amber-600" /> Confirm COD Collection
+                            </h2>
+                            <button onClick={() => setPaymentToMark(null)} className="text-amber-700 hover:text-amber-900 p-1 text-xl leading-none">&times;</button>
+                        </div>
+                        <div className="p-6 space-y-5">
+                            <div className="text-center mb-6">
+                                <p className="text-sm font-semibold text-gray-500 mb-1">Amount to Receive</p>
+                                <p className="font-black text-3xl text-gray-900">{formatCurrency(paymentToMark.amount)}</p>
+                            </div>
+                            
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 mb-1">Reference Number <span className="text-red-500">*</span></label>
+                                <input 
+                                    type="text" 
+                                    value={codRefNo}
+                                    onChange={e => setCodRefNo(e.target.value)}
+                                    className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 mb-1">Notes (Optional)</label>
+                                <textarea 
+                                    value={codNotes}
+                                    onChange={e => setCodNotes(e.target.value)}
+                                    rows="2"
+                                    className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
+                                    placeholder="E.g., Cash received directly from customer"
+                                />
+                            </div>
+                            
+                            <div className="pt-4 flex gap-3">
+                                <button 
+                                    onClick={() => setPaymentToMark(null)}
+                                    className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={() => handleMarkAsPaid(paymentToMark.order?._id)}
+                                    disabled={markingPaid}
+                                    className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+                                >
+                                    {markingPaid ? "Processing..." : "Mark as Paid"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+
         </div>
     );
 };

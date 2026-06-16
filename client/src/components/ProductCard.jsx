@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { CartContext } from "../context/CartContext";
 import AuthProvider, { AuthContext } from "../context/AuthContext";
 import { useWishlist } from "../context/WishlistContext";
+import { OfferContext } from "../context/OfferContext";
 import { getImageUrl } from "../api";
 import { FaHeart, FaRegHeart, FaStar, FaRegStar, FaShoppingCart, FaBolt } from "react-icons/fa";
 import "./ProductCard.css";
@@ -50,6 +51,7 @@ const getSecondaryImageCandidate = (product) => {
 const ProductCard = ({ product, showBuyNow = true, onBuyNow }) => {
   const { addToCart } = useContext(CartContext);
   const { user } = useContext(AuthContext);
+  const { getBestOfferForProduct } = useContext(OfferContext);
   const { toggleWishlist, isInWishlist } = useWishlist();
   const navigate = useNavigate();
   const location = useLocation();
@@ -70,8 +72,9 @@ const ProductCard = ({ product, showBuyNow = true, onBuyNow }) => {
   const secondarySrc = secondaryCandidate ? getImageUrl(secondaryCandidate) : null;
 
   const pricingMeta = useMemo(() => {
-    const salePrice = Number(product?.price || 0);
-    const compareAtPrice = Number(
+    let salePrice = Number(product?.price || 0);
+    const originalPrice = salePrice;
+    let compareAtPrice = Number(
       product?.compareAtPrice ||
         product?.originalPrice ||
         product?.mrp ||
@@ -79,18 +82,42 @@ const ProductCard = ({ product, showBuyNow = true, onBuyNow }) => {
         0
     );
 
-    const fallbackCompare = compareAtPrice > salePrice ? compareAtPrice : 0;
-    const discountPercent = fallbackCompare > salePrice
-      ? Math.round(((fallbackCompare - salePrice) / fallbackCompare) * 100)
-      : Number(product?.discountPercentage || 0);
+    let hasDiscount = false;
+    let discountPercent = 0;
+    let discountLabel = "";
+    
+    // Evaluate dynamic offer
+    const bestOfferData = getBestOfferForProduct(product);
+    if (bestOfferData) {
+      salePrice = bestOfferData.finalPrice;
+      compareAtPrice = originalPrice;
+      hasDiscount = true;
+      if (bestOfferData.offer.discountType === 'PERCENT') {
+        discountPercent = bestOfferData.offer.discountValue;
+        discountLabel = `${discountPercent}% OFF`;
+      } else {
+        discountLabel = `₹${bestOfferData.offer.discountValue} OFF`;
+      }
+    } else {
+      // Fallback to static pricing if no dynamic offer
+      const fallbackCompare = compareAtPrice > salePrice ? compareAtPrice : 0;
+      discountPercent = fallbackCompare > salePrice
+        ? Math.round(((fallbackCompare - salePrice) / fallbackCompare) * 100)
+        : Number(product?.discountPercentage || 0);
+      
+      hasDiscount = discountPercent > 0 && fallbackCompare > salePrice;
+      if (hasDiscount) discountLabel = `${discountPercent}% OFF`;
+      compareAtPrice = fallbackCompare;
+    }
 
     return {
       salePrice,
-      compareAtPrice: fallbackCompare,
+      compareAtPrice,
       discountPercent,
-      hasDiscount: discountPercent > 0 && fallbackCompare > salePrice,
+      hasDiscount,
+      discountLabel
     };
-  }, [product]);
+  }, [product, getBestOfferForProduct]);
 
   const renderStars = () =>
     Array.from({ length: 5 }, (_, index) => {
@@ -153,8 +180,8 @@ const ProductCard = ({ product, showBuyNow = true, onBuyNow }) => {
               }}
             />
             {pricingMeta.hasDiscount && (
-              <span className="absolute bottom-0 left-0 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-md z-10 shadow-sm">
-                {pricingMeta.discountPercent}% OFF
+              <span className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-md z-10 shadow-sm flex items-center gap-1">
+                <FaBolt size={10} /> {pricingMeta.discountLabel}
               </span>
             )}
           </div>

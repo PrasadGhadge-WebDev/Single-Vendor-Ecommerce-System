@@ -23,6 +23,18 @@ const ManageReviews = () => {
   const [editPayload, setEditPayload] = useState({ rating: 5, title: "", comment: "" });
   const [updating, setUpdating] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState({ isOpen: false, reviewId: null });
+  const [productSearchTerm, setProductSearchTerm] = useState("");
+  const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.product-dropdown-container')) {
+        setIsProductDropdownOpen(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   const fetchProducts = async () => {
     try {
@@ -111,25 +123,12 @@ const ManageReviews = () => {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-700">
-      {/* V3 Premium Module Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 relative">
-        <div className="relative group">
-          <div className="absolute -left-8 -top-8 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-all duration-700" />
-          <div className="flex items-start gap-4 relative">
-            <div className="w-1.5 h-12 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full shadow-lg shadow-indigo-500/20" />
-            <div>
-              <h1 className="text-4xl font-black tracking-tight flex items-center gap-3" style={{ color: 'var(--page-text)' }}>
-                Reviews
-                <span className="text-[10px] uppercase tracking-[0.3em] font-black px-2 py-1 bg-indigo-500/10 text-indigo-600 rounded-lg ml-2">
-                  Feedback
-                </span>
-              </h1>
-              <p className="text-sm font-bold opacity-40 uppercase tracking-[0.1em] mt-1.5">
-                Customer Sentiment Analysis & Reputation Management Console
-              </p>
-            </div>
-          </div>
+    <div className="max-w-[1600px] mx-auto p-4 sm:p-8 space-y-6 animate-in fade-in duration-700" style={{ backgroundColor: '#F8FAFC', minHeight: '100vh' }}>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 m-0">Reviews</h1>
+          <p className="text-sm text-gray-500 m-0 mt-1">CUSTOMER SENTIMENT ANALYSIS & REPUTATION MANAGEMENT CONSOLE</p>
         </div>
 
         <div className="flex items-center gap-3 relative z-10">
@@ -154,75 +153,116 @@ const ManageReviews = () => {
       </div>
 
       {/* Advanced Filter Suite */}
-      <div className="p-4 bg-white dark:bg-slate-900/60 rounded-3xl border shadow-xl shadow-indigo-500/5 flex flex-col xl:flex-row gap-4 items-center" style={{ borderColor: 'var(--border-color)' }}>
-        <div className="flex-grow w-full relative">
-          <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
-            <FaSearch className="text-indigo-500/40" size={14} />
-          </div>
+      <div className="p-4 bg-white dark:bg-slate-900/60 rounded-3xl border shadow-xl shadow-indigo-500/5 flex flex-wrap overflow-visible gap-4 items-center" style={{ borderColor: 'var(--border-color)' }}>
+        <div className="flex-[2] min-w-[250px] relative">
           <input
             type="text"
-            placeholder="Search by sentiment keyword, customer name or review title..."
+            placeholder="Search by all columns..."
             value={filters.search}
             onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-            className="w-full pr-6 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:bg-white dark:focus:bg-slate-800 focus:ring-4 ring-indigo-500/10 focus:border-indigo-500/30 transition-all outline-none"
-            style={{ paddingLeft: '52px', color: 'var(--page-text)' }}
+            className="w-full pl-5 pr-12 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:bg-white dark:focus:bg-slate-800 focus:ring-4 ring-indigo-500/10 focus:border-indigo-500/30 transition-all outline-none"
+            style={{ color: 'var(--page-text)' }}
           />
+          <div className="absolute right-5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
+            <FaSearch className="text-indigo-500/40" size={14} />
+          </div>
         </div>
         
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 w-full xl:w-auto shrink-0">
-          <div className="relative">
-            <select
-              value={filters.productId}
-              onChange={(e) => setFilters(prev => ({ ...prev, productId: e.target.value }))}
-              className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none appearance-none font-bold opacity-70 hover:opacity-100"
-            >
-              <option value="">Filter by Product</option>
-              {products.map(p => (
-                <option key={p._id} value={p._id}>{p.name}</option>
-              ))}
-            </select>
-            <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={10} />
+        <div className="relative min-w-[200px] product-dropdown-container">
+          <div
+            onClick={() => setIsProductDropdownOpen(!isProductDropdownOpen)}
+            className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none font-bold opacity-70 hover:opacity-100 flex items-center justify-between"
+          >
+            <span className="truncate">
+              {filters.productId ? products.find(p => p._id === filters.productId)?.name || "Filter by Product" : "Filter by Product"}
+            </span>
+            <FaChevronDown className={`text-slate-400 transition-transform ${isProductDropdownOpen ? 'rotate-180' : ''}`} size={10} />
           </div>
+          
+          {isProductDropdownOpen && (
+            <div className="absolute top-full left-0 mt-2 w-full max-h-[300px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-50 flex flex-col overflow-hidden">
+              <div className="p-2 border-b border-slate-100 dark:border-slate-700">
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 ring-indigo-500/20"
+                  placeholder="Search product..."
+                  value={productSearchTerm}
+                  onChange={(e) => setProductSearchTerm(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+              <div className="overflow-y-auto flex-1 p-1">
+                <div 
+                  className={`px-3 py-2.5 text-sm cursor-pointer rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 ${!filters.productId ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 font-bold' : 'text-slate-700 dark:text-slate-300'}`}
+                  onClick={() => {
+                    setFilters(prev => ({ ...prev, productId: "" }));
+                    setIsProductDropdownOpen(false);
+                    setProductSearchTerm("");
+                  }}
+                >
+                  All Products
+                </div>
+                {products.filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase())).map(p => (
+                  <div 
+                    key={p._id}
+                    className={`px-3 py-2.5 text-sm cursor-pointer rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 truncate ${filters.productId === p._id ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 font-bold' : 'text-slate-700 dark:text-slate-300'}`}
+                    onClick={() => {
+                      setFilters(prev => ({ ...prev, productId: p._id }));
+                      setIsProductDropdownOpen(false);
+                      setProductSearchTerm("");
+                    }}
+                  >
+                    {p.name}
+                  </div>
+                ))}
+                {products.filter(p => p.name.toLowerCase().includes(productSearchTerm.toLowerCase())).length === 0 && (
+                  <div className="px-3 py-4 text-sm text-center text-slate-500">
+                    No products found
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
-          <div className="relative">
-            <select
-              value={filters.rating}
-              onChange={(e) => setFilters(prev => ({ ...prev, rating: e.target.value }))}
-              className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none appearance-none font-bold opacity-70 hover:opacity-100"
-            >
-              <option value="0">All Ratings</option>
-              <option value="5">5 Stars</option>
-              <option value="4">4 Stars</option>
-              <option value="3">3 Stars</option>
-              <option value="2">2 Stars</option>
-              <option value="1">1 Star</option>
-            </select>
-            <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={10} />
-          </div>
+        <div className="relative min-w-[150px]">
+          <select
+            value={filters.rating}
+            onChange={(e) => setFilters(prev => ({ ...prev, rating: e.target.value }))}
+            className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none appearance-none font-bold opacity-70 hover:opacity-100"
+          >
+            <option value="0">All Ratings</option>
+            <option value="5">5 Stars</option>
+            <option value="4">4 Stars</option>
+            <option value="3">3 Stars</option>
+            <option value="2">2 Stars</option>
+            <option value="1">1 Star</option>
+          </select>
+          <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={10} />
+        </div>
 
+        {(filters.search !== "" || filters.productId !== "" || filters.rating !== 0 && filters.rating !== "0") && (
           <button 
             onClick={() => {
               setFilters({ productId: "", search: "", rating: 0 });
               fetchReviews(true);
             }}
-            className="px-6 py-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
+            className="px-6 py-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95 shrink-0 ml-auto"
           >
             Reset
           </button>
-        </div>
+        )}
       </div>
 
       {/* Professional High-Density Data Grid */}
       <div className="bg-white dark:bg-slate-900/60 rounded-3xl border shadow-xl overflow-hidden" style={{ borderColor: 'var(--border-color)' }}>
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse table-fixed min-w-[1200px]">
+          <table className="w-full text-left border-collapse table-fixed min-w-[800px]">
             <thead>
               <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b" style={{ borderColor: 'var(--border-color)' }}>
-                <th className="w-[15%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Customer</th>
-                <th className="w-[18%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Product Identity</th>
-                <th className="w-[10%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700 text-center">Sentiment</th>
-                <th className="w-[30%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Feedback Content</th>
-                <th className="w-[12%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Timestamp</th>
+                <th className="w-[30%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Customer & Product</th>
+                <th className="w-[40%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Rating & Feedback</th>
+                <th className="w-[15%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Timestamp</th>
                 <th className="w-[15%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 text-right">Operations</th>
               </tr>
             </thead>
@@ -233,30 +273,18 @@ const ManageReviews = () => {
                   className={`group transition-all duration-200 ${idx % 2 === 0 ? 'bg-transparent' : 'bg-slate-50/30 dark:bg-slate-800/20'} hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5`}
                 >
                   <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-600">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-600 shrink-0">
                         <FaUser size={12} />
                       </div>
-                      <div className="truncate">
+                      <div className="min-w-0">
                         <p className="font-bold text-xs truncate" style={{ color: 'var(--page-text)' }}>{review.user?.name || "Anonymous"}</p>
-                        <p className="text-[9px] font-bold opacity-30 uppercase tracking-tighter">Verified Buyer</p>
+                        <p className="text-[9px] font-bold opacity-30 uppercase tracking-tighter mb-1">Verified Buyer</p>
+                        <div className="flex items-center gap-1.5 truncate text-slate-500">
+                          <FaBoxOpen size={10} className="shrink-0" />
+                          <span className="text-[10px] font-medium truncate">{review.product?.name || "Product Deleted"}</span>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center gap-2 truncate">
-                      <FaBoxOpen className="text-slate-300" size={14} />
-                      <p className="text-xs font-bold truncate opacity-80">{review.product?.name || "Product Deleted"}</p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800 text-center">
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="flex gap-0.5">
-                        {starValues.map(s => (
-                          <FaStar key={s} className={s <= review.rating ? "text-amber-400" : "text-slate-200"} size={10} />
-                        ))}
-                      </div>
-                      <span className="text-[10px] font-black text-slate-400">{review.rating}.0</span>
                     </div>
                   </td>
                   <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800">
@@ -278,6 +306,14 @@ const ManageReviews = () => {
                       </div>
                     ) : (
                       <div className="space-y-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="flex gap-0.5">
+                            {starValues.map(s => (
+                              <FaStar key={s} className={s <= review.rating ? "text-amber-400" : "text-slate-200"} size={10} />
+                            ))}
+                          </div>
+                          <span className="text-[10px] font-black text-slate-400">{review.rating}.0</span>
+                        </div>
                         <p className="text-xs font-black truncate" style={{ color: 'var(--page-text)' }}>{review.title || "Untitled Feedback"}</p>
                         <p className="text-[11px] font-medium opacity-60 line-clamp-2 leading-relaxed">{review.comment || "No detailed feedback provided."}</p>
                       </div>

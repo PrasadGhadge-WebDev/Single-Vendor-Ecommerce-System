@@ -231,7 +231,7 @@
 }
 
 .newsletter-form-v2 input {
-  height: 54px; border-radius: 12px; border: none; padding: 0 20px;
+  height: 54px; border-radius: 12px; border: none; padding: 0 20px; color: #0f172a;
 }
 
 .newsletter-form-v2 button {

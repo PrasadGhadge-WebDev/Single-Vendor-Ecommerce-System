@@ -24,7 +24,7 @@ const BaseModal = ({ isOpen, onClose, title, children, footer, size = "md" }) =>
   };
 
   return (
-    <div className="fixed inset-0 z-[1060] flex items-start justify-center overflow-x-hidden overflow-y-auto lg:pl-[280px] pt-8 md:pt-16 pb-8">
+    <div className="fixed inset-0 z-[1060] flex items-start justify-center overflow-x-hidden overflow-y-auto pt-8 md:pt-16 pb-8">
       {/* Overlay */}
       <div 
         className="fixed inset-0 bg-slate-900/60 backdrop-blur-[2px] transition-opacity duration-300 ease-in-out"
@@ -70,7 +70,7 @@ const BaseModal = ({ isOpen, onClose, title, children, footer, size = "md" }) =>
           </div>
 
           {/* Body */}
-          <div className="p-6 md:p-8 overflow-y-auto scrollbar-thin flex-grow">
+          <div className="p-6 md:p-8 overflow-y-auto flex-grow">
             {children}
           </div>
 

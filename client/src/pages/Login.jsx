@@ -1,10 +1,11 @@
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState, useContext, useCallback } from "react";
 import { AuthContext } from "../context/AuthContext";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import API from "../api";
 import "./Login.css";
 import { toast } from "react-toastify";
-import { FaRegEye, FaRegEyeSlash, FaTimes } from "react-icons/fa";
+import { LuMail, LuLock, LuEye, LuEyeOff } from "react-icons/lu";
+import { FaTimes } from "react-icons/fa";
 import { isValidEmail, isValidPhone, normalizeDigits } from "../utils/validation";
 
 const Login = () => {
@@ -15,25 +16,19 @@ const Login = () => {
   const [formData, setFormData] = useState({
     identifier: "",
     password: "",
+    rememberMe: false
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    if (params.get("expired")) {
-      setError("Your session has expired. Please log in again.");
-    }
-  }, [location.search]);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  const handleInputChange = useCallback((e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     if (error) setError("");
-  };
+  }, [error]);
 
-  const handleLogin = async (e) => {
+  const handleLogin = useCallback(async (e) => {
     e.preventDefault();
     const identifier = String(formData.identifier || "").trim();
 
@@ -76,7 +71,7 @@ const Login = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [formData, error, login, navigate, location]);
 
   return (
     <div className="login-wrapper">
@@ -85,29 +80,42 @@ const Login = () => {
           <FaTimes />
         </button>
 
-        <div className="logo-section">
-          <h2>Welcome Back</h2>
+        <div className="text-center mb-6">
+          <div className="flex justify-center items-center gap-2 mb-3">
+            <div className="w-12 h-12 bg-[#5B3DF5] rounded-xl flex items-center justify-center text-white font-black text-2xl shadow-md">
+              E
+            </div>
+            <h1 className="text-3xl font-black text-gray-900 tracking-tight m-0">ElectroHub</h1>
+          </div>
+          <h2 className="text-lg font-bold text-gray-600 m-0" style={{ fontFamily: 'Inter, sans-serif', fontSize: '1rem', color: '#475569', marginBottom: '0' }}>
+            Welcome Back! Sign in to continue.
+          </h2>
         </div>
 
         {error && <div className="alert-box">{error}</div>}
 
         <form onSubmit={handleLogin} className="login-form" autoComplete="off">
           <div className="input-row">
-            <label>Email or Mobile</label>
-            <input
-              type="text"
-              name="identifier"
-              value={formData.identifier}
-              onChange={handleInputChange}
-              required
-              placeholder="Enter email or phone"
-              autoComplete="off"
-            />
+            <label>Email Address or Mobile Number</label>
+            <div className="input-with-icon">
+              <LuMail className="input-icon" />
+              <input
+                type="text"
+                name="identifier"
+                value={formData.identifier}
+                onChange={handleInputChange}
+                required
+                placeholder="Enter email or phone"
+                autoComplete="off"
+                autoFocus
+              />
+            </div>
           </div>
 
-          <div className="input-row">
+          <div className="input-row mb-3">
             <label>Password</label>
-            <div className="password-input-wrapper">
+            <div className="input-with-icon password-input-wrapper">
+              <LuLock className="input-icon" />
               <input
                 type={showPassword ? "text" : "password"}
                 name="password"
@@ -118,10 +126,23 @@ const Login = () => {
                 autoComplete="new-password"
               />
               <div className="eye-icon" onClick={() => setShowPassword(!showPassword)}>
-                {showPassword ? <FaRegEyeSlash /> : <FaRegEye />}
+                {showPassword ? <LuEyeOff /> : <LuEye />}
               </div>
             </div>
-            <div className="forgot-link-box">
+          </div>
+
+          <div className="flex justify-between items-center mb-6">
+            <label className="flex items-center gap-2 text-sm font-semibold text-gray-600 cursor-pointer m-0">
+              <input 
+                type="checkbox" 
+                name="rememberMe"
+                checked={formData.rememberMe}
+                onChange={handleInputChange}
+                className="w-4 h-4 rounded border-gray-300 text-[#5B3DF5] focus:ring-[#5B3DF5]" 
+              />
+              Remember Me
+            </label>
+            <div className="forgot-link-box m-0">
                <Link to="/forgot-password">Forgot Password?</Link>
             </div>
           </div>
@@ -131,7 +152,7 @@ const Login = () => {
           </button>
           
           <div className="auth-switch">
-            Don't have an account? <Link to="/register">Sign up</Link>
+            Don't have an account? <Link to="/register">Register</Link>
           </div>
         </form>
       </div>
@@ -139,4 +160,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default React.memo(Login);

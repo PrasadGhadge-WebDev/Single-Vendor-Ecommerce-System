@@ -1,10 +1,11 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useCallback } from "react";
 import API from "../api";
 import { useNavigate, Link } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import "./Register.css";
 import { toast } from "react-toastify";
 import { FaTimes } from "react-icons/fa";
+import { LuUser, LuMail, LuPhone, LuLock, LuShieldCheck, LuEye, LuEyeOff } from "react-icons/lu";
 import { isValidEmail, isValidName, isValidPassword, isValidPhone, normalizeDigits } from "../utils/validation";
 
 const Register = () => {
@@ -20,20 +21,22 @@ const Register = () => {
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  const handleInputChange = (e) => {
+  const handleInputChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
     if (error) setError("");
-  };
+  }, [error]);
 
-  const handleSendOtp = async (e) => {
+  const handleSendOtp = useCallback(async (e) => {
     e.preventDefault();
     const { name, email, password, confirmPassword, phone, termsAccepted } = formData;
     const trimmedName = String(name || "").trim();
@@ -70,9 +73,9 @@ const Register = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [formData, error]);
 
-  const handleFinalSubmit = async (e) => {
+  const handleFinalSubmit = useCallback(async (e) => {
     e.preventDefault();
     if (!/^[0-9]{6}$/.test(otp)) {
       return setError("Please enter a valid 6-digit OTP");
@@ -104,7 +107,7 @@ const Register = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [otp, formData, login, navigate, error]);
 
   return (
     <div className="register-wrapper">
@@ -113,11 +116,16 @@ const Register = () => {
           <FaTimes />
         </button>
 
-        <div className="logo-section">
-          <h2>ElectroHub</h2>
-          <span className="sub-text">
-            {step === 1 ? "Create your account" : "Verify Mobile Number"}
-          </span>
+        <div className="text-center mb-6">
+          <div className="flex justify-center items-center gap-2 mb-3">
+            <div className="w-12 h-12 bg-[#5B3DF5] rounded-xl flex items-center justify-center text-white font-black text-2xl shadow-md">
+              E
+            </div>
+            <h1 className="text-3xl font-black text-gray-900 tracking-tight m-0">ElectroHub</h1>
+          </div>
+          <h2 className="text-lg font-bold text-gray-600 m-0" style={{ fontFamily: 'Inter, sans-serif', fontSize: '1rem', color: '#475569', marginBottom: '0' }}>
+            {step === 1 ? "Create your account and start shopping." : "Verify your mobile number."}
+          </h2>
         </div>
 
         {error && <div className="alert-box">{error}</div>}
@@ -126,69 +134,91 @@ const Register = () => {
           <form onSubmit={handleSendOtp} className="registration-form" autoComplete="off">
             <div className="input-row">
               <label>Full Name</label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value.replace(/[0-9]/g, "") })}
-                required
-                placeholder="Enter your full name"
-                autoComplete="off"
-              />
+              <div className="input-with-icon">
+                <LuUser className="input-icon" />
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value.replace(/[0-9]/g, "") }))}
+                  required
+                  placeholder="Enter your full name"
+                  autoComplete="off"
+                  autoFocus
+                />
+              </div>
             </div>
 
             <div className="input-row">
               <label>Email Address</label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                required
-                placeholder="Enter your email"
-                autoComplete="off"
-              />
+              <div className="input-with-icon">
+                <LuMail className="input-icon" />
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="Enter your email"
+                  autoComplete="off"
+                />
+              </div>
             </div>
 
             <div className="input-row split">
               <div>
                 <label>Password</label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="Password"
-                  autoComplete="new-password"
-                />
+                <div className="input-with-icon password-input-wrapper">
+                  <LuLock className="input-icon" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    required
+                    placeholder="Password"
+                    autoComplete="new-password"
+                  />
+                  <div className="password-toggle-icon" onClick={() => setShowPassword(!showPassword)}>
+                    {showPassword ? <LuEyeOff /> : <LuEye />}
+                  </div>
+                </div>
               </div>
               <div>
                 <label>Confirm</label>
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="Confirm"
-                  autoComplete="new-password"
-                />
+                <div className="input-with-icon password-input-wrapper">
+                  <LuShieldCheck className="input-icon" />
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    required
+                    placeholder="Confirm"
+                    autoComplete="new-password"
+                  />
+                  <div className="password-toggle-icon" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                    {showConfirmPassword ? <LuEyeOff /> : <LuEye />}
+                  </div>
+                </div>
               </div>
             </div>
 
             <div className="input-row">
               <label>Mobile Number</label>
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: normalizeDigits(e.target.value).slice(0, 10) })}
-                required
-                placeholder="10-digit number"
-                maxLength="10"
-                autoComplete="off"
-              />
+              <div className="input-with-icon">
+                <LuPhone className="input-icon" />
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, phone: normalizeDigits(e.target.value).slice(0, 10) }))}
+                  required
+                  placeholder="10-digit number"
+                  maxLength="10"
+                  autoComplete="off"
+                />
+              </div>
             </div>
 
             <div className="terms-checkbox">
@@ -242,4 +272,4 @@ const Register = () => {
   );
 };
 
-export default Register;
+export default React.memo(Register);

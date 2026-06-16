@@ -69,72 +69,54 @@
   color: var(--nav-accent);
 }
 
-/* --- Search Bar --- */
-.navbar-search-wrapper {
+/* --- Global Search Bar --- */
+.global-search-container {
   flex: 1;
-  max-width: 500px;
-  margin: 0 1.5rem;
-}
-
-.search-form-pill {
   display: flex;
-  align-items: center;
-  background: #f1f5f9;
-  border: 1.5px solid #e2e8f0;
-  border-radius: var(--nav-radius);
-  padding: 4px 6px;
-  transition: all 0.3s ease;
+  justify-content: center;
+  max-width: 500px;
+  margin: 0 2rem;
 }
 
-:root[data-theme="dark"] .search-form-pill {
-  background: #1e293b;
-  border-color: #334155;
-}
-
-.search-form-pill:focus-within {
-  background: var(--nav-bg);
-  border-color: var(--nav-accent);
-  box-shadow: 0 0 0 4px rgba(0, 82, 255, 0.15);
-}
-
-.search-input-field {
+.global-search-input {
   width: 100%;
-  border: none;
-  background: transparent;
-  padding: 8px 12px;
+  height: 44px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0 16px 0 40px;
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--nav-text);
   outline: none;
-}
-
-.search-input-field::placeholder {
-  color: #94a3b8;
-}
-
-.search-btn-circle {
-  background: #0052FF !important; /* Force Vibrant Blue */
-  color: #ffffff !important;
-  border: none;
-  padding: 0 18px;
-  height: 32px;
-  border-radius: 100px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 900;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  box-shadow: 0 4px 12px rgba(0, 82, 255, 0.3);
-  cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
-.search-btn-circle:hover {
-  background: #0041CC !important;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 15px rgba(0, 82, 255, 0.4);
+:root[data-theme="dark"] .global-search-input {
+  background: #0f172a;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+.global-search-input:focus {
+  background: var(--nav-bg);
+  border-color: var(--nav-accent);
+  box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.1);
+}
+
+.global-search-input::placeholder {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+@media (max-width: 1024px) {
+  .global-search-container {
+    max-width: 300px;
+  }
+  .global-search-input {
+    height: 42px;
+  }
 }
 
 /* --- Professional Action Groups --- */

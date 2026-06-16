@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import { Link, useSearchParams } from "react-router-dom";
-import { FaPlus, FaTimes, FaSearch, FaFileCsv, FaSync, FaTruck, FaChartLine, FaHistory, FaMapMarkerAlt, FaEnvelope, FaPhoneAlt, FaBuilding, FaCheckCircle, FaExclamationCircle, FaUserTag, FaCalendarAlt, FaBriefcase, FaChevronDown } from "react-icons/fa";
+import { FaPlus, FaTimes, FaSearch, FaFileCsv, FaSync, FaTruck, FaChartLine, FaHistory, FaMapMarkerAlt, FaEnvelope, FaPhoneAlt, FaBuilding, FaCheckCircle, FaExclamationCircle, FaUserTag, FaCalendarAlt, FaBriefcase, FaChevronDown, FaBoxOpen, FaEllipsisV, FaEye, FaEdit, FaPowerOff, FaTrash } from "react-icons/fa";
 import API from "../../api";
 import { downloadCsv, inDateRange } from "../../utils/adminHelpers";
 import { toast } from "react-toastify";
@@ -8,6 +9,7 @@ import Pagination from "../../components/Pagination";
 import SupplierFormModal from "../../components/SupplierFormModal";
 import PurchaseFormModal from "../../components/PurchaseFormModal";
 import ConfirmModal from "../../components/ConfirmModal";
+import SupplierPurchaseHistory from "../../components/SupplierPurchaseHistory";
 
 const SUPPLIERS_PER_PAGE = 12;
 const PURCHASES_PER_PAGE = 10;
@@ -21,6 +23,18 @@ const ManageSuppliers = () => {
   const [supplierProducts, setSupplierProducts] = useState([]);
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
   const [confirmConfig, setConfirmConfig] = useState({ isOpen: false, supplierId: null });
+  const [openDropdownId, setOpenDropdownId] = useState(null);
+
+  // Click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.dropdown-container')) {
+        setOpenDropdownId(null);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   const [loading, setLoading] = useState(false);
   const [savingSupplier, setSavingSupplier] = useState(false);
@@ -32,7 +46,9 @@ const ManageSuppliers = () => {
 
   const [supplierSearch, setSupplierSearch] = useState("");
   const [supplierStatusFilter, setSupplierStatusFilter] = useState("all");
-  const [supplierCityFilter, setSupplierCityFilter] = useState("all");
+  const [supplierContactFilter, setSupplierContactFilter] = useState("");
+  const [supplierMobileFilter, setSupplierMobileFilter] = useState("");
+  const [supplierCityFilter, setSupplierCityFilter] = useState("");
   const [supplierCategoryFilter, setSupplierCategoryFilter] = useState("all");
   const [supplierDateFrom, setSupplierDateFrom] = useState("");
   const [supplierDateTo, setSupplierDateTo] = useState("");
@@ -182,7 +198,7 @@ const ManageSuppliers = () => {
       await API.delete(`/suppliers/${supplierId}`);
       await fetchSuppliers();
       await fetchAnalytics();
-      toast.success("Supplier removed from network");
+      toast.success("Supplier deleted successfully");
       if (selectedSupplierId === supplierId) {
         setSelectedSupplierId("");
       }
@@ -196,14 +212,13 @@ const ManageSuppliers = () => {
     return suppliers.filter((supplier) => {
       if (supplierStatusFilter === "active" && !supplier.isActive) return false;
       if (supplierStatusFilter === "inactive" && supplier.isActive) return false;
-      if (supplierCityFilter !== "all" && supplier.address?.city !== supplierCityFilter) return false;
       if (supplierCategoryFilter !== "all" && supplier.category !== supplierCategoryFilter) return false;
       if ((supplierDateFrom || supplierDateTo) && !inDateRange(supplier.createdAt, supplierDateFrom, supplierDateTo)) return false;
       if (!term) return true;
-      const haystack = `${supplier.name} ${supplier.company || ""} ${supplier.email || ""} ${supplier.phone || ""} ${supplier.gstNumber || ""}`.toLowerCase();
+      const haystack = `${supplier.name} ${supplier.company || ""} ${supplier.email || ""} ${supplier.mobileNumber || supplier.phone || ""} ${supplier.gstNumber || ""} ${supplier.contactPerson || ""} ${supplier.city || ""}`.toLowerCase();
       return haystack.includes(term);
     });
-  }, [suppliers, supplierSearch, supplierStatusFilter, supplierCityFilter, supplierCategoryFilter, supplierDateFrom, supplierDateTo]);
+  }, [suppliers, supplierSearch, supplierStatusFilter, supplierContactFilter, supplierMobileFilter, supplierCityFilter, supplierCategoryFilter, supplierDateFrom, supplierDateTo]);
 
   const totalSupplierPages = Math.max(1, Math.ceil(filteredSuppliers.length / SUPPLIERS_PER_PAGE));
   const paginatedSuppliers = useMemo(() => {
@@ -262,12 +277,12 @@ const ManageSuppliers = () => {
 
   const exportSuppliers = () => {
     downloadCsv(
-      "suppliers_network.csv",
+      "suppliers_data.csv",
       filteredSuppliers.map((supplier) => ({
         "Supplier Name": supplier.name,
         "Company": supplier.company || "N/A",
         "Email Address": supplier.email || "N/A",
-        "Contact Phone": supplier.phone || "N/A",
+        "Contact Phone": supplier.mobileNumber || supplier.phone || "N/A",
         "Status": supplier.isActive ? "Active" : "Inactive",
         "Registered On": supplier.createdAt ? new Date(supplier.createdAt).toLocaleDateString() : "N/A",
       }))
@@ -289,36 +304,271 @@ const ManageSuppliers = () => {
     );
   };
 
-  return (
-    <div className="p-4 md:p-8 space-y-8 max-w-[1600px] mx-auto animate-in fade-in duration-700">
-      {/* V3 Premium Module Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 relative">
-        <div className="relative group">
-          {/* Decorative Background Glow */}
-          <div className="absolute -left-8 -top-8 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl group-hover:bg-indigo-500/10 transition-all duration-700" />
-          
-          <div className="flex items-start gap-4 relative">
-            {/* Geometric Accent Bar */}
-            <div className="w-1.5 h-12 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full shadow-lg shadow-indigo-500/20" />
-            
+  if (selectedSupplierForDetails) {
+    return (
+      <div className="max-w-[1600px] mx-auto p-4 sm:p-8 space-y-6 animate-in fade-in duration-700" style={{ backgroundColor: '#F8FAFC', minHeight: '100vh' }}>
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm font-medium text-slate-500 mb-2">
+          <button onClick={() => setSelectedSupplierForDetails(null)} className="hover:text-indigo-600 transition-colors">Suppliers</button>
+          <span>/</span>
+          <span className="text-slate-800 font-bold">Supplier Details</span>
+        </div>
+
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 m-0">Supplier Details</h1>
+            <p className="text-sm text-gray-500 m-0 mt-1">ID: {selectedSupplierForDetails._id}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+             <button onClick={() => setSelectedSupplierForDetails(null)} className="px-5 py-2.5 border rounded-xl font-bold text-sm bg-white hover:bg-slate-50 text-slate-700 shadow-sm transition-all" style={{ borderColor: 'var(--border-color)' }}>Back to Suppliers</button>
+             <button onClick={() => handleToggleStatus(selectedSupplierForDetails._id, !selectedSupplierForDetails.isActive)} className={`px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all ${selectedSupplierForDetails.isActive ? "bg-rose-100 text-rose-700 hover:bg-rose-200" : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"}`}>
+               {selectedSupplierForDetails.isActive ? "Deactivate Supplier" : "Activate Supplier"}
+             </button>
+             <button onClick={() => { onEditSupplier(selectedSupplierForDetails); setSelectedSupplierForDetails(null); }} className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all">Edit Supplier</button>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex items-center gap-6 border-b mb-6" style={{ borderColor: 'var(--border-color)' }}>
+          <button 
+            onClick={() => setDrawerActiveTab("Overview")}
+            className={`pb-3 text-sm font-bold border-b-2 transition-colors ${drawerActiveTab === "Overview" ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
+          >
+            Supplier Details
+          </button>
+          <button 
+            onClick={() => setDrawerActiveTab("Purchases")}
+            className={`pb-3 text-sm font-bold border-b-2 transition-colors ${drawerActiveTab === "Purchases" ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
+          >
+            Purchase History
+          </button>
+        </div>
+
+        {drawerActiveTab === "Overview" ? (
+          <>
+        {/* Status Banner */}
+        <div className={`p-4 rounded-xl border flex items-center justify-between shadow-sm ${selectedSupplierForDetails.isActive ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200"}`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${selectedSupplierForDetails.isActive ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>
+              {selectedSupplierForDetails.isActive ? <FaCheckCircle size={20} /> : <FaExclamationCircle size={20} />}
+            </div>
             <div>
-              <h1 className="text-4xl font-black tracking-tight flex items-center gap-3" style={{ color: 'var(--page-text)' }}>
-                Suppliers
-                <span className="text-[10px] uppercase tracking-[0.3em] font-black px-2 py-1 bg-indigo-500/10 text-indigo-600 rounded-lg ml-2">
-                  Network
-                </span>
-              </h1>
-              <p className="text-sm font-bold opacity-40 uppercase tracking-[0.1em] mt-1.5">
-                Strategic Sourcing & Vendor Relationship Intelligence
+              <p className="text-sm font-bold text-slate-800">Account Status: {selectedSupplierForDetails.isActive ? "Active" : "Inactive"}</p>
+              <p className="text-xs text-slate-500">
+                Created: {new Date(selectedSupplierForDetails.createdAt).toLocaleDateString()} 
+                {selectedSupplierForDetails.updatedAt && ` • Last Updated: ${new Date(selectedSupplierForDetails.updatedAt).toLocaleDateString()}`}
               </p>
             </div>
           </div>
         </div>
 
+        {/* Info Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Basic Information */}
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border shadow-sm" style={{ borderColor: 'var(--border-color)' }}>
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 border-b pb-3" style={{ borderColor: 'var(--border-color)' }}>Basic Information</h3>
+            <div className="grid grid-cols-2 gap-5">
+              <div className="col-span-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Supplier Name</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{selectedSupplierForDetails.name}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Contact Person</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{selectedSupplierForDetails.contactPerson || "—"}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Mobile</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{selectedSupplierForDetails.mobileNumber || selectedSupplierForDetails.phone || "—"}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Email</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 break-all">{selectedSupplierForDetails.email || "—"}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">GST Number</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{selectedSupplierForDetails.gstNumber || "—"}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Address Information */}
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border shadow-sm" style={{ borderColor: 'var(--border-color)' }}>
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 border-b pb-3" style={{ borderColor: 'var(--border-color)' }}>Address Information</h3>
+            <div className="grid grid-cols-2 gap-5">
+              <div className="col-span-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Address</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{selectedSupplierForDetails.address || "—"}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">City</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{selectedSupplierForDetails.city || "—"}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">State</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{selectedSupplierForDetails.state || "—"}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Pincode</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{selectedSupplierForDetails.pincode || "—"}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Country</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{selectedSupplierForDetails.country || "—"}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Business Information */}
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border shadow-sm" style={{ borderColor: 'var(--border-color)' }}>
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 border-b pb-3" style={{ borderColor: 'var(--border-color)' }}>Business Information</h3>
+            <div className="grid grid-cols-1 gap-5">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Company Name</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{selectedSupplierForDetails.company || "—"}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Website</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 break-all">
+                  {selectedSupplierForDetails.website ? (
+                    <a href={selectedSupplierForDetails.website.startsWith('http') ? selectedSupplierForDetails.website : `https://${selectedSupplierForDetails.website}`} target="_blank" rel="noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline">
+                      {selectedSupplierForDetails.website}
+                    </a>
+                  ) : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Notes</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 whitespace-pre-line">{selectedSupplierForDetails.notes || "—"}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Banking Information */}
+          {selectedSupplierForDetails.bankDetails && (
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border shadow-sm" style={{ borderColor: 'var(--border-color)' }}>
+              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 border-b pb-3" style={{ borderColor: 'var(--border-color)' }}>Banking Information</h3>
+              <div className="grid grid-cols-2 gap-5">
+                <div className="col-span-2">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Bank Name</p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{selectedSupplierForDetails.bankDetails.bankName || "—"}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Account Name</p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{selectedSupplierForDetails.bankDetails.accountName || "—"}</p>
+                </div>
+                <div className="col-span-2 sm:col-span-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Account Number</p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                    {selectedSupplierForDetails.bankDetails.accountNumber ? `•••• ${selectedSupplierForDetails.bankDetails.accountNumber.slice(-4)}` : "—"}
+                  </p>
+                </div>
+                <div className="col-span-2 sm:col-span-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">IFSC Code</p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{selectedSupplierForDetails.bankDetails.ifscCode || "—"}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Purchase Summary */}
+          <div className={`bg-white dark:bg-slate-800 p-6 rounded-2xl border shadow-sm ${!selectedSupplierForDetails.bankDetails ? 'col-span-1 md:col-span-2' : ''}`} style={{ borderColor: 'var(--border-color)' }}>
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4 border-b pb-3" style={{ borderColor: 'var(--border-color)' }}>Purchase Summary</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Total Products</p>
+                <p className="text-2xl font-black text-indigo-600">{products.filter(p => p.supplier === selectedSupplierForDetails._id).length}</p>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Total Purchase Value</p>
+                <p className="text-2xl font-black text-emerald-600">
+                  ₹{purchases.filter(p => p.supplierId === selectedSupplierForDetails._id).reduce((sum, p) => sum + (p.totalCost || 0), 0).toLocaleString()}
+                </p>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Last Supply</p>
+                <p className="text-lg font-bold text-slate-800 dark:text-slate-200">
+                  {purchases.filter(p => p.supplierId === selectedSupplierForDetails._id).length > 0 
+                    ? new Date(Math.max(...purchases.filter(p => p.supplierId === selectedSupplierForDetails._id).map(p => new Date(p.purchaseDate || p.createdAt).getTime()))).toLocaleDateString()
+                    : "N/A"
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Supplied Products Section */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border shadow-sm overflow-hidden mt-6" style={{ borderColor: 'var(--border-color)' }}>
+          <div className="p-6 border-b" style={{ borderColor: 'var(--border-color)' }}>
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Supplied Products</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800 border-b" style={{ borderColor: 'var(--border-color)' }}>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Product Name</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Category</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Current Stock</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Purchase Price</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Supply Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y" style={{ borderColor: 'var(--border-color)' }}>
+                {products.filter(p => p.supplier === selectedSupplierForDetails._id).length > 0 ? (
+                  products.filter(p => p.supplier === selectedSupplierForDetails._id).map(product => {
+                    const relatedPurchases = purchases.filter(p => p.productId === product._id && p.supplierId === selectedSupplierForDetails._id);
+                    const lastSupplyDate = relatedPurchases.length > 0 
+                      ? new Date(Math.max(...relatedPurchases.map(p => new Date(p.purchaseDate || p.createdAt).getTime()))).toLocaleDateString()
+                      : "N/A";
+                    const lastPurchasePrice = relatedPurchases.length > 0
+                      ? relatedPurchases.sort((a,b) => new Date(b.purchaseDate || b.createdAt) - new Date(a.purchaseDate || a.createdAt))[0].unitCost
+                      : (product.price || 0);
+
+                    return (
+                      <tr key={product._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                        <td className="px-6 py-4 text-sm font-bold text-slate-800">{product.name}</td>
+                        <td className="px-6 py-4 text-sm text-slate-600">{product.category || "—"}</td>
+                        <td className="px-6 py-4 text-sm text-center">
+                          <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${product.stock > 10 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                            {product.stock}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-bold text-slate-800 text-right">₹{lastPurchasePrice.toLocaleString()}</td>
+                        <td className="px-6 py-4 text-sm text-slate-500 text-right font-medium">{lastSupplyDate}</td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan="5" className="px-6 py-12 text-center text-slate-500 text-sm">No products supplied yet.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        </>
+        ) : (
+          <SupplierPurchaseHistory supplierId={selectedSupplierForDetails._id} />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-[1600px] mx-auto p-4 sm:p-8 space-y-8 animate-in fade-in duration-700" style={{ backgroundColor: '#F8FAFC', minHeight: '100vh' }}>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 m-0">Suppliers</h1>
+          <p className="text-sm text-gray-500 m-0 mt-1">STRATEGIC SOURCING & VENDOR RELATIONSHIP INTELLIGENCE</p>
+        </div>
+
         <div className="flex flex-wrap items-center gap-3 relative z-10">
           <button 
             onClick={openAddSupplier}
-            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-95 group"
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-95 group"
           >
             <FaPlus size={12} className="group-hover:rotate-90 transition-transform" />
             <span>New Supplier</span>
@@ -326,7 +576,7 @@ const ManageSuppliers = () => {
           
           <button 
             onClick={() => { setActiveModuleSection("record-purchase"); setSearchParams({ modal: "purchase" }); }}
-            className="flex items-center gap-2 px-6 py-3 bg-slate-800 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-800/20 hover:bg-slate-900 transition-all active:scale-95"
+            className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-800/20 hover:bg-slate-900 transition-all active:scale-95"
           >
             <FaHistory size={12} />
             <span>Record Purchase</span>
@@ -334,7 +584,7 @@ const ManageSuppliers = () => {
 
           <button 
             onClick={activeModuleSection === "suppliers" ? exportSuppliers : exportPurchases}
-            className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-slate-800 border rounded-2xl hover:bg-slate-50 transition-all text-sm font-bold shadow-sm" 
+            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border rounded-2xl hover:bg-slate-50 transition-all text-sm font-bold shadow-sm" 
             style={{ borderColor: 'var(--border-color)', color: 'var(--page-text)' }}
           >
             <FaFileCsv size={12} className="text-indigo-600" />
@@ -344,293 +594,234 @@ const ManageSuppliers = () => {
       </div>
 
       {/* High-Performance KPI Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { 
             label: "Total Suppliers", 
             value: suppliers.length, 
             icon: FaBuilding, 
-            color: "indigo",
-            trend: "+3 this month"
+            color: "indigo"
           },
           { 
             label: "Active Suppliers", 
             value: suppliers.filter(s => s.isActive).length, 
             icon: FaCheckCircle, 
-            color: "emerald",
-            trend: "98% uptime"
+            color: "emerald"
           },
           { 
-            label: "Total Purchases", 
-            value: purchases.length, 
-            icon: FaHistory, 
-            color: "amber",
-            trend: "+12% vs last month"
+            label: "Inactive Suppliers", 
+            value: suppliers.filter(s => !s.isActive).length, 
+            icon: FaTimes, 
+            color: "rose"
           },
           { 
-            label: "Pending Payments", 
-            value: `₹${purchases.filter(p => p.paymentStatus !== "PAID").reduce((sum, p) => sum + (p.totalCost || 0), 0).toLocaleString()}`, 
-            icon: FaExclamationCircle, 
-            color: "rose",
-            trend: "4 invoices"
-          },
-          { 
-            label: "This Month", 
-            value: purchases.filter(p => {
-              const d = new Date(p.purchaseDate || p.createdAt);
-              const now = new Date();
-              return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-            }).length, 
-            icon: FaCalendarAlt, 
-            color: "blue",
-            trend: "Active cycle"
-          },
-          { 
-            label: "Low Stock", 
-            value: products.filter(p => p.stock <= 10).length, 
-            icon: FaChartLine, 
-            color: "orange",
-            trend: "Immediate action"
-          },
-          { 
-            label: "Avg. Lead Time", 
-            value: "3.4 Days", 
-            icon: FaTruck, 
-            color: "purple",
-            trend: "-0.5 days"
-          },
+            label: "Total Products Supplied", 
+            value: products.filter(p => p.supplier).length, 
+            icon: FaBoxOpen, 
+            color: "blue"
+          }
         ].map((stat, idx) => (
-          <div key={idx} className="card border shadow-sm p-3.5 rounded-2xl relative overflow-hidden group hover:shadow-lg transition-all" style={{ backgroundColor: 'var(--surface-1)', borderColor: 'var(--border-color)' }}>
-            <div className="relative z-10 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className={`w-8 h-8 rounded-lg bg-${stat.color}-500/10 flex items-center justify-center text-${stat.color}-600 dark:text-${stat.color}-400`}>
-                  <stat.icon size={15} />
-                </div>
-                {/* Decorative Sparkline */}
-                <svg className="w-10 h-5 opacity-30" viewBox="0 0 100 40">
-                  <path 
-                    d="M0 35 Q 25 15, 50 25 T 100 5" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="3" 
-                    className={`text-${stat.color}-500`}
-                  />
-                </svg>
-              </div>
-              
-              <div className="space-y-0">
-                <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--page-text-muted)' }}>{stat.label}</p>
-                <h3 className="text-base font-black tracking-tighter" style={{ color: 'var(--page-text)' }}>{stat.value}</h3>
-              </div>
-
-              <div className="pt-2 border-t flex items-center justify-between" style={{ borderColor: 'var(--border-color)' }}>
-                <span className="text-[8px] font-black uppercase tracking-widest text-emerald-500">{stat.trend}</span>
-              </div>
+          <div key={idx} className="bg-white dark:bg-slate-900 rounded-2xl border p-5 shadow-sm flex items-center gap-4 transition-transform hover:-translate-y-1" style={{ borderColor: 'var(--border-color)' }}>
+            <div className={`w-12 h-12 rounded-xl bg-${stat.color}-50 dark:bg-${stat.color}-500/10 text-${stat.color}-600 flex items-center justify-center shrink-0`}>
+              <stat.icon size={20} />
             </div>
-            <div className={`absolute -bottom-4 -right-4 w-12 h-12 bg-${stat.color}-500/5 rounded-full group-hover:scale-150 transition-transform duration-500`} />
+            <div>
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">{stat.label}</p>
+              <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 leading-none">{stat.value}</h3>
+            </div>
           </div>
-        ))}
-      </div>
-
-      {/* Styled Navigation Tabs */}
-      <div className="flex flex-wrap gap-1 p-1 rounded-2xl border w-fit mx-auto md:mx-0" style={{ backgroundColor: 'var(--surface-2)', borderColor: 'var(--border-color)' }}>
-        {[
-          { id: "suppliers", label: "Suppliers", icon: FaBuilding },
-          { id: "recent-purchases", label: "History", icon: FaHistory },
-          { id: "product-source", label: "Analytics", icon: FaMapMarkerAlt },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveModuleSection(tab.id)}
-            className={`flex items-center gap-2 px-6 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${
-              activeModuleSection === tab.id 
-                ? "bg-white dark:bg-slate-800 text-indigo-600 shadow-sm scale-[1.01]" 
-                : "text-slate-500 hover:text-indigo-600"
-            }`}
-            style={{ color: activeModuleSection === tab.id ? 'var(--accent-color)' : '' }}
-          >
-            <tab.icon size={12} />
-            {tab.label}
-          </button>
         ))}
       </div>
 
       {/* Dynamic Content Display */}
       <div className="min-h-[500px]">
-        {activeModuleSection === "suppliers" && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
             {/* Advanced Supplier Filters */}
-            <div id="intelligent-filters" className="p-4 bg-white dark:bg-slate-900/60 rounded-3xl border shadow-xl shadow-indigo-500/5 flex flex-col xl:flex-row gap-4 items-center mb-6" style={{ borderColor: 'var(--border-color)' }}>
-              <div className="flex-grow w-full relative">
-                <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
-                  <FaSearch className="text-indigo-500/40" size={14} />
-                </div>
+            <div id="intelligent-filters" className="bg-white dark:bg-slate-900 rounded-xl border shadow-sm p-3 flex flex-wrap overflow-visible gap-3 items-center mb-6" style={{ borderColor: 'var(--border-color)' }}>
+              <div className="flex-[4] min-w-[250px] relative">
+                <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 z-10" size={14} />
                 <input
                   type="text"
-                  placeholder="Search supplier, company, phone..."
+                  placeholder="Search by Name, Contact, Mobile, City..."
                   value={supplierSearch}
                   onChange={(e) => setSupplierSearch(e.target.value)}
-                  className="w-full pr-6 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:bg-white dark:focus:bg-slate-800 focus:ring-4 ring-indigo-500/10 focus:border-indigo-500/30 transition-all outline-none"
-                  style={{ paddingLeft: '52px', color: 'var(--page-text)' }}
+                  className="w-full pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 ring-indigo-500/20 transition-all outline-none"
+                  style={{ color: 'var(--page-text)', paddingLeft: '2.5rem' }}
                 />
               </div>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full xl:w-auto shrink-0">
-                <div className="relative">
-                  <select
-                    value={supplierStatusFilter}
-                    onChange={(e) => setSupplierStatusFilter(e.target.value)}
-                    className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none appearance-none font-bold opacity-70 hover:opacity-100"
-                  >
-                    <option value="all">Status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Archived</option>
-                  </select>
-                  <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={10} />
-                </div>
 
-                <div className="relative">
-                  <select
-                    value={supplierCityFilter}
-                    onChange={(e) => setSupplierCityFilter(e.target.value)}
-                    className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none appearance-none font-bold opacity-70 hover:opacity-100"
-                  >
-                    <option value="all">All Cities</option>
-                    {[...new Set(suppliers.map(s => s.address?.city).filter(Boolean))].map(city => (
-                      <option key={city} value={city}>{city}</option>
-                    ))}
-                  </select>
-                  <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={10} />
-                </div>
+              <div className="relative min-w-[160px]">
+                <select
+                  value={supplierStatusFilter}
+                  onChange={(e) => setSupplierStatusFilter(e.target.value)}
+                  className="w-full pl-4 pr-10 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 ring-indigo-500/20 transition-all cursor-pointer outline-none appearance-none font-semibold text-slate-700 dark:text-slate-300"
+                >
+                  <option value="all">Status: All</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+                <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={10} />
+              </div>
 
-                <div className="relative">
-                  <select
-                    value={supplierCategoryFilter}
-                    onChange={(e) => setSupplierCategoryFilter(e.target.value)}
-                    className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none appearance-none font-bold opacity-70 hover:opacity-100"
-                  >
-                    <option value="all">Category</option>
-                    {[...new Set(suppliers.map(s => s.category).filter(Boolean))].map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                  <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={10} />
-                </div>
-
+              {(supplierSearch !== "" || supplierStatusFilter !== "all" || supplierCategoryFilter !== "all") && (
                 <button 
                   onClick={() => {
                     setSupplierSearch("");
                     setSupplierStatusFilter("all");
-                    setSupplierCityFilter("all");
                     setSupplierCategoryFilter("all");
                     fetchSuppliers();
                   }}
-                  className="px-6 py-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
+                  className="px-6 py-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95 shrink-0 ml-auto"
                 >
                   Reset
                 </button>
-              </div>
+              )}
             </div>
             {/* Professional High-Density Supplier Grid */}
-            <div className="bg-white dark:bg-slate-900/60 rounded-3xl border shadow-xl overflow-hidden" style={{ borderColor: 'var(--border-color)' }}>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse table-fixed min-w-[1100px]">
+            <div className="bg-white dark:bg-slate-900/60 rounded-3xl border shadow-sm overflow-hidden" style={{ borderColor: 'var(--border-color)' }}>
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left border-collapse table-auto min-w-[900px]">
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b" style={{ borderColor: 'var(--border-color)' }}>
-                      <th className="w-[22%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Supplier Authority</th>
-                      <th className="w-[18%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Contact Gateway</th>
-                      <th className="w-[10%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700 text-center">SKU Catalog</th>
-                      <th className="w-[10%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700 text-center">Orders</th>
-                      <th className="w-[12%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700 text-center">Liabilities</th>
-                      <th className="w-[12%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700 text-center">Status</th>
-                      <th className="w-[16%] px-4 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 text-right">Operations</th>
+                      <th className="w-[10%] px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Supplier ID</th>
+                      <th className="w-[18%] px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Supplier Name</th>
+                      <th className="w-[15%] px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Contact & City</th>
+                      <th className="w-[18%] px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700">Contact Info</th>
+                      <th className="w-[10%] px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700 text-center">Products</th>
+                      <th className="w-[12%] px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700 text-center">Status</th>
+                      <th className="w-[12%] px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-60 border-r border-slate-200 dark:border-slate-700 text-center">Created Date</th>
+                      <th className="w-[8%] px-3 py-3 text-[10px] font-black uppercase tracking-widest opacity-60 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y dark:divide-slate-800" style={{ borderColor: 'var(--border-color)' }}>
                     {paginatedSuppliers.map((supplier, idx) => {
-                      const supplierOrders = purchases.filter(p => p.supplierId === supplier._id);
-                      const pendingAmount = supplierOrders.filter(p => p.paymentStatus !== "PAID").reduce((sum, p) => sum + (p.totalCost || 0), 0);
                       const supplierProductsCount = products.filter(p => p.supplier === supplier._id).length;
- 
+                      
                       return (
                         <tr 
                           key={supplier._id} 
-                          className={`group transition-all duration-200 ${idx % 2 === 0 ? 'bg-transparent' : 'bg-slate-50/30 dark:bg-slate-800/20'} hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5 cursor-pointer`}
-                          onClick={() => setSelectedSupplierForDetails(supplier)}
+                          className={`group transition-all duration-200 ${idx % 2 === 0 ? 'bg-transparent' : 'bg-slate-50/30 dark:bg-slate-800/20'} hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5`}
                         >
-                          <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-black text-xs text-white shadow-md shadow-indigo-500/20 group-hover:rotate-3 transition-transform">
-                                {supplier.name?.charAt(0).toUpperCase()}
-                              </div>
-                              <div className="truncate">
-                                <div className="font-bold text-sm truncate" style={{ color: 'var(--page-text)' }}>{supplier.name}</div>
-                                <div className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter truncate mt-0.5">
-                                  {supplier.company || "Independent Vendor"}
-                                </div>
-                              </div>
-                            </div>
+                          <td className="px-3 py-2 border-r border-slate-100 dark:border-slate-800 font-mono text-xs opacity-70">
+                            {supplier._id?.slice(-8).toUpperCase()}
                           </td>
-                          <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800">
-                            <div className="truncate">
-                              <p className="text-xs font-semibold opacity-80 truncate">{supplier.email || "—"}</p>
-                              <p className="text-[10px] font-medium opacity-40 truncate">{supplier.phone || "—"}</p>
-                            </div>
+                          <td className="px-3 py-2 border-r border-slate-100 dark:border-slate-800">
+                            <div className="font-bold text-xs whitespace-normal break-words leading-tight" style={{ color: 'var(--page-text)' }}>{supplier.name}</div>
                           </td>
-                          <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800 text-center">
-                            <span className="inline-flex items-center px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-[10px] font-black">
+                          <td className="px-3 py-2 border-r border-slate-100 dark:border-slate-800">
+                            <div className="font-semibold text-xs whitespace-normal break-words opacity-90 leading-tight">{supplier.contactPerson || supplier.company || "—"}</div>
+                            <div className="text-[10px] font-medium opacity-60 whitespace-normal break-words mt-0.5 flex items-start gap-1"><FaMapMarkerAlt size={8} className="mt-0.5 shrink-0" /> <span>{supplier.city || "No City"}</span></div>
+                          </td>
+                          <td className="px-3 py-2 border-r border-slate-100 dark:border-slate-800">
+                            <div className="text-xs font-medium opacity-80 flex items-center gap-1.5 whitespace-nowrap leading-tight"><FaPhoneAlt size={8} className="opacity-50 shrink-0" /> {supplier.mobileNumber || supplier.phone || "—"}</div>
+                            <div className="text-[10px] font-medium opacity-60 whitespace-normal break-all mt-0.5 flex items-start gap-1.5"><FaEnvelope size={8} className="opacity-50 mt-0.5 shrink-0" /> <span>{supplier.email || "—"}</span></div>
+                          </td>
+                          <td className="px-3 py-2 border-r border-slate-100 dark:border-slate-800 text-center">
+                            <span className="inline-flex items-center justify-center min-w-[24px] h-6 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-black">
                               {supplierProductsCount}
                             </span>
                           </td>
-                          <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800 text-center">
-                            <span className="inline-flex items-center px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-[10px] font-black">
-                              {supplierOrders.length}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800 text-center">
-                            <span className={`text-[11px] font-black ${pendingAmount > 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                              ₹{pendingAmount.toLocaleString()}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 border-r border-slate-100 dark:border-slate-800 text-center">
-                            <span className={`inline-block px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border ${
+                          <td className="px-3 py-2 border-r border-slate-100 dark:border-slate-800 text-center">
+                            <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest leading-none ${
                               supplier.isActive 
-                                ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/10" 
-                                : pendingAmount > 0 
-                                ? "bg-amber-500/10 text-amber-600 border-amber-500/10"
-                                : "bg-slate-500/10 text-slate-500 border-slate-500/10"
+                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400" 
+                                : "bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400"
                             }`}>
-                              {supplier.isActive ? "Active" : pendingAmount > 0 ? "Pending" : "Inactive"}
+                              {supplier.isActive ? "Active" : "Inactive"}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex justify-end gap-1">
-                              <button 
-                                onClick={() => onEditSupplier(supplier)}
-                                className="p-2 hover:bg-indigo-600 hover:text-white rounded-lg transition-all text-slate-400"
-                                title="Edit"
-                              >
-                                <FaUserTag size={12} />
-                              </button>
-                              <button 
-                                onClick={() => {
-                                  setPurchaseSupplierFilter(supplier._id);
-                                  setPurchaseSupplierFilterSearch(supplier.name);
-                                  setActiveModuleSection("recent-purchases");
-                                }}
-                                className="p-2 hover:bg-emerald-600 hover:text-white rounded-lg transition-all text-slate-400"
-                                title="History"
-                              >
-                                <FaHistory size={12} />
-                              </button>
-                              <button 
-                                onClick={() => onDeleteSupplier(supplier._id)}
-                                className="p-2 hover:bg-rose-600 hover:text-white rounded-lg transition-all text-slate-400"
-                                title="Delete"
-                              >
-                                <FaTimes size={12} />
-                              </button>
-                            </div>
+                          <td className="px-3 py-2 border-r border-slate-100 dark:border-slate-800 text-center font-mono text-[10px] opacity-70">
+                            {new Date(supplier.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' }).replace(/\//g, '-')}
+                          </td>
+                          <td className="px-3 py-2 text-center relative dropdown-container">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDropdownId(openDropdownId === supplier._id ? null : supplier._id);
+                              }}
+                              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all text-slate-500 inline-flex items-center justify-center"
+                            >
+                              <FaEllipsisV size={14} />
+                            </button>
+                            
+                            {/* Dropdown Menu */}
+                            {openDropdownId === supplier._id && (
+                              <div className="absolute right-8 top-10 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                <div className="py-1">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedSupplierForDetails(supplier);
+                                      setOpenDropdownId(null);
+                                    }}
+                                    className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-200 transition-colors"
+                                  >
+                                    <FaEye className="text-indigo-500" /> View Details
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      onEditSupplier(supplier);
+                                      setOpenDropdownId(null);
+                                    }}
+                                    className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-200 transition-colors"
+                                  >
+                                    <FaEdit className="text-blue-500" /> Edit Supplier
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedSupplierForDetails(supplier);
+                                      setOpenDropdownId(null);
+                                    }}
+                                    className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-200 transition-colors"
+                                  >
+                                    <FaBoxOpen className="text-emerald-500" /> View Supplied Products
+                                  </button>
+                                  <div className="h-px bg-slate-200 dark:bg-slate-700 my-1"></div>
+                                  {supplier.isActive ? (
+                                    <button
+                                      onClick={async () => {
+                                        try {
+                                          await API.put(`/suppliers/${supplier._id}`, { isActive: false });
+                                          await fetchSuppliers();
+                                          toast.success("Supplier deactivated");
+                                        } catch (e) {
+                                          toast.error("Failed to update status");
+                                        }
+                                        setOpenDropdownId(null);
+                                      }}
+                                      className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 text-amber-600 transition-colors"
+                                    >
+                                      <FaPowerOff /> Deactivate Supplier
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={async () => {
+                                        try {
+                                          await API.put(`/suppliers/${supplier._id}`, { isActive: true });
+                                          await fetchSuppliers();
+                                          toast.success("Supplier activated");
+                                        } catch (e) {
+                                          toast.error("Failed to update status");
+                                        }
+                                        setOpenDropdownId(null);
+                                      }}
+                                      className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 text-emerald-600 transition-colors"
+                                    >
+                                      <FaCheckCircle /> Activate Supplier
+                                    </button>
+                                  )}
+
+                                  <button
+                                    onClick={() => {
+                                      onDeleteSupplier(supplier._id);
+                                      setOpenDropdownId(null);
+                                    }}
+                                    className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 text-rose-600 transition-colors"
+                                  >
+                                    <FaTrash /> Delete Supplier
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       );
@@ -661,26 +852,24 @@ const ManageSuppliers = () => {
               )}
             <Pagination currentPage={supplierPage} totalPages={totalSupplierPages} onPageChange={setSupplierPage} />
           </div>
-        )}
-
         {activeModuleSection === "recent-purchases" && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
             {/* Dynamic History Filters */}
-            <div id="purchase-filters" className="card p-4 rounded-2xl border shadow-sm flex flex-col xl:flex-row gap-4 items-center" style={{ backgroundColor: 'var(--surface-1)', borderColor: 'var(--border-color)' }}>
-              <div className="flex-grow w-full relative">
-                <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
-                  <FaSearch className="text-indigo-500/40" size={14} />
-                </div>
+            <div id="purchase-filters" className="card p-4 rounded-2xl border shadow-sm flex flex-col md:flex-row flex-wrap gap-4 items-center hide-scrollbar w-full" style={{ backgroundColor: 'var(--surface-1)', borderColor: 'var(--border-color)', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              <div className="flex-1 w-full md:w-auto min-w-[250px] relative">
                 <input
                   type="text"
-                  placeholder="Search supplier, product or invoice..."
+                  placeholder="Search by all columns..."
                   value={purchaseSupplierFilterSearch}
                   onChange={(e) => setPurchaseSupplierFilterSearch(e.target.value)}
                   onFocus={handleFilterSupplierInputFocus}
                   onBlur={handleFilterSupplierInputBlur}
-                  className="w-full pr-6 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:bg-white dark:focus:bg-slate-800 focus:ring-4 ring-indigo-500/10 focus:border-indigo-500/30 transition-all outline-none"
-                  style={{ paddingLeft: '52px', color: 'var(--page-text)' }}
+                  className="w-full pl-5 pr-12 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:bg-white dark:focus:bg-slate-800 focus:ring-4 ring-indigo-500/10 focus:border-indigo-500/30 transition-all outline-none"
+                  style={{ color: 'var(--page-text)' }}
                 />
+                <div className="absolute right-5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
+                  <FaSearch className="text-indigo-500/40" size={14} />
+                </div>
                 
                 {/* Supplier Suggestions UI */}
                 {showFilterSupplierSuggestions && filterSupplierOptions.length > 0 && (
@@ -702,59 +891,57 @@ const ManageSuppliers = () => {
                 )}
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full xl:w-auto shrink-0">
-                <div className="relative">
-                  <select
-                    value={purchasePaymentStatusFilter}
-                    onChange={(e) => setPurchasePaymentStatusFilter(e.target.value)}
-                    className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none appearance-none font-bold opacity-70 hover:opacity-100"
-                  >
-                    <option value="all">Payment</option>
-                    <option value="PAID">Paid</option>
-                    <option value="PENDING">Pending</option>
-                    <option value="PARTIAL">Partial</option>
-                  </select>
-                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-600">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M19 9l-7 7-7-7"></path></svg>
-                  </div>
+              <div className="relative flex-1 w-full md:w-auto min-w-[150px]">
+                <select
+                  value={purchasePaymentStatusFilter}
+                  onChange={(e) => setPurchasePaymentStatusFilter(e.target.value)}
+                  className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none appearance-none font-bold opacity-70 hover:opacity-100"
+                >
+                  <option value="all">Payment</option>
+                  <option value="PAID">Paid</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="PARTIAL">Partial</option>
+                </select>
+                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-600">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M19 9l-7 7-7-7"></path></svg>
                 </div>
+              </div>
 
-                <div className="relative">
-                  <select
-                    className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none appearance-none font-bold opacity-70 hover:opacity-100"
-                  >
-                    <option value="all">Status</option>
-                    <option value="COMPLETED">Delivered</option>
-                    <option value="TRANSIT">In Transit</option>
-                    <option value="ORDERED">Ordered</option>
-                  </select>
-                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-600">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M19 9l-7 7-7-7"></path></svg>
-                  </div>
+              <div className="relative flex-1 w-full md:w-auto min-w-[150px]">
+                <select
+                  className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 transition-all cursor-pointer outline-none appearance-none font-bold opacity-70 hover:opacity-100"
+                >
+                  <option value="all">Status</option>
+                  <option value="COMPLETED">Delivered</option>
+                  <option value="TRANSIT">In Transit</option>
+                  <option value="ORDERED">Ordered</option>
+                </select>
+                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-600">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M19 9l-7 7-7-7"></path></svg>
                 </div>
+              </div>
 
+              {(purchaseSupplierFilterSearch !== "" || purchasePaymentStatusFilter !== "all" || purchaseSupplierFilter !== "all") && (
                 <button 
                   onClick={() => {
                     setPurchaseSupplierFilter("all");
                     setPurchaseSupplierFilterSearch("");
                     setPurchasePaymentStatusFilter("all");
                   }}
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border rounded-xl font-black text-[9px] uppercase tracking-widest transition-all hover:bg-slate-200 dark:hover:bg-slate-700 shadow-sm"
-                  style={{ color: 'var(--page-text)', borderColor: 'var(--border-color)' }}
+                  className="px-6 py-3 bg-slate-100 dark:bg-slate-800 rounded-2xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95 shrink-0 ml-auto"
                 >
-                  <FaSync size={11} className="text-indigo-600" />
-                  <span>Reset</span>
+                  Reset
                 </button>
+              )}
 
-                <button 
-                  onClick={exportPurchases}
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-50 dark:bg-indigo-900/10 border rounded-xl font-black text-[9px] uppercase tracking-widest transition-all hover:bg-indigo-100 dark:hover:bg-indigo-900/20 shadow-sm whitespace-nowrap"
-                  style={{ color: 'var(--page-text)', borderColor: 'var(--border-color)' }}
-                >
-                  <FaFileCsv size={13} className="text-indigo-600" />
-                  <span className="hidden md:inline">Export</span>
-                </button>
-              </div>
+              <button 
+                onClick={exportPurchases}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-50 dark:bg-indigo-900/10 border rounded-xl font-black text-[9px] uppercase tracking-widest transition-all hover:bg-indigo-100 dark:hover:bg-indigo-900/20 shadow-sm whitespace-nowrap shrink-0"
+                style={{ color: 'var(--page-text)', borderColor: 'var(--border-color)' }}
+              >
+                <FaFileCsv size={13} className="text-indigo-600" />
+                <span className="hidden md:inline">Export</span>
+              </button>
             </div>
 
             {/* Premium Ledger Table */}
@@ -952,7 +1139,17 @@ const ManageSuppliers = () => {
         onSave={async (data) => {
           try {
             setSavingPurchase(true);
-            await API.post("/suppliers/purchases", data);
+            const formData = new FormData();
+            Object.keys(data).forEach(key => {
+              if (key === 'invoiceFile' && data[key]) {
+                formData.append('invoiceFile', data[key]);
+              } else if (key !== 'invoiceFile' && data[key] !== null && data[key] !== undefined) {
+                formData.append(key, data[key]);
+              }
+            });
+            await API.post("/suppliers/purchases", formData, {
+              headers: { 'Content-Type': 'multipart/form-data' }
+            });
             await Promise.all([fetchPurchases(), fetchProducts(), fetchAnalytics()]);
             toast.success("Procurement transaction successfully recorded");
             setSearchParams({});
@@ -965,220 +1162,7 @@ const ManageSuppliers = () => {
         }}
         suppliers={suppliers}
         products={products}
-        loading={savingPurchase}
       />
-
-      {/* 360° Supplier Detail Drawer */}
-      <div className={`fixed inset-0 z-[100] transition-all duration-500 ease-in-out ${selectedSupplierForDetails ? "opacity-100 visible" : "opacity-0 invisible"}`}>
-        {/* Backdrop */}
-        <div 
-          className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]"
-          onClick={() => setSelectedSupplierForDetails(null)}
-        />
-        
-        {/* Drawer Content */}
-        <div className={`absolute top-0 right-0 h-full w-full max-w-xl bg-white dark:bg-slate-900 shadow-2xl transition-transform duration-500 ease-in-out transform flex flex-col border-l ${selectedSupplierForDetails ? "translate-x-0" : "translate-x-full"}`} style={{ borderColor: 'var(--border-color)' }}>
-          {selectedSupplierForDetails && (
-            <>
-              {/* Drawer Header */}
-              <div className="p-8 border-b relative shrink-0" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-2)' }}>
-                <button 
-                  onClick={() => setSelectedSupplierForDetails(null)}
-                  className="absolute top-8 right-8 p-2 rounded-full hover:bg-white/50 dark:hover:bg-slate-800 transition-colors z-10"
-                >
-                  <FaTimes size={16} className="opacity-40" />
-                </button>
-
-                <div className="flex items-center gap-6">
-                  <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-3xl text-white font-black shadow-2xl shadow-indigo-500/40">
-                    {selectedSupplierForDetails.name?.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-black tracking-tighter" style={{ color: 'var(--page-text)' }}>{selectedSupplierForDetails.name}</h2>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400 mt-1">
-                      {selectedSupplierForDetails.company || "Independent Vendor"}
-                    </p>
-                    <div className="flex items-center gap-3 mt-3">
-                      <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${selectedSupplierForDetails.isActive ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"}`}>
-                        {selectedSupplierForDetails.isActive ? "Verified Profile" : "Restricted"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Drawer Tabs */}
-                <div className="flex gap-6 mt-8 overflow-x-auto no-scrollbar">
-                  {["Overview", "Purchase History", "Ledger", "Documents"].map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => setDrawerActiveTab(tab)}
-                      className={`text-[10px] font-black uppercase tracking-widest pb-3 border-b-2 transition-all whitespace-nowrap ${
-                        drawerActiveTab === tab ? "border-indigo-600 text-indigo-600" : "border-transparent opacity-40 hover:opacity-100"
-                      }`}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Drawer Scrollable Content */}
-              <div className="flex-grow overflow-y-auto p-8 space-y-8 custom-scrollbar">
-                {drawerActiveTab === "Overview" && (
-                  <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-1">
-                        <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Contact Email</p>
-                        <p className="text-sm font-bold" style={{ color: 'var(--page-text)' }}>{selectedSupplierForDetails.email || "—"}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Primary Phone</p>
-                        <p className="text-sm font-bold" style={{ color: 'var(--page-text)' }}>{selectedSupplierForDetails.phone || "—"}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-[9px] font-black uppercase tracking-widest opacity-40">GST Identification</p>
-                        <p className="text-sm font-black text-indigo-600 uppercase">{selectedSupplierForDetails.gstNumber || "Unregistered"}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Payment Terms</p>
-                        <p className="text-sm font-bold" style={{ color: 'var(--page-text)' }}>{selectedSupplierForDetails.paymentTerms || "30 Days Net"}</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Registered Business Address</p>
-                      <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-dashed text-xs font-bold leading-relaxed shadow-inner" style={{ borderColor: 'var(--border-color)', color: 'var(--page-text)' }}>
-                        {selectedSupplierForDetails.address ? (
-                          <>
-                            <div className="flex items-start gap-3">
-                              <FaMapMarkerAlt className="mt-1 opacity-40 text-indigo-500" />
-                              <div>
-                                {selectedSupplierForDetails.address.street}<br/>
-                                {selectedSupplierForDetails.address.city}, {selectedSupplierForDetails.address.state} - {selectedSupplierForDetails.address.zipCode}<br/>
-                                <span className="opacity-40 uppercase tracking-widest text-[10px]">{selectedSupplierForDetails.address.country}</span>
-                              </div>
-                            </div>
-                          </>
-                        ) : "No address registered."}
-                      </div>
-                    </div>
-
-                    <div className="p-6 rounded-2xl bg-indigo-600 text-white shadow-xl shadow-indigo-600/20">
-                      <div className="flex items-center justify-between mb-4">
-                        <FaBriefcase className="opacity-60" />
-                        <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Procurement Summary</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-[9px] font-black uppercase tracking-widest opacity-60 mb-1">Total Orders</p>
-                          <p className="text-2xl font-black">{purchases.filter(p => p.supplierId === selectedSupplierForDetails._id).length}</p>
-                        </div>
-                        <div>
-                          <p className="text-[9px] font-black uppercase tracking-widest opacity-60 mb-1">Active Products</p>
-                          <p className="text-2xl font-black">{products.filter(p => p.supplier === selectedSupplierForDetails._id).length}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {drawerActiveTab === "Purchase History" && (
-                  <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
-                    {purchases.filter(p => p.supplierId === selectedSupplierForDetails._id).length > 0 ? (
-                      purchases.filter(p => p.supplierId === selectedSupplierForDetails._id).map((p) => (
-                        <div key={p._id} className="p-5 rounded-2xl border hover:shadow-md transition-all group" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-1)' }}>
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-3">
-                              <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                                <FaHistory className="text-indigo-600 opacity-60" size={12} />
-                              </div>
-                              <div>
-                                <p className="text-[11px] font-black" style={{ color: 'var(--page-text)' }}>ORD-{p._id?.slice(-6).toUpperCase() || "N/A"}</p>
-                                <p className="text-[9px] font-bold opacity-40">{new Date(p.purchaseDate).toLocaleDateString()}</p>
-                              </div>
-                            </div>
-                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${p.paymentStatus === 'PAID' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'}`}>
-                              {p.paymentStatus}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between pt-3 border-t border-dashed" style={{ borderColor: 'var(--border-color)' }}>
-                            <p className="text-[10px] font-bold opacity-40">Purchase Value</p>
-                            <p className="text-sm font-black text-indigo-600">₹{p.totalCost?.toLocaleString()}</p>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="py-20 flex flex-col items-center justify-center text-center opacity-40">
-                        <FaHistory size={40} className="mb-4" />
-                        <p className="text-sm font-black uppercase tracking-widest">No order history found</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {drawerActiveTab === "Ledger" && (
-                  <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border shadow-inner" style={{ borderColor: 'var(--border-color)' }}>
-                        <p className="text-[9px] font-black uppercase tracking-widest opacity-40 mb-1">Total Outbound</p>
-                        <p className="text-xl font-black text-indigo-600">
-                          ₹{purchases.filter(p => p.supplierId === selectedSupplierForDetails._id).reduce((sum, p) => sum + (p.totalCost || 0), 0).toLocaleString()}
-                        </p>
-                      </div>
-                      <div className="p-6 rounded-2xl bg-rose-500/5 border border-rose-500/20 shadow-inner">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-rose-500 mb-1">Current Liability</p>
-                        <p className="text-xl font-black text-rose-600">
-                          ₹{purchases.filter(p => p.supplierId === selectedSupplierForDetails._id && p.paymentStatus !== 'PAID').reduce((sum, p) => sum + (p.totalCost || 0), 0).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Financial Health</p>
-                      <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-indigo-600 transition-all duration-1000" 
-                          style={{ 
-                            width: `${(purchases.filter(p => p.supplierId === selectedSupplierForDetails._id && p.paymentStatus === 'PAID').length / (purchases.filter(p => p.supplierId === selectedSupplierForDetails._id).length || 1)) * 100}%` 
-                          }}
-                        />
-                      </div>
-                      <p className="text-[9px] font-bold opacity-40 uppercase tracking-widest text-right">
-                        {Math.round((purchases.filter(p => p.supplierId === selectedSupplierForDetails._id && p.paymentStatus === 'PAID').length / (purchases.filter(p => p.supplierId === selectedSupplierForDetails._id).length || 1)) * 100)}% Payment Completion
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {drawerActiveTab === "Documents" && (
-                  <div className="py-20 flex flex-col items-center justify-center text-center opacity-40">
-                    <FaFileCsv size={40} className="mb-4" />
-                    <p className="text-sm font-black uppercase tracking-widest">No documents uploaded</p>
-                    <button className="mt-4 px-6 py-2 border rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">Upload Agreement</button>
-                  </div>
-                )}
-              </div>
-
-              {/* Drawer Footer */}
-              <div className="p-8 border-t flex gap-4 shrink-0" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--surface-2)' }}>
-                <button 
-                  onClick={() => { onEditSupplier(selectedSupplierForDetails); setSelectedSupplierForDetails(null); }}
-                  className="flex-grow py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-95"
-                >
-                  Edit Profile
-                </button>
-                <button 
-                  onClick={() => setSelectedSupplierForDetails(null)}
-                  className="px-8 py-4 border rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm"
-                  style={{ borderColor: 'var(--border-color)', color: 'var(--page-text)' }}
-                >
-                  Exit
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-    </div>
 
       <ConfirmModal
         isOpen={confirmConfig.isOpen}

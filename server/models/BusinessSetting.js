@@ -34,7 +34,7 @@ const businessSettingSchema = new mongoose.Schema(
     isTaxInclusive: { type: Boolean, default: false },
 
     // Order Settings
-    orderStatusFlow: { type: [String], default: ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"] },
+    orderStatusFlow: { type: [String], default: ["Pending", "Packed", "Shipped", "Delivered", "Cancelled"] },
     autoConfirmOrders: { type: Boolean, default: false },
     cancelEnabled: { type: Boolean, default: true },
     returnEnabled: { type: Boolean, default: true },
