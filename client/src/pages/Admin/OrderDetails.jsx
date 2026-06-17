@@ -114,7 +114,7 @@ const OrderDetails = () => {
   return (
     <div className="max-w-[1600px] mx-auto p-4 sm:p-8" style={{ backgroundColor: '#F8FAFC', minHeight: '100vh' }}>
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-6 print:hidden">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate("/admin/orders")} className="p-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 shadow-sm transition">
             <FaArrowLeft className="text-gray-600" />
@@ -144,7 +144,7 @@ const OrderDetails = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 mb-6 gap-6 px-2">
+      <div className="flex border-b border-gray-200 mb-6 gap-6 px-2 print:hidden">
         {['overview', 'products', 'timeline', 'invoice'].map(tab => (
           <button
             key={tab}
@@ -158,9 +158,9 @@ const OrderDetails = () => {
       </div>
 
       {/* Tab Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print:block">
         {/* Left Column (Main Content) */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-6 print:block print:w-full">
           {activeTab === 'overview' && (
             <>
               {/* Order Info Card */}
@@ -557,7 +557,7 @@ const OrderDetails = () => {
         </div>
 
         {/* Right Column (Quick Summary) */}
-        <div className="space-y-6 hidden lg:block">
+        <div className="space-y-6 hidden lg:block print:hidden">
           <div className="bg-gradient-to-br from-[#5B3DF5] to-[#4a2ee0] p-6 rounded-2xl shadow-lg text-white">
             <h3 className="text-lg font-bold mb-4 opacity-90">Quick Summary</h3>
             <div className="space-y-4">

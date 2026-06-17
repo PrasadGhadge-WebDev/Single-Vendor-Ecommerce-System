@@ -27,6 +27,12 @@ exports.getStockHistory = async (req, res) => {
       filter.$or = [{ note: regex }, { referenceType: regex }, { referenceId: regex }];
     }
 
+    if (req.query.movementType === 'INCREASED') {
+      filter.quantityChange = { $gt: 0 };
+    } else if (req.query.movementType === 'REDUCED') {
+      filter.quantityChange = { $lt: 0 };
+    }
+
     const pageNum = Math.max(1, Number(page || 1));
     const limitNum = Math.max(1, Math.min(200, Number(limit || 50)));
     const skip = (pageNum - 1) * limitNum;

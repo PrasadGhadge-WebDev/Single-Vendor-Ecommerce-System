@@ -8,7 +8,7 @@ const purchaseSchema = new mongoose.Schema(
       required: true,
     },
     product: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: "Product",
       required: true,
     },
@@ -71,6 +71,16 @@ const purchaseSchema = new mongoose.Schema(
       trim: true,
       maxlength: 500,
     },
+    auditTrail: [
+      {
+        updatedAt: { type: Date, default: Date.now },
+        updatedBy: { type: String, default: "Admin" },
+        previousQuantity: Number,
+        newQuantity: Number,
+        previousPaymentStatus: String,
+        newPaymentStatus: String,
+      }
+    ]
   },
   { timestamps: true }
 );

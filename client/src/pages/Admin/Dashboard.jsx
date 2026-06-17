@@ -75,29 +75,29 @@ const Dashboard = () => {
       label: "Total Revenue",
       value: formatCurrency(stats?.totalRevenue ?? 0),
       icon: "💰",
-      growth: "↑ 12.5%",
-      growthColor: "text-[#10B981]"
+      growth: (stats?.growth?.revenue > 0 ? "↑ " : "↓ ") + Math.abs(stats?.growth?.revenue || 0) + "%",
+      growthColor: (stats?.growth?.revenue >= 0 || stats?.growth?.orders >= 0 || stats?.growth?.users >= 0) ? "text-[#10B981]" : "text-rose-500"
     },
     {
       label: "Total Orders",
       value: Number(stats?.totalOrders ?? 0).toLocaleString("en-IN"),
       icon: "📦",
-      growth: "↑ 8.2%",
-      growthColor: "text-[#10B981]"
+      growth: (stats?.growth?.orders > 0 ? "↑ " : "↓ ") + Math.abs(stats?.growth?.orders || 0) + "%",
+      growthColor: (stats?.growth?.revenue >= 0 || stats?.growth?.orders >= 0 || stats?.growth?.users >= 0) ? "text-[#10B981]" : "text-rose-500"
     },
     {
       label: "Total Customers",
       value: Number(stats?.totalUsers ?? 0).toLocaleString("en-IN"),
       icon: "👥",
-      growth: "↑ 5.1%",
-      growthColor: "text-[#10B981]"
+      growth: (stats?.growth?.users > 0 ? "↑ " : "↓ ") + Math.abs(stats?.growth?.users || 0) + "%",
+      growthColor: (stats?.growth?.revenue >= 0 || stats?.growth?.orders >= 0 || stats?.growth?.users >= 0) ? "text-[#10B981]" : "text-rose-500"
     },
     {
       label: "Total Products",
       value: Number(stats?.totalProducts ?? 0).toLocaleString("en-IN"),
       icon: "🛍️",
-      growth: "↑ 2.4%",
-      growthColor: "text-[#10B981]"
+      growth: "Dynamic",
+      growthColor: (stats?.growth?.revenue >= 0 || stats?.growth?.orders >= 0 || stats?.growth?.users >= 0) ? "text-[#10B981]" : "text-rose-500"
     },
     {
       label: "Low Stock Items",
@@ -158,8 +158,8 @@ const Dashboard = () => {
                   <div className="text-2xl">{item.icon}</div>
                   <span className={`text-sm font-bold ${item.growthColor}`}>{item.growth}</span>
                 </div>
-                <div>
-                  <h3 className="text-3xl font-black text-slate-800 tracking-tight mb-1">{item.value}</h3>
+                <div className="w-full min-w-0">
+                  <h3 className="text-3xl lg:text-2xl 2xl:text-3xl font-black text-slate-800 tracking-tight mb-1 truncate w-full" title={item.value}>{item.value}</h3>
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{item.label}</p>
                 </div>
               </div>
@@ -354,18 +354,7 @@ const Dashboard = () => {
                   </div>
                 </button>
 
-                <button 
-                  onClick={() => {}}
-                  className="flex items-center gap-4 p-4 rounded-2xl bg-[#F59E0B]/5 hover:bg-[#F59E0B]/10 border border-[#F59E0B]/10 transition-colors group text-left"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-[#F59E0B] flex items-center justify-center text-white shadow-lg shadow-[#F59E0B]/30 group-hover:scale-105 transition-transform">
-                    <FaFileDownload size={16} />
-                  </div>
-                  <div>
-                    <h5 className="text-sm font-bold text-slate-800">Generate Report</h5>
-                    <p className="text-xs text-slate-500">Download analytics</p>
-                  </div>
-                </button>
+
 
                 <button 
                   onClick={() => navigate('/admin/offers')}

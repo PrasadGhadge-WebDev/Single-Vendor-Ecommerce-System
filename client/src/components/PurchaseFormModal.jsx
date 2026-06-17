@@ -8,7 +8,8 @@ const PurchaseFormModal = ({
   onSave, 
   suppliers = [],
   products = [],
-  loading = false 
+  loading = false,
+  initialData = null
 }) => {
   const generatePurchaseId = () => {
     return `PUR-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(100 + Math.random() * 900)}`;
@@ -34,28 +35,50 @@ const PurchaseFormModal = ({
   const [showSupplierSuggestions, setShowSupplierSuggestions] = useState(false);
   const [showProductSuggestions, setShowProductSuggestions] = useState(false);
   const [errors, setErrors] = useState({});
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const isEditMode = !!initialData;
 
   useEffect(() => {
     if (isOpen) {
       setErrors({});
-      setFormData({
-        purchaseId: generatePurchaseId(),
-        supplierId: "",
-        productId: "",
-        quantity: "",
-        unitCost: "",
-        purchaseDate: new Date().toISOString().slice(0, 16),
-        invoiceNumber: "",
-        paymentStatus: "PENDING",
-        paymentMethod: "Cash",
-        paidAmount: "",
-        notes: "",
-        invoiceFile: null
-      });
-      setSupplierSearch("");
-      setProductSearch("");
+      if (initialData) {
+        setFormData({
+          purchaseId: initialData.purchaseId || generatePurchaseId(),
+          supplierId: initialData.supplier?._id || initialData.supplier || "",
+          productId: initialData.product?._id || initialData.product || "",
+          quantity: initialData.quantity || "",
+          unitCost: initialData.unitCost || "",
+          purchaseDate: initialData.purchaseDate ? new Date(initialData.purchaseDate).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
+          invoiceNumber: initialData.invoiceNumber || "",
+          paymentStatus: initialData.paymentStatus || "PENDING",
+          paymentMethod: initialData.paymentMethod || "Cash",
+          paidAmount: initialData.paidAmount || "",
+          notes: initialData.notes || "",
+          invoiceFile: null
+        });
+        setSupplierSearch(initialData.supplier?.name || "");
+        setProductSearch(initialData.product?.name || "");
+      } else {
+        setFormData({
+          purchaseId: generatePurchaseId(),
+          supplierId: "",
+          productId: "",
+          quantity: "",
+          unitCost: "",
+          purchaseDate: new Date().toISOString().slice(0, 16),
+          invoiceNumber: "",
+          paymentStatus: "PENDING",
+          paymentMethod: "Cash",
+          paidAmount: "",
+          notes: "",
+          invoiceFile: null
+        });
+        setSupplierSearch("");
+        setProductSearch("");
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, initialData]);
 
   const selectedSupplier = suppliers.find(s => s._id === formData.supplierId);
   const selectedProduct = products.find(p => p._id === formData.productId);
@@ -123,8 +146,17 @@ const PurchaseFormModal = ({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (validate()) {
-      onSave(formData);
+      if (isEditMode) {
+        setShowConfirm(true);
+      } else {
+        onSave(formData);
+      }
     }
+  };
+
+  const handleConfirmUpdate = () => {
+    setShowConfirm(false);
+    onSave(formData);
   };
 
   const filteredSuppliers = suppliers.filter(s => 
@@ -147,8 +179,13 @@ const PurchaseFormModal = ({
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-4 sm:px-8 sm:py-5 border-b border-slate-100 shrink-0">
           <div>
-            <h1 className="text-xl font-black text-slate-900 m-0">Record Inventory Purchase</h1>
+            <h1 className="text-xl font-black text-slate-900 m-0">{isEditMode ? "Update Inventory Purchase" : "Record Inventory Purchase"}</h1>
             <p className="text-xs text-slate-500 font-medium mt-1">ID: <span className="text-indigo-600">{formData.purchaseId}</span></p>
+            {isEditMode && initialData?.auditTrail?.length > 0 && (
+              <p className="text-[10px] text-slate-400 mt-1">
+                Last updated by {initialData.auditTrail[initialData.auditTrail.length - 1].updatedBy} on {new Date(initialData.auditTrail[initialData.auditTrail.length - 1].updatedAt).toLocaleString()}
+              </p>
+            )}
           </div>
           <button 
             type="button"
@@ -177,47 +214,47 @@ const PurchaseFormModal = ({
                   {/* Supplier Search */}
                   <div className="relative">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Supplier *</label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={supplierSearch}
-                        onChange={(e) => {
-                          setSupplierSearch(e.target.value);
-                          setShowSupplierSuggestions(true);
-                        }}
-                        onFocus={() => setShowSupplierSuggestions(true)}
-                        placeholder="Search and select supplier..."
-                        className={`w-full px-4 py-3 rounded-xl border bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all text-sm font-medium text-slate-700 ${
-                          errors.supplier ? "border-rose-500" : "border-slate-200"
-                        }`}
-                      />
-                      <FaSearch className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                    </div>
-                    {errors.supplier && <p className="text-xs text-rose-500 mt-1 font-semibold">{errors.supplier}</p>}
-                    
-                    {/* Supplier Suggestions Dropdown */}
-                    {showSupplierSuggestions && (
-                      <div className="absolute z-50 w-full mt-1 rounded-xl shadow-xl border border-slate-200 bg-white max-h-48 overflow-y-auto">
-                        {filteredSuppliers.length > 0 ? filteredSuppliers.map(s => (
-                          <div
-                            key={s._id}
-                            onClick={() => {
-                              setFormData(prev => ({ ...prev, supplierId: s._id }));
-                              setSupplierSearch(s.name);
-                              setShowSupplierSuggestions(false);
-                              setErrors(prev => ({ ...prev, supplier: "" }));
-                            }}
-                            className="px-4 py-3 hover:bg-indigo-50 cursor-pointer text-sm font-medium text-slate-700 transition-colors border-b border-slate-50 last:border-0"
-                          >
-                            <div className="font-bold">{s.name}</div>
-                            <div className="text-xs text-slate-500">{s.company || 'No Company'}</div>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <FaSearch className="text-slate-400" />
+                        </div>
+                        <input
+                          type="text"
+                          value={supplierSearch}
+                          onChange={(e) => {
+                            setSupplierSearch(e.target.value);
+                            setShowSupplierSuggestions(true);
+                          }}
+                          onFocus={() => setShowSupplierSuggestions(true)}
+                          className={`w-full pl-10 pr-4 py-3 rounded-xl border bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all text-sm font-medium text-slate-700 ${errors.supplier ? "border-rose-500" : "border-slate-200"}`}
+                          placeholder="Search or select supplier..."
+                        />
+                        {showSupplierSuggestions && (
+                          <div className="absolute z-10 w-full mt-2 bg-white rounded-xl shadow-xl border border-slate-100 max-h-48 overflow-y-auto">
+                            {suppliers.filter(s => s.name.toLowerCase().includes(supplierSearch.toLowerCase())).length > 0 ? (
+                              suppliers.filter(s => s.name.toLowerCase().includes(supplierSearch.toLowerCase())).map(s => (
+                                <div
+                                  key={s._id}
+                                  className="px-4 py-3 hover:bg-slate-50 cursor-pointer transition-colors border-b border-slate-50 last:border-0"
+                                  onClick={() => {
+                                    setFormData(prev => ({ ...prev, supplierId: s._id }));
+                                    setSupplierSearch(s.name);
+                                    setShowSupplierSuggestions(false);
+                                    setErrors(prev => ({ ...prev, supplier: "" }));
+                                  }}
+                                >
+                                  <p className="text-sm font-bold text-slate-700">{s.name}</p>
+                                  <p className="text-xs text-slate-500 font-medium">{s.company}</p>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="px-4 py-3 text-sm text-slate-500">No suppliers found</div>
+                            )}
                           </div>
-                        )) : (
-                          <div className="px-4 py-3 text-sm text-slate-500">No suppliers found</div>
                         )}
                       </div>
-                    )}
-
+                    {errors.supplier && <p className="text-xs text-rose-500 mt-1 font-semibold">{errors.supplier}</p>}
+                    
                     {/* Auto-filled Supplier Info */}
                     {selectedSupplier && (
                       <div className="mt-3 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100 flex gap-4 text-xs">
@@ -230,22 +267,23 @@ const PurchaseFormModal = ({
                   {/* Product Search */}
                   <div className="relative">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Product *</label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={productSearch}
-                        onChange={(e) => {
-                          setProductSearch(e.target.value);
-                          setShowProductSuggestions(true);
-                        }}
-                        onFocus={() => setShowProductSuggestions(true)}
-                        placeholder="Search and select product..."
-                        className={`w-full px-4 py-3 rounded-xl border bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all text-sm font-medium text-slate-700 ${
-                          errors.product ? "border-rose-500" : "border-slate-200"
-                        }`}
-                      />
-                      <FaSearch className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                    </div>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <FaSearch className="text-slate-400" />
+                        </div>
+                        <input
+                          type="text"
+                          value={productSearch}
+                          onChange={(e) => {
+                            setProductSearch(e.target.value);
+                            setShowProductSuggestions(true);
+                          }}
+                          onFocus={() => setShowProductSuggestions(true)}
+                          className={`w-full pl-10 pr-4 py-3 rounded-xl border bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all text-sm font-medium text-slate-700 ${errors.product ? "border-rose-500" : "border-slate-200"}`}
+                          placeholder="Search or select product..."
+                          disabled={!formData.supplierId && !isEditMode}
+                        />
+                      </div>
                     {errors.product && <p className="text-xs text-rose-500 mt-1 font-semibold">{errors.product}</p>}
                     
                     {/* Product Suggestions Dropdown */}
@@ -470,6 +508,30 @@ const PurchaseFormModal = ({
                 </div>
               </div>
 
+              {isEditMode && (selectedProduct || initialData?.product) && (
+                <div className="bg-blue-50/50 rounded-xl p-4 border border-blue-100 mt-4 mb-4">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-800 mb-3 border-b border-blue-200/50 pb-2">Stock Impact</h4>
+                  <div className="flex justify-between items-center text-sm font-medium text-slate-700">
+                    <div className="flex flex-col items-center">
+                      <span className="text-xs text-slate-500">Current</span>
+                      <span className="font-bold">{selectedProduct ? selectedProduct.stock : (initialData?.product?.stock || 0)}</span>
+                    </div>
+                    <div className="text-blue-400">→</div>
+                    <div className="flex flex-col items-center">
+                      <span className="text-xs text-slate-500">Adjustment</span>
+                      <span className={`font-bold ${Number(formData.quantity) - initialData.quantity > 0 ? 'text-emerald-600' : Number(formData.quantity) - initialData.quantity < 0 ? 'text-rose-600' : 'text-slate-500'}`}>
+                        {Number(formData.quantity) - initialData.quantity > 0 ? '+' : ''}{Number(formData.quantity) - initialData.quantity || 0}
+                      </span>
+                    </div>
+                    <div className="text-blue-400">→</div>
+                    <div className="flex flex-col items-center">
+                      <span className="text-xs text-slate-500">Updated</span>
+                      <span className="font-black text-blue-900">{Math.max(0, (selectedProduct ? selectedProduct.stock : (initialData?.product?.stock || 0)) + (Number(formData.quantity || 0) - initialData.quantity))}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-100">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-indigo-800 font-bold">Total Cost</span>
@@ -523,11 +585,40 @@ const PurchaseFormModal = ({
             className="h-[44px] min-w-[120px] px-6 rounded-xl text-sm font-bold bg-indigo-600 text-white flex justify-center items-center gap-2 shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 transition-all disabled:opacity-70"
           >
             {loading ? <FaSpinner className="animate-spin" /> : <FaCheckCircle size={16} />}
-            Record Purchase
+            {initialData ? "Update Purchase" : "Record Purchase"}
           </button>
         </div>
 
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirm && (
+        <div className="absolute inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden p-8 border border-slate-200 text-center">
+            <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <FaCheckCircle size={32} />
+            </div>
+            <h3 className="text-2xl font-black text-slate-900 mb-2">Update Purchase Record</h3>
+            <p className="text-sm text-slate-500 mb-8 font-medium leading-relaxed">
+              Updating this purchase record may affect inventory quantities and payment information. Are you sure you want to continue?
+            </p>
+            <div className="flex gap-4">
+              <button 
+                onClick={() => setShowConfirm(false)}
+                className="flex-1 py-3.5 rounded-xl font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleConfirmUpdate}
+                className="flex-1 py-3.5 rounded-xl font-bold text-white bg-indigo-600 shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 transition-colors"
+              >
+                Confirm Update
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>,
     document.body
   );

@@ -1,4 +1,5 @@
 const Offer = require("../models/Offer");
+const Product = require("../models/Product");
 
 const startOfDay = (value) => {
   const date = new Date(value);
@@ -142,6 +143,49 @@ exports.deleteOffer = async (req, res) => {
     const offer = await Offer.findByIdAndDelete(req.params.id);
     if (!offer) return res.status(404).json({ message: "Offer not found" });
     res.status(200).json({ message: "Offer deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getPublicOfferById = async (req, res) => {
+  try {
+    const offer = await Offer.findById(req.params.id);
+    if (!offer) return res.status(404).json({ message: "Offer not found" });
+
+    const now = new Date();
+    const startsAt = offer.startDate ? new Date(offer.startDate) : null;
+    const expiresAt = offer.endDate ? new Date(offer.endDate) : null;
+
+    let currentStatus = offer.status;
+
+    if (currentStatus !== "Inactive" && currentStatus !== "Draft") {
+      if (startsAt && now < startsAt) {
+        currentStatus = "Scheduled";
+      } else if (expiresAt && now > expiresAt) {
+        currentStatus = "Expired";
+      } else {
+        currentStatus = "Active";
+      }
+    }
+
+    let eligibleProducts = [];
+    if (currentStatus === "Active") {
+      if (offer.applicableOn === "All Products") {
+        eligibleProducts = await Product.find({ status: "Active" }).select("-description -specifications").limit(50);
+      } else if (offer.applicableOn === "Specific Categories" && offer.categories?.length > 0) {
+        eligibleProducts = await Product.find({ status: "Active", category: { $in: offer.categories } }).select("-description -specifications").limit(50);
+      } else if (offer.applicableOn === "Specific Products" && offer.products?.length > 0) {
+        eligibleProducts = await Product.find({ status: "Active", _id: { $in: offer.products } }).select("-description -specifications");
+      }
+    }
+
+    res.status(200).json({
+      ...offer.toObject(),
+      displayStatus: currentStatus,
+      isCurrentlyValid: currentStatus === "Active",
+      eligibleProducts,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

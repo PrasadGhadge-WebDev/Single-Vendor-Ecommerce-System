@@ -4,7 +4,7 @@
 @tailwind utilities;
 
 html, body, #root {
-  height: 100%;
+  min-height: 100%;
   margin: 0;
   padding: 0;
 }
@@ -139,7 +139,6 @@ h6,
 html,
 body {
   min-height: 100%;
-  overflow-x: hidden;
   width: 100%;
 }
 
@@ -374,21 +373,19 @@ small.text-muted {
 }
 
 @media print {
-  body * {
-    visibility: hidden;
-  }
-  .print-invoice-area, .print-invoice-area * {
-    visibility: visible;
-  }
-  .print-invoice-area {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 10px 20px !important;
+  html, body, #root, .admin-wrapper, .main-section, .global-page-frame {
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
     background-color: white !important;
-    box-shadow: none !important;
+  }
+  
+  .print-invoice-area {
+    padding: 0 !important;
+    margin: 0 !important;
     border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 }

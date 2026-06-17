@@ -441,6 +441,103 @@ exports.getDashboardStats = async (req, res) => {
       .sort({ stock: 1 })
       .limit(20);
 
+    // Get recent orders
+    const recentOrders = await Order.find(timeFilter)
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate("user", "name")
+      .lean();
+
+    // Monthly Sales
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+    sixMonthsAgo.setDate(1);
+    sixMonthsAgo.setHours(0, 0, 0, 0);
+
+    const monthlySalesAggregate = await Order.aggregate([
+      { $match: { createdAt: { $gte: sixMonthsAgo }, status: { $ne: "cancelled" } } },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$createdAt" },
+            month: { $month: "$createdAt" },
+          },
+          sales: { $sum: "$totalAmount" },
+        },
+      },
+      { $sort: { "_id.year": 1, "_id.month": 1 } },
+    ]);
+
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthlySales = monthlySalesAggregate.map(item => ({
+      name: monthNames[item._id.month - 1],
+      sales: item.sales
+    }));
+
+    // Top Products
+    const topProductsAggregate = await Order.aggregate([
+      { $match: { status: { $ne: "cancelled" } } },
+      { $unwind: "$products" },
+      {
+        $group: {
+          _id: "$products.product",
+          sales: { $sum: "$products.quantity" },
+          revenue: { $sum: { $multiply: ["$products.price", "$products.quantity"] } }
+        }
+      },
+      { $sort: { sales: -1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: "products",
+          localField: "_id",
+          foreignField: "_id",
+          as: "productDetails"
+        }
+      }
+    ]);
+
+    const formattedTopProducts = topProductsAggregate.map(p => ({
+      name: p.productDetails && p.productDetails.length > 0 ? p.productDetails[0].name : "Unknown",
+      sales: p.sales,
+      revenue: p.revenue
+    }));
+
+    // Basic Growth calculation
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
+    // Orders growth
+    const currentOrders = await Order.countDocuments({ createdAt: { $gte: thirtyDaysAgo } });
+    const prevOrders = await Order.countDocuments({ createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } });
+    let ordersGrowth = 0;
+    if (prevOrders > 0) ordersGrowth = ((currentOrders - prevOrders) / prevOrders) * 100;
+    else if (currentOrders > 0) ordersGrowth = 100;
+
+    // Users growth
+    const currentUsers = await User.countDocuments({ createdAt: { $gte: thirtyDaysAgo } });
+    const prevUsers = await User.countDocuments({ createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } });
+    let usersGrowth = 0;
+    if (prevUsers > 0) usersGrowth = ((currentUsers - prevUsers) / prevUsers) * 100;
+    else if (currentUsers > 0) usersGrowth = 100;
+    
+    // Revenue growth
+    const revCurrent = await Order.aggregate([
+      { $match: { createdAt: { $gte: thirtyDaysAgo }, status: { $ne: "cancelled" } } },
+      { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+    ]);
+    const revPrev = await Order.aggregate([
+      { $match: { createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo }, status: { $ne: "cancelled" } } },
+      { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+    ]);
+    const currRev = revCurrent[0]?.total || 0;
+    const prevRev = revPrev[0]?.total || 0;
+    let revGrowth = 0;
+    if (prevRev > 0) revGrowth = ((currRev - prevRev) / prevRev) * 100;
+    else if (currRev > 0) revGrowth = 100;
+
     res.status(200).json({
       totalUsers: usersCount,
       totalOrders,
@@ -448,6 +545,14 @@ exports.getDashboardStats = async (req, res) => {
       totalRevenue: revenueAggregate[0]?.total || 0,
       orderStatusSummary,
       lowStockProducts,
+      recentOrders,
+      monthlySales,
+      topProducts: formattedTopProducts,
+      growth: {
+        revenue: revGrowth.toFixed(1),
+        orders: ordersGrowth.toFixed(1),
+        users: usersGrowth.toFixed(1)
+      }
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -585,10 +690,9 @@ exports.updateReturnStatus = async (req, res) => {
       order.returnComments = comments;
     }
 
-    // Logic for restoring stock if return is received/completed
-    if ((status === "received" || status === "completed") && !order.stockUpdated) {
+    // Logic for restoring stock if return is received/completed/refunded
+    if ((status === "received" || status === "completed" || status === "refunded") && !order.stockUpdated) {
       const Product = require("../models/Product");
-      const { logStockHistory } = require("../utils/stockLogger");
       const { checkAndCreateStockNotification } = require("./notificationController");
       
       for (const item of order.products) {
@@ -606,7 +710,7 @@ exports.updateReturnStatus = async (req, res) => {
           if (updatedProduct) {
             await logStockHistory({
               productId: updatedProduct._id,
-              eventType: "RESTORE_RETURN",
+              eventType: "RETURN",
               quantityChange: Number(item.quantity || 0),
               previousStock: Number(updatedProduct.stock || 0) - Number(item.quantity || 0),
               newStock: Number(updatedProduct.stock || 0),

@@ -318,3 +318,146 @@ exports.bulkActionUsers = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+const AdminActivityLog = require("../models/AdminActivityLog");
+const Product = require("../models/Product");
+const Supplier = require("../models/Supplier");
+const Purchase = require("../models/Purchase");
+const { logAdminActivity } = require("../utils/adminActivityLogger");
+
+exports.updateMySecurity = async (req, res) => {
+  try {
+    const { password, twoFactorEnabled } = req.body;
+    const currentUser = await User.findById(req.user._id);
+    if (!currentUser) return res.status(404).json({ message: "User not found" });
+
+    let updated = false;
+
+    if (password) {
+      currentUser.password = await bcrypt.hash(password, 10);
+      updated = true;
+    }
+
+    if (twoFactorEnabled !== undefined) {
+      currentUser.twoFactorAuth = {
+        ...currentUser.twoFactorAuth,
+        enabled: twoFactorEnabled
+      };
+      updated = true;
+    }
+
+    if (updated) {
+      await currentUser.save();
+      await logAdminActivity({
+        adminId: currentUser._id,
+        activity: "Updated Security Settings",
+        module: "Security",
+        status: "Success"
+      });
+    }
+
+    res.json({ message: "Security settings updated successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.updateMyNotifications = async (req, res) => {
+  try {
+    const preferences = req.body;
+    const currentUser = await User.findById(req.user._id);
+    if (!currentUser) return res.status(404).json({ message: "User not found" });
+
+    currentUser.notificationPreferences = {
+      ...currentUser.notificationPreferences,
+      ...preferences
+    };
+
+    await currentUser.save();
+    
+    await logAdminActivity({
+      adminId: currentUser._id,
+      activity: "Updated Notification Preferences",
+      module: "Profile",
+      status: "Success"
+    });
+
+    res.json(currentUser.notificationPreferences);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getMyActivities = async (req, res) => {
+  try {
+    const activities = await AdminActivityLog.find({ admin: req.user._id })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+    res.json(activities);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getAdminDashboardStats = async (req, res) => {
+  try {
+    const totalProducts = await Product.countDocuments();
+    const totalOrders = await Order.countDocuments();
+    const totalUsers = await User.countDocuments({ isAdmin: false });
+    const totalSuppliers = await Supplier.countDocuments();
+    const totalPurchases = await Purchase.countDocuments();
+    
+    const currentUser = await User.findById(req.user._id).select("lastLoginDate");
+
+    res.json({
+      totalProducts,
+      totalOrders,
+      totalUsers,
+      totalSuppliers,
+      totalPurchases,
+      lastLogin: currentUser?.lastLoginDate || null
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.updateAdminPersonalProfile = async (req, res) => {
+  try {
+    const { name, email, phone, altMobile, gender, dateOfBirth, address, city, state, country, pincode, profileImage } = req.body;
+    const currentUser = await User.findById(req.user._id);
+    if (!currentUser) return res.status(404).json({ message: "User not found" });
+
+    if (email && email !== currentUser.email) {
+      const emailInUse = await User.findOne({ email, _id: { $ne: currentUser._id } });
+      if (emailInUse) return res.status(400).json({ message: "Email already in use" });
+      currentUser.email = email;
+    }
+
+    if (name !== undefined) currentUser.name = name;
+    if (phone !== undefined) currentUser.phone = phone;
+    if (altMobile !== undefined) currentUser.altMobile = altMobile;
+    if (gender !== undefined) currentUser.gender = gender;
+    if (dateOfBirth !== undefined) currentUser.dateOfBirth = dateOfBirth;
+    if (address !== undefined) currentUser.address = address;
+    if (city !== undefined) currentUser.city = city;
+    if (state !== undefined) currentUser.state = state;
+    if (country !== undefined) currentUser.country = country;
+    if (pincode !== undefined) currentUser.pincode = pincode;
+    if (profileImage !== undefined) currentUser.profileImage = profileImage;
+
+    await currentUser.save();
+    
+    await logAdminActivity({
+      adminId: currentUser._id,
+      activity: "Updated Profile Information",
+      module: "Profile",
+      status: "Success"
+    });
+
+    res.json(currentUser);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

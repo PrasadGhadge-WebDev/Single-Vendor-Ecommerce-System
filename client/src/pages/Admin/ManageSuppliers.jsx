@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { FaPlus, FaTimes, FaSearch, FaFileCsv, FaSync, FaTruck, FaChartLine, FaHistory, FaMapMarkerAlt, FaEnvelope, FaPhoneAlt, FaBuilding, FaCheckCircle, FaExclamationCircle, FaUserTag, FaCalendarAlt, FaBriefcase, FaChevronDown, FaBoxOpen, FaEllipsisV, FaEye, FaEdit, FaPowerOff, FaTrash } from "react-icons/fa";
 import API from "../../api";
 import { downloadCsv, inDateRange } from "../../utils/adminHelpers";
@@ -9,13 +9,13 @@ import Pagination from "../../components/Pagination";
 import SupplierFormModal from "../../components/SupplierFormModal";
 import PurchaseFormModal from "../../components/PurchaseFormModal";
 import ConfirmModal from "../../components/ConfirmModal";
-import SupplierPurchaseHistory from "../../components/SupplierPurchaseHistory";
 
 const SUPPLIERS_PER_PAGE = 12;
 const PURCHASES_PER_PAGE = 10;
 
 const ManageSuppliers = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [suppliers, setSuppliers] = useState([]);
   const [products, setProducts] = useState([]);
   const [purchases, setPurchases] = useState([]);
@@ -42,6 +42,9 @@ const ManageSuppliers = () => {
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [activeModuleSection, setActiveModuleSection] = useState("suppliers");
   const [selectedSupplierForDetails, setSelectedSupplierForDetails] = useState(null);
+  const [selectedSupplierForPurchases, setSelectedSupplierForPurchases] = useState(null);
+  const [purchaseDetailsModal, setPurchaseDetailsModal] = useState(null);
+  const [editPurchaseId, setEditPurchaseId] = useState(null);
   const [drawerActiveTab, setDrawerActiveTab] = useState("Overview");
 
   const [supplierSearch, setSupplierSearch] = useState("");
@@ -99,7 +102,40 @@ const ManageSuppliers = () => {
     } catch (error) {
       console.error("Error fetching purchases:", error);
     }
-  }, [purchaseDateFrom, purchaseDateTo, purchaseSupplierFilter, purchasePaymentStatusFilter]);
+  }, [purchaseSupplierFilter, purchasePaymentStatusFilter, purchaseDateFrom, purchaseDateTo]);
+
+  const handleMarkPaid = async (purchaseId) => {
+    try {
+      await API.put(`/suppliers/purchases/${purchaseId}/mark-paid`);
+      toast.success("Purchase marked as paid");
+      fetchPurchases();
+    } catch (err) {
+      toast.error("Failed to mark purchase as paid");
+    }
+  };
+
+  const handleConfirmAction = async () => {
+    if (confirmConfig.action === 'delete-purchase') {
+      try {
+        await API.delete(`/suppliers/purchases/${confirmConfig.purchaseId}`);
+        toast.success("Purchase record deleted");
+        fetchPurchases();
+        setConfirmConfig({ isOpen: false });
+      } catch (err) {
+        toast.error("Failed to delete purchase record");
+      }
+      return;
+    }
+    // existing supplier delete
+    try {
+      await API.delete(`/suppliers/${confirmConfig.supplierId}`);
+      await fetchSuppliers();
+      setConfirmConfig({ isOpen: false, supplierId: null });
+      toast.success("Supplier deleted successfully");
+    } catch (error) {
+      toast.error("Failed to delete supplier");
+    }
+  };
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -329,24 +365,6 @@ const ManageSuppliers = () => {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex items-center gap-6 border-b mb-6" style={{ borderColor: 'var(--border-color)' }}>
-          <button 
-            onClick={() => setDrawerActiveTab("Overview")}
-            className={`pb-3 text-sm font-bold border-b-2 transition-colors ${drawerActiveTab === "Overview" ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
-          >
-            Supplier Details
-          </button>
-          <button 
-            onClick={() => setDrawerActiveTab("Purchases")}
-            className={`pb-3 text-sm font-bold border-b-2 transition-colors ${drawerActiveTab === "Purchases" ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
-          >
-            Purchase History
-          </button>
-        </div>
-
-        {drawerActiveTab === "Overview" ? (
-          <>
         {/* Status Banner */}
         <div className={`p-4 rounded-xl border flex items-center justify-between shadow-sm ${selectedSupplierForDetails.isActive ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200"}`}>
           <div className="flex items-center gap-3">
@@ -477,7 +495,7 @@ const ManageSuppliers = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Total Products</p>
-                <p className="text-2xl font-black text-indigo-600">{products.filter(p => p.supplier === selectedSupplierForDetails._id).length}</p>
+                <p className="text-2xl font-black text-indigo-600">{products.filter(p => String(p.supplier?._id || p.supplier) === String(selectedSupplierForDetails._id)).length}</p>
               </div>
               <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Total Purchase Value</p>
@@ -515,8 +533,8 @@ const ManageSuppliers = () => {
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ borderColor: 'var(--border-color)' }}>
-                {products.filter(p => p.supplier === selectedSupplierForDetails._id).length > 0 ? (
-                  products.filter(p => p.supplier === selectedSupplierForDetails._id).map(product => {
+                {products.filter(p => String(p.supplier?._id || p.supplier) === String(selectedSupplierForDetails._id)).length > 0 ? (
+                  products.filter(p => String(p.supplier?._id || p.supplier) === String(selectedSupplierForDetails._id)).map(product => {
                     const relatedPurchases = purchases.filter(p => p.productId === product._id && p.supplierId === selectedSupplierForDetails._id);
                     const lastSupplyDate = relatedPurchases.length > 0 
                       ? new Date(Math.max(...relatedPurchases.map(p => new Date(p.purchaseDate || p.createdAt).getTime()))).toLocaleDateString()
@@ -548,10 +566,6 @@ const ManageSuppliers = () => {
             </table>
           </div>
         </div>
-        </>
-        ) : (
-          <SupplierPurchaseHistory supplierId={selectedSupplierForDetails._id} />
-        )}
       </div>
     );
   }
@@ -565,18 +579,26 @@ const ManageSuppliers = () => {
           <p className="text-sm text-gray-500 m-0 mt-1">STRATEGIC SOURCING & VENDOR RELATIONSHIP INTELLIGENCE</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 relative z-10">
+        <div className="flex flex-nowrap items-center gap-3 relative z-10 overflow-x-auto pb-2 sm:pb-0 hide-scrollbar">
           <button 
             onClick={openAddSupplier}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-95 group"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-xl font-bold text-xs shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-95 group"
           >
             <FaPlus size={12} className="group-hover:rotate-90 transition-transform" />
             <span>New Supplier</span>
           </button>
           
           <button 
+            onClick={() => navigate("/admin/purchases")}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400 rounded-xl font-bold text-xs shadow-sm hover:bg-purple-200 dark:hover:bg-purple-500/30 transition-all active:scale-95"
+          >
+            <FaHistory size={12} />
+            <span>Purchase List</span>
+          </button>
+          
+          <button 
             onClick={() => { setActiveModuleSection("record-purchase"); setSearchParams({ modal: "purchase" }); }}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-800/20 hover:bg-slate-900 transition-all active:scale-95"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 text-white rounded-xl font-bold text-xs shadow-xl shadow-slate-800/20 hover:bg-slate-900 transition-all active:scale-95"
           >
             <FaHistory size={12} />
             <span>Record Purchase</span>
@@ -584,7 +606,7 @@ const ManageSuppliers = () => {
 
           <button 
             onClick={activeModuleSection === "suppliers" ? exportSuppliers : exportPurchases}
-            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border rounded-2xl hover:bg-slate-50 transition-all text-sm font-bold shadow-sm" 
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border rounded-xl hover:bg-slate-50 transition-all text-xs font-bold shadow-sm" 
             style={{ borderColor: 'var(--border-color)', color: 'var(--page-text)' }}
           >
             <FaFileCsv size={12} className="text-indigo-600" />
@@ -695,7 +717,7 @@ const ManageSuppliers = () => {
                   </thead>
                   <tbody className="divide-y dark:divide-slate-800" style={{ borderColor: 'var(--border-color)' }}>
                     {paginatedSuppliers.map((supplier, idx) => {
-                      const supplierProductsCount = products.filter(p => p.supplier === supplier._id).length;
+                      const supplierProductsCount = products.filter(p => String(p.supplier?._id || p.supplier) === String(supplier._id)).length;
                       
                       return (
                         <tr 
@@ -733,16 +755,17 @@ const ManageSuppliers = () => {
                           <td className="px-3 py-2 border-r border-slate-100 dark:border-slate-800 text-center font-mono text-[10px] opacity-70">
                             {new Date(supplier.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' }).replace(/\//g, '-')}
                           </td>
-                          <td className="px-3 py-2 text-center relative dropdown-container">
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setOpenDropdownId(openDropdownId === supplier._id ? null : supplier._id);
-                              }}
-                              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all text-slate-500 inline-flex items-center justify-center"
-                            >
-                              <FaEllipsisV size={14} />
-                            </button>
+                          <td className="px-3 py-2">
+                            <div className="flex items-center justify-center gap-2 relative dropdown-container">
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenDropdownId(openDropdownId === supplier._id ? null : supplier._id);
+                                }}
+                                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all text-slate-500 inline-flex items-center justify-center"
+                              >
+                                <FaEllipsisV size={14} />
+                              </button>
                             
                             {/* Dropdown Menu */}
                             {openDropdownId === supplier._id && (
@@ -775,7 +798,7 @@ const ManageSuppliers = () => {
                                   >
                                     <FaBoxOpen className="text-emerald-500" /> View Supplied Products
                                   </button>
-                                  <div className="h-px bg-slate-200 dark:bg-slate-700 my-1"></div>
+
                                   {supplier.isActive ? (
                                     <button
                                       onClick={async () => {
@@ -812,7 +835,7 @@ const ManageSuppliers = () => {
 
                                   <button
                                     onClick={() => {
-                                      onDeleteSupplier(supplier._id);
+                                      setConfirmConfig({ isOpen: true, supplierId: supplier._id, action: 'delete-supplier' });
                                       setOpenDropdownId(null);
                                     }}
                                     className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 text-rose-600 transition-colors"
@@ -822,6 +845,7 @@ const ManageSuppliers = () => {
                                 </div>
                               </div>
                             )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1012,6 +1036,169 @@ const ManageSuppliers = () => {
           </div>
         )}
 
+        {activeModuleSection === "supplier-purchases" && selectedSupplierForPurchases && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+              <div>
+                <h2 className="text-2xl font-black" style={{ color: 'var(--page-text)' }}>Supplier Purchases</h2>
+                <p className="text-sm font-bold opacity-60 mt-1">Showing purchases for: <span className="text-indigo-600">{selectedSupplierForPurchases.name}</span></p>
+              </div>
+              <button 
+                onClick={() => {
+                  setActiveModuleSection("suppliers");
+                  setSelectedSupplierForPurchases(null);
+                }}
+                className="px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center gap-2 shadow-sm text-sm"
+              >
+                Back to Suppliers
+              </button>
+            </div>
+
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {(() => {
+                const sp = purchases.filter(p => p.supplier && p.supplier._id === selectedSupplierForPurchases._id);
+                const totalPurchases = sp.length;
+                const totalAmount = sp.reduce((sum, p) => sum + (p.totalCost || 0), 0);
+                const pendingPayments = sp.reduce((sum, p) => sum + (p.remainingAmount || 0), 0);
+                const paidPurchases = sp.filter(p => p.paymentStatus === "PAID").length;
+                
+                return (
+                  <>
+                    <div className="card p-6 rounded-[2rem] border shadow-sm flex flex-col justify-between" style={{ backgroundColor: 'var(--surface-1)', borderColor: 'var(--border-color)' }}>
+                      <p className="text-[10px] font-black opacity-40 uppercase tracking-widest mb-2">Total Purchases</p>
+                      <h3 className="text-3xl font-black" style={{ color: 'var(--page-text)' }}>{totalPurchases}</h3>
+                    </div>
+                    <div className="card p-6 rounded-[2rem] border shadow-sm flex flex-col justify-between" style={{ backgroundColor: 'var(--surface-1)', borderColor: 'var(--border-color)' }}>
+                      <p className="text-[10px] font-black opacity-40 uppercase tracking-widest mb-2">Total Purchase Amount</p>
+                      <h3 className="text-3xl font-black" style={{ color: 'var(--page-text)' }}>₹{totalAmount.toLocaleString()}</h3>
+                    </div>
+                    <div className="card p-6 rounded-[2rem] border shadow-sm flex flex-col justify-between" style={{ backgroundColor: 'var(--surface-1)', borderColor: 'var(--border-color)' }}>
+                      <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-2">Pending Payments</p>
+                      <h3 className="text-3xl font-black text-rose-600">₹{pendingPayments.toLocaleString()}</h3>
+                    </div>
+                    <div className="card p-6 rounded-[2rem] border shadow-sm flex flex-col justify-between" style={{ backgroundColor: 'var(--surface-1)', borderColor: 'var(--border-color)' }}>
+                      <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-2">Paid Purchases</p>
+                      <h3 className="text-3xl font-black text-emerald-600">{paidPurchases}</h3>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Filters */}
+            <div className="card p-4 rounded-2xl border shadow-sm flex flex-col md:flex-row flex-wrap gap-4 items-center hide-scrollbar w-full" style={{ backgroundColor: 'var(--surface-1)', borderColor: 'var(--border-color)' }}>
+              <div className="flex-1 w-full md:w-auto min-w-[200px] relative">
+                <input
+                  type="text"
+                  placeholder="Search by Purchase ID..."
+                  value={purchaseSupplierFilterSearch}
+                  onChange={(e) => setPurchaseSupplierFilterSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-4 ring-indigo-500/10 outline-none transition-all font-bold"
+                  style={{ color: 'var(--page-text)' }}
+                />
+                <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30" size={14} />
+              </div>
+              <div className="relative flex-1 w-full md:w-auto min-w-[150px]">
+                <select value={purchasePaymentStatusFilter} onChange={(e) => setPurchasePaymentStatusFilter(e.target.value)} className="w-full pl-4 pr-10 py-3 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none bg-slate-50 dark:bg-slate-800/50 appearance-none text-sm font-bold opacity-80 cursor-pointer">
+                  <option value="all">All Payment Status</option>
+                  <option value="PAID">Paid</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="PARTIAL">Partial</option>
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
+                  <FaChevronDown size={10} />
+                </div>
+              </div>
+              <div className="relative flex-1 w-full md:w-auto min-w-[150px]">
+                <input type="date" value={purchaseDateFrom} onChange={(e) => setPurchaseDateFrom(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none bg-slate-50 dark:bg-slate-800/50 text-sm font-bold opacity-80" />
+              </div>
+              <span className="text-slate-400 font-bold opacity-50">to</span>
+              <div className="relative flex-1 w-full md:w-auto min-w-[150px]">
+                <input type="date" value={purchaseDateTo} onChange={(e) => setPurchaseDateTo(e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none bg-slate-50 dark:bg-slate-800/50 text-sm font-bold opacity-80" />
+              </div>
+              {(purchaseSupplierFilterSearch || purchasePaymentStatusFilter !== "all" || purchaseDateFrom || purchaseDateTo) && (
+                <button onClick={() => { setPurchaseSupplierFilterSearch(""); setPurchasePaymentStatusFilter("all"); setPurchaseDateFrom(""); setPurchaseDateTo(""); }} className="px-6 py-3 bg-slate-100 dark:bg-slate-800 rounded-2xl font-bold text-sm shrink-0 ml-auto hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">Reset</button>
+              )}
+            </div>
+
+            {/* Table */}
+            <div className="card border rounded-[2rem] overflow-hidden shadow-sm" style={{ backgroundColor: 'var(--surface-1)', borderColor: 'var(--border-color)' }}>
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left table-auto">
+                  <thead>
+                    <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b" style={{ borderColor: 'var(--border-color)' }}>
+                      <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest opacity-60">Purchase ID</th>
+                      <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest opacity-60">Date</th>
+                      <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest opacity-60">Product</th>
+                      <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest opacity-60">Category</th>
+                      <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 text-center">Qty</th>
+                      <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 text-right">Unit Cost</th>
+                      <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 text-right">Total Cost</th>
+                      <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 text-center">Status</th>
+                      <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest opacity-60">Invoice</th>
+                      <th className="px-5 py-4 text-[10px] font-black uppercase tracking-widest opacity-60 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y dark:divide-slate-800" style={{ borderColor: 'var(--border-color)' }}>
+                    {purchases.filter(p => {
+                      if (p.supplier?._id !== selectedSupplierForPurchases._id) return false;
+                      if (purchaseSupplierFilterSearch && !p.purchaseId?.toLowerCase().includes(purchaseSupplierFilterSearch.toLowerCase())) return false;
+                      return true;
+                    }).map((purchase, idx) => (
+                      <tr key={purchase._id} className={`group transition-all duration-200 ${idx % 2 === 0 ? 'bg-transparent' : 'bg-slate-50/30 dark:bg-slate-800/20'} hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5`}>
+                        <td className="px-5 py-4 whitespace-nowrap font-mono text-xs opacity-80">{purchase.purchaseId}</td>
+                        <td className="px-5 py-4 text-xs font-bold opacity-80">{new Date(purchase.purchaseDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                        <td className="px-5 py-4 text-sm font-black" style={{ color: 'var(--page-text)' }}>{purchase.product?.name || "—"}</td>
+                        <td className="px-5 py-4 text-xs"><span className="px-2 py-1 bg-indigo-500/10 text-indigo-600 rounded-lg font-bold">{purchase.product?.category || "—"}</span></td>
+                        <td className="px-5 py-4 text-center font-black opacity-80">{purchase.quantity}</td>
+                        <td className="px-5 py-4 text-right font-black text-indigo-600">₹{(purchase.unitCost || 0).toLocaleString()}</td>
+                        <td className="px-5 py-4 text-right font-black" style={{ color: 'var(--page-text)' }}>₹{(purchase.totalCost || 0).toLocaleString()}</td>
+                        <td className="px-5 py-4 text-center">
+                          <span className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-lg ${purchase.paymentStatus === 'PAID' ? 'bg-emerald-100 text-emerald-700' : purchase.paymentStatus === 'PENDING' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {purchase.paymentStatus}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-xs font-mono opacity-60">{purchase.invoiceNumber || "—"}</td>
+                        <td className="px-5 py-4 text-center relative dropdown-container">
+                             <button onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDropdownId(openDropdownId === `pur-${purchase._id}` ? null : `pur-${purchase._id}`);
+                             }} className="p-2 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-all">
+                               <FaEllipsisV size={14} />
+                             </button>
+                             {openDropdownId === `pur-${purchase._id}` && (
+                                <div className="absolute right-10 top-10 w-52 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl z-50 overflow-hidden text-left py-1 animate-in fade-in zoom-in-95 duration-200">
+                                  <button onClick={() => { setPurchaseDetailsModal(purchase); setOpenDropdownId(null); }} className="w-full px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-3 font-bold text-slate-700 dark:text-slate-200"><FaEye className="text-indigo-500"/> View Details</button>
+                                  <button onClick={() => { setEditPurchaseId(purchase._id); setSearchParams({modal: "purchase"}); setOpenDropdownId(null); }} className="w-full px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-3 font-bold text-slate-700 dark:text-slate-200"><FaEdit className="text-blue-500"/> Edit Record</button>
+                                  {purchase.invoiceUrl && <a href={purchase.invoiceUrl} target="_blank" rel="noreferrer" className="w-full px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-3 font-bold text-slate-700 dark:text-slate-200"><FaFileCsv className="text-purple-500"/> Download Invoice</a>}
+                                  {purchase.paymentStatus !== 'PAID' && (
+                                    <button onClick={() => { handleMarkPaid(purchase._id); setOpenDropdownId(null); }} className="w-full px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-3 font-bold text-emerald-600"><FaCheckCircle className="text-emerald-500"/> Mark as Paid</button>
+                                  )}
+                                  <div className="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>
+                                  <button onClick={() => { setConfirmConfig({ isOpen: true, action: 'delete-purchase', purchaseId: purchase._id }); setOpenDropdownId(null); }} className="w-full px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-3 font-bold text-rose-600"><FaTrash /> Delete Record</button>
+                                </div>
+                             )}
+                        </td>
+                      </tr>
+                    ))}
+                    {purchases.filter(p => p.supplier?._id === selectedSupplierForPurchases._id).length === 0 && (
+                      <tr>
+                        <td colSpan="10" className="px-5 py-16 text-center opacity-50">
+                          <FaHistory className="mx-auto text-4xl mb-4 opacity-50" />
+                          <p className="text-lg font-black uppercase tracking-widest">No Purchases Found</p>
+                          <p className="text-xs font-bold mt-2">There are no purchase records associated with this supplier.</p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeModuleSection === "product-source" && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
             {/* Sourcing Intelligence Engine */}
@@ -1135,7 +1322,7 @@ const ManageSuppliers = () => {
 
       <PurchaseFormModal
         isOpen={searchParams.get("modal") === "purchase"}
-        onClose={() => { setSearchParams({}); setActiveModuleSection("suppliers"); }}
+        onClose={() => { setSearchParams({}); setEditPurchaseId(null); if(activeModuleSection !== "supplier-purchases") setActiveModuleSection("suppliers"); }}
         onSave={async (data) => {
           try {
             setSavingPurchase(true);
@@ -1147,13 +1334,18 @@ const ManageSuppliers = () => {
                 formData.append(key, data[key]);
               }
             });
-            await API.post("/suppliers/purchases", formData, {
-              headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            
+            if (editPurchaseId) {
+               await API.put(`/suppliers/purchases/${editPurchaseId}`, formData);
+               toast.success("Purchase record updated successfully");
+            } else {
+               await API.post("/suppliers/purchases", formData);
+               toast.success("Procurement transaction successfully recorded");
+            }
             await Promise.all([fetchPurchases(), fetchProducts(), fetchAnalytics()]);
-            toast.success("Procurement transaction successfully recorded");
             setSearchParams({});
-            setActiveModuleSection("recent-purchases");
+            setEditPurchaseId(null);
+            if (!editPurchaseId) setActiveModuleSection("recent-purchases");
           } catch (error) {
             toast.error(error.response?.data?.message || "Procurement logging failed");
           } finally {
@@ -1162,15 +1354,161 @@ const ManageSuppliers = () => {
         }}
         suppliers={suppliers}
         products={products}
+        initialData={editPurchaseId ? purchases.find(p => p._id === editPurchaseId) : null}
       />
+
+      {purchaseDetailsModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+              <div>
+                <h3 className="text-xl font-black text-slate-800 dark:text-slate-100">Purchase Details</h3>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">ID: {purchaseDetailsModal.purchaseId}</p>
+              </div>
+              <button 
+                onClick={() => setPurchaseDetailsModal(null)}
+                className="w-10 h-10 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all text-slate-400"
+              >
+                <FaTimes />
+              </button>
+            </div>
+            
+            {/* Body */}
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-8">
+              {/* Purchase & Payment Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 border-b pb-2">Purchase Information</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-[10px] font-bold opacity-50 block uppercase tracking-wide">Date & Time</span>
+                      <span className="text-sm font-bold">{new Date(purchaseDetailsModal.purchaseDate).toLocaleString()}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold opacity-50 block uppercase tracking-wide">Created By</span>
+                      <span className="text-sm font-bold">{purchaseDetailsModal.createdBy?.name || "System/Admin"}</span>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 border-b pb-2">Payment Information</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-[10px] font-bold opacity-50 block uppercase tracking-wide">Status</span>
+                      <span className={`inline-block px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg mt-1 ${purchaseDetailsModal.paymentStatus === 'PAID' ? 'bg-emerald-100 text-emerald-700' : purchaseDetailsModal.paymentStatus === 'PENDING' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {purchaseDetailsModal.paymentStatus}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold opacity-50 block uppercase tracking-wide">Method</span>
+                      <span className="text-sm font-bold uppercase tracking-wide">{purchaseDetailsModal.paymentMethod || "N/A"}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Supplier Info */}
+              <div>
+                <h4 className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 border-b pb-2">Supplier Information</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <span className="text-[10px] font-bold opacity-50 block uppercase tracking-wide">Supplier Name</span>
+                    <span className="text-sm font-bold">{purchaseDetailsModal.supplier?.name || "N/A"}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold opacity-50 block uppercase tracking-wide">Contact Person</span>
+                    <span className="text-sm font-bold">{purchaseDetailsModal.supplier?.contactPerson || "N/A"}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold opacity-50 block uppercase tracking-wide">Mobile Number</span>
+                    <span className="text-sm font-bold">{purchaseDetailsModal.supplier?.mobileNumber || "N/A"}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold opacity-50 block uppercase tracking-wide">GST Number</span>
+                    <span className="text-sm font-bold">{purchaseDetailsModal.supplier?.gstNumber || "N/A"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Product Info */}
+              <div>
+                <h4 className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 border-b pb-2">Product Information</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="col-span-2">
+                    <span className="text-[10px] font-bold opacity-50 block uppercase tracking-wide">Product Name</span>
+                    <span className="text-sm font-bold">{purchaseDetailsModal.product?.name || "N/A"}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold opacity-50 block uppercase tracking-wide">Category</span>
+                    <span className="text-sm font-bold">{purchaseDetailsModal.product?.category || "N/A"}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold opacity-50 block uppercase tracking-wide">SKU</span>
+                    <span className="text-sm font-mono opacity-80">{purchaseDetailsModal.product?.sku || "N/A"}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4 mt-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                  <div>
+                    <span className="text-[10px] font-bold opacity-50 block uppercase tracking-wide">Purchased Qty</span>
+                    <span className="text-lg font-black">{purchaseDetailsModal.quantity}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold opacity-50 block uppercase tracking-wide">Unit Cost</span>
+                    <span className="text-lg font-black text-indigo-600">₹{purchaseDetailsModal.unitCost?.toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold opacity-50 block uppercase tracking-wide">Total Cost</span>
+                    <span className="text-lg font-black text-emerald-600">₹{purchaseDetailsModal.totalCost?.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Invoice & Notes */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 border-b pb-2">Invoice Information</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-[10px] font-bold opacity-50 block uppercase tracking-wide">Supplier Invoice Number</span>
+                      <span className="text-sm font-mono opacity-80">{purchaseDetailsModal.invoiceNumber || "None"}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold opacity-50 block uppercase tracking-wide mb-2">Uploaded Invoice</span>
+                      {purchaseDetailsModal.invoiceUrl ? (
+                        <a href={purchaseDetailsModal.invoiceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-colors">
+                          <FaFileCsv size={12} /> View Document
+                        </a>
+                      ) : (
+                        <span className="text-xs font-bold opacity-50 italic">No document uploaded</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-3 border-b pb-2">Notes</h4>
+                  <div className="p-4 bg-amber-50 dark:bg-amber-900/10 rounded-2xl min-h-[100px] border border-amber-100 dark:border-amber-800">
+                    {purchaseDetailsModal.notes ? (
+                      <p className="text-sm text-slate-700 dark:text-slate-300 font-medium whitespace-pre-wrap">{purchaseDetailsModal.notes}</p>
+                    ) : (
+                      <p className="text-xs text-slate-400 italic">No remarks added for this purchase.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
 
       <ConfirmModal
         isOpen={confirmConfig.isOpen}
-        onClose={() => setConfirmConfig({ isOpen: false, supplierId: null })}
-        onConfirm={handleConfirmDeleteSupplier}
-        title="Delete Supplier"
-        message="Are you sure you want to delete this supplier? This will remove them from the network and may affect linked products/purchases."
-        confirmText="Delete Supplier"
+        onClose={() => setConfirmConfig({ isOpen: false, supplierId: null, purchaseId: null, action: null })}
+        onConfirm={handleConfirmAction}
+        title={confirmConfig.action === 'delete-purchase' ? "Delete Purchase Record" : "Delete Supplier"}
+        message={confirmConfig.action === 'delete-purchase' ? "Are you sure you want to delete this purchase record? This action cannot be undone." : "Are you sure you want to delete this supplier? This will remove them from the network and may affect linked products/purchases."}
+        confirmText={confirmConfig.action === 'delete-purchase' ? "Delete Record" : "Delete Supplier"}
       />
     </div>
   );

@@ -21,7 +21,6 @@ const ManageCategories = () => {
   // Filters
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [featuredFilter, setFeaturedFilter] = useState("all");
   
   // Modals
   const showModal = searchParams.get("modal") === "category";
@@ -133,19 +132,15 @@ const ManageCategories = () => {
     const term = search.trim().toLowerCase();
     return categories.filter((category) => {
       if (statusFilter !== "all" && category.status !== statusFilter) return false;
-      if (featuredFilter !== "all") {
-        const isFeatured = featuredFilter === 'yes';
-        if (!!category.featured !== isFeatured) return false;
-      }
       if (!term) return true;
       return String(category.name || "").toLowerCase().includes(term) || String(category.slug || "").toLowerCase().includes(term);
     });
-  }, [categories, search, statusFilter, featuredFilter]);
+  }, [categories, search, statusFilter]);
 
   useEffect(() => {
     setCategoryPage(1);
     setSelectedIds([]); // reset selection on filter change
-  }, [search, statusFilter, featuredFilter]);
+  }, [search, statusFilter]);
 
   const totalCategoryPages = Math.max(1, Math.ceil(filteredCategories.length / CATEGORIES_PER_PAGE));
   const paginatedCategories = useMemo(() => {
@@ -159,10 +154,8 @@ const ManageCategories = () => {
       filteredCategories.map((c) => ({
         "Name": c.name,
         "Slug": c.slug,
-        "Parent": c.parentCategory ? c.parentCategory.name : "None",
         "Products": c.productCount || 0,
         "Status": c.status,
-        "Featured": c.featured ? "Yes" : "No",
         "Created On": c.createdAt ? new Date(c.createdAt).toLocaleDateString() : "N/A",
       }))
     );
@@ -244,17 +237,11 @@ const ManageCategories = () => {
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </select>
-            <select value={featuredFilter} onChange={(e) => setFeaturedFilter(e.target.value)} className="py-1.5 px-2 border border-gray-200 rounded-lg outline-none text-xs font-medium text-gray-700 bg-white flex-1 min-w-[110px]">
-              <option value="all">Featured: All</option>
-              <option value="yes">Yes</option>
-              <option value="no">No</option>
-            </select>
-            {(search || statusFilter !== 'all' || featuredFilter !== 'all') && (
+            {(search || statusFilter !== 'all') && (
               <button 
                 onClick={() => {
                   setSearch("");
                   setStatusFilter("all");
-                  setFeaturedFilter("all");
                 }}
                 className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold transition-colors whitespace-nowrap shrink-0 ml-auto"
               >
@@ -278,16 +265,14 @@ const ManageCategories = () => {
                 </th>
                 <th className="py-4 px-4 font-semibold">Image</th>
                 <th className="py-4 px-4 font-semibold">Category Info</th>
-                <th className="py-4 px-4 font-semibold">Parent Category</th>
                 <th className="py-4 px-4 font-semibold text-center">Products</th>
-                <th className="py-4 px-4 font-semibold text-center">Featured</th>
                 <th className="py-4 px-4 font-semibold text-center">Status</th>
                 <th className="py-4 px-4 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan="8" className="text-center py-12 text-gray-400 font-medium">Loading categories...</td></tr>
+                <tr><td colSpan="6" className="text-center py-12 text-gray-400 font-medium">Loading categories...</td></tr>
               ) : paginatedCategories.length > 0 ? paginatedCategories.map((category) => (
                 <tr key={category._id} className={`transition-colors ${selectedIds.includes(category._id) ? 'bg-indigo-50/30' : 'hover:bg-gray-50/50'}`}>
                   <td className="py-3 px-4">
@@ -304,22 +289,8 @@ const ManageCategories = () => {
                     <p className="text-sm font-bold text-gray-900">{category.name}</p>
                     <p className="text-xs text-gray-500">/{category.slug || category.name}</p>
                   </td>
-                  <td className="py-3 px-4">
-                    {category.parentCategory ? (
-                      <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md">{category.parentCategory.name}</span>
-                    ) : (
-                      <span className="text-xs text-gray-400 font-medium italic">None</span>
-                    )}
-                  </td>
                   <td className="py-3 px-4 text-center">
                     <span className="text-sm font-black text-gray-700">{category.productCount || 0}</span>
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                     {category.featured ? (
-                       <span className="text-[10px] font-bold bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded border border-yellow-200">YES</span>
-                     ) : (
-                       <span className="text-[10px] font-bold text-gray-400">NO</span>
-                     )}
                   </td>
                   <td className="py-3 px-4 text-center">
                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${category.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -340,7 +311,7 @@ const ManageCategories = () => {
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan="8" className="text-center py-16">
+                  <td colSpan="6" className="text-center py-16">
                     <FaLayerGroup className="mx-auto text-5xl text-gray-200 mb-4" />
                     <p className="text-lg font-bold text-gray-900 mb-1">No Categories Found</p>
                     <p className="text-sm text-gray-500 mb-4">Start organizing your store by creating your first category.</p>

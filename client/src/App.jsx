@@ -25,6 +25,7 @@ import Contact from "./pages/Contact";
 import ProductDetails from "./pages/ProductDetails";
 import ReplacementPolicy from "./pages/ReplacementPolicy";
 import Offers from "./pages/Offers";
+import PublicOfferDetails from "./pages/PublicOfferDetails";
 
 import ForgotPassword from "./pages/ForgotPassword";
 import Wishlist from "./pages/Wishlist";
@@ -44,6 +45,7 @@ import ManageOffers from "./pages/Admin/ManageOffers";
 import AddOffer from "./pages/Admin/AddOffer";
 import OfferDetails from "./pages/Admin/OfferDetails";
 import ManageSuppliers from "./pages/Admin/ManageSuppliers";
+import ManagePurchases from "./pages/Admin/ManagePurchases";
 import AdminProfile from "./pages/Admin/AdminProfile";
 import StockHistory from "./pages/Admin/StockHistory";
 import ManageReviews from "./pages/Admin/ManageReviews";
@@ -77,7 +79,7 @@ const LayoutWrapper = ({ children }) => {
   const isAuthRoute = ["/login", "/register", "/forgot-password"].includes(location.pathname);
 
   return (
-    <div className="d-flex flex-column min-vh-100" style={{ position: 'relative', overflowX: 'hidden' }}>
+    <div className="d-flex flex-column min-vh-100" style={{ position: 'relative', overflowX: 'clip' }}>
       {!isAdminRoute && !isAuthRoute && <Navbar />}
 
       <div className="flex-grow-1 global-page-frame" style={{ position: 'relative', minHeight: '100vh' }}>
@@ -113,6 +115,7 @@ function App() {
                     <Route path="/product/:id" element={<ProductDetails />} />
                     <Route path="/about" element={<About />} />
                     <Route path="/offers" element={<Offers />} />
+                    <Route path="/offer/:id" element={<PublicOfferDetails />} />
                     <Route path="/services" element={<Services />} />
                     <Route path="/contact" element={<Contact />} />
                     <Route path="/replacement-policy" element={<ReplacementPolicy />} />
@@ -147,6 +150,7 @@ function App() {
                       <Route path="offers/:id" element={<OfferDetails />} />
                       <Route path="offers/edit/:id" element={<AddOffer />} />
                       <Route path="suppliers" element={<ManageSuppliers />} />
+                      <Route path="purchases" element={<ManagePurchases />} />
                       <Route path="reviews" element={<ManageReviews />} />
                       <Route path="stock-history" element={<StockHistory />} />
                       <Route path="profile" element={<AdminProfile />} />

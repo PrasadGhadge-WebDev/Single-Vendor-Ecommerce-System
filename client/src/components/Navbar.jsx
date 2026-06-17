@@ -303,29 +303,30 @@ const Navbar = () => {
                 <FiSearch size={20} />
               </button>
 
-              {/* Utility Group */}
-              <div className="nav-action-group utility-group hidden sm:flex">
-                <button onClick={toggleTheme} className="nav-icon-btn theme-toggle" title="Toggle Theme">
-                  {theme === "light" ? <FiMoon size={20} /> : <FiSun size={20} />}
-                </button>
-                <Link to="/wishlist" className="nav-icon-btn wishlist-btn" title="Wishlist">
-                  <FiHeart size={20} />
-                  {wishlist.length > 0 && <span className="action-badge">{wishlist.length}</span>}
-                </Link>
-              </div>
+              {user && (
+                <>
+                  {/* Utility Group */}
+                  <div className="nav-action-group utility-group hidden sm:flex">
+                    <Link to="/wishlist" className="nav-icon-btn wishlist-btn" title="Wishlist">
+                      <FiHeart size={20} />
+                      {wishlist.length > 0 && <span className="action-badge">{wishlist.length}</span>}
+                    </Link>
+                  </div>
 
-              <div className="nav-separator hidden sm:block"></div>
+                  <div className="nav-separator hidden sm:block"></div>
 
-              {/* Cart Section */}
-              <Link to="/cart" className="premium-cart-btn">
-                <div className="cart-icon-wrap">
-                  <FiShoppingCart size={20} />
-                  {totalCartItems > 0 && <span className="cart-count-badge">{totalCartItems}</span>}
-                </div>
-                <span className="cart-label hidden lg:block">My Cart</span>
-              </Link>
+                  {/* Cart Section */}
+                  <Link to="/cart" className="premium-cart-btn">
+                    <div className="cart-icon-wrap">
+                      <FiShoppingCart size={20} />
+                      {totalCartItems > 0 && <span className="cart-count-badge">{totalCartItems}</span>}
+                    </div>
+                    <span className="cart-label hidden lg:block">My Cart</span>
+                  </Link>
 
-              <div className="nav-separator"></div>
+                  <div className="nav-separator"></div>
+                </>
+              )}
 
               {/* User Group */}
               <div className="nav-action-group user-group relative">

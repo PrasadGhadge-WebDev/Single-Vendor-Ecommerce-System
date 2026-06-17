@@ -213,11 +213,13 @@ exports.createPurchase = async (req, res) => {
 
 exports.getPurchases = async (req, res) => {
   try {
-    const { supplierId, productId, dateFrom, dateTo } = req.query;
+    const { supplierId, productId, dateFrom, dateTo, paymentStatus, paymentMethod } = req.query;
     const filter = {};
 
-    if (supplierId) filter.supplier = supplierId;
-    if (productId) filter.product = productId;
+    if (supplierId && supplierId !== 'all') filter.supplier = supplierId;
+    if (productId && productId !== 'all') filter.product = productId;
+    if (paymentStatus && paymentStatus !== 'all') filter.paymentStatus = paymentStatus;
+    if (paymentMethod && paymentMethod !== 'all') filter.paymentMethod = paymentMethod;
 
     if (dateFrom || dateTo) {
       filter.purchaseDate = {};
@@ -353,22 +355,181 @@ exports.getSupplierAnalytics = async (req, res) => {
 
 exports.updatePurchase = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { invoiceNumber, notes } = req.body;
-
-    const purchase = await Purchase.findById(id);
+    const purchase = await Purchase.findById(req.params.id);
     if (!purchase) return res.status(404).json({ message: "Purchase not found" });
 
-    if (invoiceNumber !== undefined) purchase.invoiceNumber = invoiceNumber;
-    if (notes !== undefined) purchase.notes = notes;
+    const { quantity, unitCost, paymentStatus, paymentMethod, notes, invoiceNumber, purchaseDate, paidAmount, supplierId, productId } = req.body;
+    
+    const newQty = Number(quantity);
+    const newCost = Number(unitCost);
+    
+    if (isNaN(newQty) || newQty < 1) {
+      console.log("updatePurchase 400: Quantity must be at least 1", quantity);
+      return res.status(400).json({ message: "Quantity must be at least 1" });
+    }
+    if (isNaN(newCost) || newCost <= 0) {
+      console.log("updatePurchase 400: Unit cost must be greater than 0", unitCost);
+      return res.status(400).json({ message: "Unit cost must be greater than 0" });
+    }
+
+    const prevStatus = purchase.paymentStatus;
+    if (prevStatus === "PAID" && (paymentStatus === "PENDING" || paymentStatus === "PARTIAL")) {
+      console.log("updatePurchase 400: Paid purchases cannot be downgraded to Pending or Partial status.");
+      return res.status(400).json({ message: "Paid purchases cannot be downgraded to Pending or Partial status." });
+    }
+    if (prevStatus === "PARTIAL" && paymentStatus === "PENDING") {
+      console.log("updatePurchase 400: Partial purchases cannot be downgraded to Pending.");
+      return res.status(400).json({ message: "Partial purchases cannot be downgraded to Pending." });
+    }
+
+    const previousQuantity = purchase.quantity;
+    const oldProductId = purchase.product.toString();
+    const newProductId = productId && productId !== oldProductId ? productId : oldProductId;
+    
+    // Check if product is changed
+    if (newProductId !== oldProductId) {
+      // Find old and new products
+      const oldProduct = await Product.findById(oldProductId);
+      const newProduct = await Product.findById(newProductId);
+      
+      if (!newProduct) {
+        console.log("updatePurchase 400: The new product does not exist.");
+        return res.status(400).json({ message: "The new product selected no longer exists." });
+      }
+
+      // Revert old product stock
+      if (oldProduct) {
+        const prevOldStock = Number(oldProduct.stock || 0);
+        oldProduct.stock = Math.max(0, prevOldStock - previousQuantity);
+        await oldProduct.save();
+        await logStockHistory({
+          productId: oldProduct._id,
+          eventType: "PURCHASE_UPDATE",
+          quantityChange: -previousQuantity,
+          previousStock: prevOldStock,
+          newStock: oldProduct.stock,
+          referenceType: "PURCHASE",
+          referenceId: purchase._id.toString(),
+          note: `Purchase record re-assigned to another product (stock reverted)`,
+          actorId: req.user?._id || null,
+        });
+      }
+      
+      // Add new product stock
+      const prevNewStock = Number(newProduct.stock || 0);
+      newProduct.stock = Math.max(0, prevNewStock + newQty);
+      await newProduct.save();
+      await logStockHistory({
+        productId: newProduct._id,
+        eventType: "PURCHASE_UPDATE",
+        quantityChange: newQty,
+        previousStock: prevNewStock,
+        newStock: newProduct.stock,
+        referenceType: "PURCHASE",
+        referenceId: purchase._id.toString(),
+        note: `Purchase record re-assigned to this product (stock added)`,
+        actorId: req.user?._id || null,
+      });
+
+      purchase.product = newProductId;
+    } else {
+      // Same product, just diff quantity
+      const diffQuantity = newQty - previousQuantity;
+      if (diffQuantity !== 0) {
+        const product = await Product.findById(oldProductId);
+        if (!product) {
+          console.log("updatePurchase 400: Cannot change quantity because the associated product no longer exists.");
+          return res.status(400).json({ message: "Cannot change quantity because the associated product no longer exists." });
+        }
+        
+        const previousStock = Number(product.stock || 0);
+        const newStock = Math.max(0, previousStock + diffQuantity);
+        
+        product.stock = newStock;
+        await product.save();
+        
+        await logStockHistory({
+          productId: product._id,
+          eventType: "PURCHASE_UPDATE",
+          quantityChange: diffQuantity,
+          previousStock,
+          newStock,
+          referenceType: "PURCHASE",
+          referenceId: purchase._id.toString(),
+          note: `Purchase record updated (qty changed from ${previousQuantity} to ${newQty})`,
+          actorId: req.user?._id || null,
+        });
+      }
+    }
+
+    if (supplierId && supplierId !== purchase.supplier.toString()) {
+      purchase.supplier = supplierId;
+    }
+
+    if (req.file) {
+      purchase.invoiceUrl = `/uploads/${req.file.filename}`;
+    }
+
+    const totalPurchaseCost = newQty * newCost;
+    
+    let finalPaidAmt = 0;
+    if (paymentStatus === "PAID") {
+      finalPaidAmt = totalPurchaseCost;
+    } else if (paymentStatus === "PARTIAL") {
+      finalPaidAmt = Number(paidAmount) || purchase.paidAmount || 0;
+      if (finalPaidAmt > totalPurchaseCost) {
+        console.log("updatePurchase 400: Paid amount cannot exceed total cost.", finalPaidAmt, totalPurchaseCost);
+        return res.status(400).json({ message: "Paid amount cannot exceed total cost." });
+      }
+    } else {
+      finalPaidAmt = 0;
+    }
+    
+    const remainingAmount = Math.max(0, totalPurchaseCost - finalPaidAmt);
+
+    purchase.auditTrail.push({
+      updatedAt: new Date(),
+      updatedBy: req.user?.name || "Admin",
+      previousQuantity: previousQuantity,
+      newQuantity: newQty,
+      previousPaymentStatus: prevStatus,
+      newPaymentStatus: paymentStatus || prevStatus
+    });
+
+    purchase.quantity = newQty;
+    purchase.unitCost = newCost;
+    purchase.totalCost = totalPurchaseCost;
+    if (paymentStatus) purchase.paymentStatus = paymentStatus;
+    if (paymentMethod) purchase.paymentMethod = paymentMethod;
+    if (notes !== undefined) purchase.notes = String(notes).trim();
+    if (invoiceNumber !== undefined) purchase.invoiceNumber = String(invoiceNumber).trim();
+    if (purchaseDate) purchase.purchaseDate = new Date(purchaseDate);
+    purchase.paidAmount = finalPaidAmt;
+    purchase.remainingAmount = remainingAmount;
 
     await purchase.save();
-    
-    const populatedPurchase = await Purchase.findById(id)
+
+    const populatedPurchase = await Purchase.findById(purchase._id)
       .populate("supplier", "name company email phone")
       .populate("product", "name category price stock");
 
     res.status(200).json(populatedPurchase);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.markPurchasePaid = async (req, res) => {
+  try {
+    const purchase = await Purchase.findById(req.params.id);
+    if (!purchase) return res.status(404).json({ message: "Purchase not found" });
+
+    purchase.paymentStatus = "PAID";
+    purchase.paidAmount = purchase.totalCost;
+    purchase.remainingAmount = 0;
+    
+    await purchase.save();
+    res.status(200).json({ message: "Purchase marked as paid", purchase });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -376,62 +537,12 @@ exports.updatePurchase = async (req, res) => {
 
 exports.deletePurchase = async (req, res) => {
   try {
-    const { id } = req.params;
-    const purchase = await Purchase.findById(id);
+    const purchase = await Purchase.findById(req.params.id);
     if (!purchase) return res.status(404).json({ message: "Purchase not found" });
 
-    // Revert stock
-    const product = await Product.findById(purchase.product);
-    if (product) {
-      const previousStock = Number(product.stock || 0);
-      const newStock = Math.max(0, previousStock - purchase.quantity);
-      product.stock = newStock;
-      await product.save();
-
-      await logStockHistory({
-        productId: product._id,
-        eventType: "ADJUSTMENT",
-        quantityChange: -purchase.quantity,
-        previousStock,
-        newStock,
-        referenceType: "PURCHASE",
-        referenceId: purchase._id.toString(),
-        note: `Purchase deleted, stock reverted.`,
-        actorId: req.user?._id || null,
-      });
-    }
-
-    await Purchase.findByIdAndDelete(id);
-    res.status(200).json({ message: "Purchase deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-exports.markPurchaseAsPaid = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const purchase = await Purchase.findById(id);
-    if (!purchase) return res.status(404).json({ message: "Purchase not found" });
-
-    if (purchase.paymentStatus === "PAID") {
-      return res.status(400).json({ message: "Purchase is already marked as paid" });
-    }
-
-    purchase.paymentStatus = "PAID";
-    purchase.paidAmount = purchase.totalCost;
-    purchase.remainingAmount = 0;
-    if (req.body.paymentMethod) {
-      purchase.paymentMethod = req.body.paymentMethod;
-    }
-
-    await purchase.save();
+    await Purchase.findByIdAndDelete(req.params.id);
     
-    const populatedPurchase = await Purchase.findById(id)
-      .populate("supplier", "name company email phone")
-      .populate("product", "name category price stock");
-
-    res.status(200).json(populatedPurchase);
+    res.status(200).json({ message: "Purchase deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

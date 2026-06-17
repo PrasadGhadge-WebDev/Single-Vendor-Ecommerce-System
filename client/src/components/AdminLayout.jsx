@@ -20,11 +20,10 @@ import {
   FaChevronDown,
   FaCreditCard,
   FaSearch,
-  FaRegCommentDots,
   FaRegBell,
   FaUndo,
-  FaFileInvoiceDollar,
 } from "react-icons/fa";
+import { FiZap } from "react-icons/fi";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import API from "../api";
@@ -34,7 +33,6 @@ const AdminLayout = () => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
-  const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
   const [businessProfile, setBusinessProfile] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -114,15 +112,10 @@ const AdminLayout = () => {
   }, [searchQuery]);
 
   React.useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    document.body.setAttribute("data-bs-theme", theme);
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-    localStorage.setItem("theme", theme);
-  }, [theme]);
+    document.documentElement.setAttribute("data-theme", "light");
+    document.body.setAttribute("data-bs-theme", "light");
+    document.documentElement.classList.remove("dark");
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -155,17 +148,43 @@ const AdminLayout = () => {
   return (
     <div className="admin-wrapper">
       {/* Sidebar */}
-      <div className={`sidebar ${collapsed ? "collapsed" : ""}`}>
-        <div className="sidebar-header">
+      <div className={`sidebar ${collapsed ? "collapsed" : ""} print:hidden`}>
+        <div className="sidebar-header" style={{ padding: collapsed ? '20px 0' : '20px 24px', display: 'flex', justifyContent: collapsed ? 'center' : 'flex-start' }}>
           {collapsed ? (
-            <span className="sidebar-header-badge">E</span>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #0072ff 0%, #00c6ff 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 14px rgba(0, 114, 255, 0.4)',
+              color: 'white',
+              flexShrink: 0
+            }}>
+              <FiZap size={22} strokeWidth={2.5} fill="none" />
+            </div>
           ) : (
-            <div className="sidebar-header-profile">
-              <span className="sidebar-header-badge" style={{borderRadius: '50%'}}>E</span>
+            <div className="sidebar-header-profile" style={{ display: 'flex', alignItems: 'center', gap: '14px', width: '100%' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #0072ff 0%, #00c6ff 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 14px rgba(0, 114, 255, 0.4)',
+                color: 'white',
+                flexShrink: 0
+              }}>
+                <FiZap size={22} strokeWidth={2.5} fill="none" />
+              </div>
               <div className="sidebar-header-meta">
-                <span className="sidebar-header-name" style={{fontSize: '1.4rem', fontWeight: '800', letterSpacing: '-0.5px', margin: 0, lineHeight: 1}}>
+                <span className="sidebar-header-name" style={{fontSize: '1.5rem', fontWeight: '900', letterSpacing: '-0.5px', margin: 0, lineHeight: 1, fontFamily: 'system-ui, -apple-system, sans-serif'}}>
                   <span style={{ color: '#0f172a' }}>Electro</span>
-                  <span style={{ color: '#0052FF' }}>Hub</span>
+                  <span style={{ color: '#0066ff' }}>Hub</span>
                 </span>
               </div>
             </div>
@@ -295,6 +314,18 @@ const AdminLayout = () => {
               </NavLink>
             </li>
 
+            {/* Purchases */}
+            <li>
+              <NavLink
+                to="/admin/purchases"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+                title="Purchase Records"
+              >
+                <FaHistory />
+                {!collapsed && <span>Purchases</span>}
+              </NavLink>
+            </li>
+
 
 
             <li>
@@ -320,8 +351,8 @@ const AdminLayout = () => {
       </div>
 
       {/* Main Section */}
-      <div className={`main-section ${collapsed ? "sidebar-collapsed" : ""}`}>
-        <div className="admin-header">
+      <div className={`main-section ${collapsed ? "sidebar-collapsed" : ""} print:m-0 print:w-full print:p-0`}>
+        <div className="admin-header print:hidden">
           <div className="admin-header-left" style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
             <button className="toggle-btn" onClick={() => setCollapsed(!collapsed)} title="Toggle Sidebar">
               <FaBars />
@@ -373,67 +404,7 @@ const AdminLayout = () => {
           </div>
 
           <div className="admin-header-right" style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-            <div className="dropdown me-3">
-              <button
-                className="header-icon-btn border-0 bg-transparent position-relative"
-                type="button"
-                data-bs-toggle="dropdown"
-                aria-expanded="false"
-                title="Notifications"
-              >
-                <FaRegBell />
-                {unreadCount > 0 && (
-                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '0.65rem' }}>
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-              <ul className="dropdown-menu dropdown-menu-end shadow border-0 rounded-3 mt-2" style={{ minWidth: '300px', maxHeight: '400px', overflowY: 'auto' }}>
-                <li className="px-3 py-2 border-bottom mb-1 d-flex justify-content-between align-items-center bg-light">
-                  <span className="fw-bold fs-6">Notifications</span>
-                  {unreadCount > 0 && (
-                    <button className="btn btn-sm btn-link text-decoration-none p-0" onClick={markAllNotificationsRead}>Mark all read</button>
-                  )}
-                </li>
-                {notifications.length > 0 ? (
-                  notifications.map((notif, idx) => (
-                    <li key={idx}>
-                      <button 
-                        className={`dropdown-item py-2 d-flex flex-column align-items-start ${!notif.read ? 'bg-light border-start border-primary border-4' : ''}`} 
-                        onClick={() => handleNotificationClick(notif)}
-                        style={{ whiteSpace: 'normal' }}
-                      >
-                        <div className="d-flex justify-content-between w-100 mb-1">
-                          <span className={`fw-bold text-truncate ${notif.type === 'out_of_stock' ? 'text-danger' : notif.type === 'low_stock' ? 'text-warning' : 'text-primary'}`} style={{fontSize: '0.85rem'}}>
-                            {notif.title}
-                          </span>
-                          <span className="text-muted" style={{fontSize: '0.7rem'}}>{new Date(notif.createdAt).toLocaleDateString()}</span>
-                        </div>
-                        <span className="text-muted" style={{fontSize: '0.8rem'}}>{notif.message}</span>
-                      </button>
-                    </li>
-                  ))
-                ) : (
-                  <li className="px-3 py-3 text-center text-muted">No new notifications</li>
-                )}
-              </ul>
-            </div>
 
-            <div className="dropdown me-4">
-              <button
-                className="header-icon-btn border-0 bg-transparent position-relative"
-                type="button"
-                title="Messages"
-                onClick={() => navigate("/admin/messages")}
-              >
-                <FaRegCommentDots />
-                {navbarStats.pendingMessages > 0 && (
-                  <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary" style={{ fontSize: '0.65rem' }}>
-                    {navbarStats.pendingMessages}
-                  </span>
-                )}
-              </button>
-            </div>
 
             <div className="dropdown">
               <button

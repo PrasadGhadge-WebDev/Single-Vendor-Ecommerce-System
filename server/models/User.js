@@ -101,6 +101,30 @@ const userSchema = new mongoose.Schema(
       pincode: { type: String, default: "" },
       phone: { type: String, default: "" },
     },
+
+    employeeId: { type: String, default: "" },
+    joiningDate: { type: Date, default: Date.now },
+    altMobile: { type: String, default: "" },
+    lastLoginIp: { type: String, default: "" },
+    lastLoginDate: { type: Date },
+    twoFactorAuth: {
+      enabled: { type: Boolean, default: false },
+      secret: { type: String, default: "" },
+    },
+    notificationPreferences: {
+      orderNotifications: { type: Boolean, default: true },
+      paymentNotifications: { type: Boolean, default: true },
+      returnRequests: { type: Boolean, default: true },
+      lowStockAlerts: { type: Boolean, default: true },
+      supplierNotifications: { type: Boolean, default: true },
+      systemAnnouncements: { type: Boolean, default: true },
+      emailNotifications: { type: Boolean, default: true },
+    },
+
+    city: { type: String, default: "" },
+    state: { type: String, default: "" },
+    country: { type: String, default: "" },
+    pincode: { type: String, default: "" },
     wishlist: [{
       type: String,
       ref: "Product",

@@ -13,7 +13,7 @@
 
 .shop-page {
   background: var(--shop-bg);
-  min-h: calc(100vh - 110px);
+  min-height: calc(100vh - 110px);
   display: flex;
   flex-direction: column;
   scrollbar-gutter: stable;
@@ -33,6 +33,7 @@
   width: var(--shop-sidebar-width);
   position: sticky;
   top: var(--shop-header-height);
+  align-self: flex-start;
   height: calc(100vh - var(--shop-header-height));
   overflow-y: auto;
   background: #fff;
@@ -293,7 +294,9 @@
 
 /* Responsive */
 @media (max-width: 1200px) {
-  --shop-sidebar-width: 280px;
+  :root {
+    --shop-sidebar-width: 280px;
+  }
 }
 
 @media (max-width: 1024px) {

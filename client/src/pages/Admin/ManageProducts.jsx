@@ -106,7 +106,7 @@ const ManageProducts = () => {
       if (stockStatusFilter !== "all") {
         if (stockStatusFilter === "in-stock" && product.stock <= 0) return false;
         if (stockStatusFilter === "out-of-stock" && product.stock > 0) return false;
-        if (stockStatusFilter === "low-stock" && (product.stock <= 0 || product.stock > (product.lowStockAlert || 10))) return false;
+        if (stockStatusFilter === "low-stock" && (product.stock <= 0 || product.stock > 10)) return false;
       }
       
       // Date Range Filtering
@@ -147,12 +147,12 @@ const ManageProducts = () => {
   }, [filteredProducts, productPage]);
 
   // KPIs
-  const totalProducts = products.length;
-  const activeProducts = products.filter(p => p.status === 'Active').length;
-  const outOfStockProducts = products.filter(p => p.stock <= 0).length;
-  const lowStockProducts = products.filter(p => p.stock > 0 && p.stock <= (p.lowStockAlert || 10)).length;
-  const draftProducts = products.filter(p => p.status === 'Draft').length;
-  const featuredProductsCount = products.filter(p => p.featured).length;
+  const totalProducts = filteredProducts.length;
+  const activeProducts = filteredProducts.filter(p => p.status === 'Active').length;
+  const outOfStockProducts = filteredProducts.filter(p => p.stock <= 0).length;
+  const lowStockProducts = filteredProducts.filter(p => p.stock > 0 && p.stock <= 10).length;
+  const draftProducts = filteredProducts.filter(p => p.status === 'Draft').length;
+  const featuredProductsCount = filteredProducts.filter(p => p.featured).length;
 
   const exportProducts = () => {
     downloadCsv(
@@ -316,7 +316,7 @@ const ManageProducts = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border shadow-sm flex flex-col justify-between" style={{ borderColor: 'var(--border-color)' }}>
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Total Products</p>
           <p className="text-2xl font-black text-slate-800 dark:text-white">{totalProducts}</p>
@@ -332,14 +332,6 @@ const ManageProducts = () => {
         <div className="bg-amber-50 dark:bg-amber-900/20 p-5 rounded-2xl border border-amber-100 dark:border-amber-800 shadow-sm flex flex-col justify-between">
           <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-2">Low Stock</p>
           <p className="text-2xl font-black text-amber-700 dark:text-amber-400">{lowStockProducts}</p>
-        </div>
-        <div className="bg-slate-100 dark:bg-slate-800/80 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Drafts</p>
-          <p className="text-2xl font-black text-slate-700 dark:text-slate-300">{draftProducts}</p>
-        </div>
-        <div className="bg-indigo-50 dark:bg-indigo-900/20 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-800 shadow-sm flex flex-col justify-between">
-          <p className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2">Featured</p>
-          <p className="text-2xl font-black text-indigo-700 dark:text-indigo-400">{featuredProductsCount}</p>
         </div>
       </div>
 
@@ -476,8 +468,7 @@ const ManageProducts = () => {
               {paginatedProducts.length > 0 ? paginatedProducts.map((product) => {
                 const stockValue = Number(product.stock || 0);
                 const isOutOfStock = stockValue <= 0;
-                const lowStockThresh = product.lowStockAlert || 10;
-                const isLowStock = !isOutOfStock && stockValue <= lowStockThresh;
+                const isLowStock = !isOutOfStock && stockValue <= 10;
                 
                 return (
                   <tr key={product._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
@@ -517,12 +508,10 @@ const ManageProducts = () => {
                         {isOutOfStock ? (
                           <>
                             <span className="text-xs font-black text-rose-600">Out of Stock</span>
-                            <span className="px-2 py-0.5 bg-rose-100 text-rose-700 rounded text-[10px] font-bold uppercase tracking-wide border border-rose-200">Out of Stock</span>
                           </>
                         ) : isLowStock ? (
                           <>
-                            <span className="text-xs font-black text-rose-500">{product.stock} Units</span>
-                            <span className="px-2 py-0.5 bg-rose-50 border border-rose-200 text-rose-600 rounded text-[10px] font-bold uppercase tracking-wide flex items-center gap-1"><FaExclamationTriangle size={8} /> Low Stock</span>
+                            <span className="text-xs font-black text-amber-600">{product.stock} Units</span>
                           </>
                         ) : (
                           <span className="text-xs font-black text-emerald-600">{product.stock} Units</span>
